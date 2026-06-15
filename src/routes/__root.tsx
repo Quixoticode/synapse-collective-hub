@@ -84,6 +84,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:description", content: "Neuromorphic Liquid CRM für das xSyna-Kollektiv." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
+    ],
     links: [
       {
         rel: "stylesheet",
