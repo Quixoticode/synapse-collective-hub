@@ -131,37 +131,6 @@ export const employeesList = createServerFn({ method: "POST" })
     return rows ?? [];
   });
 
-const empUpsertSchema = creds.extend({
-  original_slid: z.string().optional(),
-  slid: z.string().min(4),
-  name: z.string().min(1),
-  hl: z.number().int().min(1).max(7),
-  regid: z.string().min(1),
-  pik: z.string().min(8),
-  cip: z.string().min(1),
-  kwn: z.string().optional().nullable(),
-  kwn_active: z.boolean().default(false),
-  email: z.string().email().optional().or(z.literal("")).nullable(),
-  notes: z.string().optional().nullable(),
-});
-
-export const employeeUpsert = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) => {
-    // The schema collides: creds.slid is caller, body.slid is target.
-    // Accept loosely typed input and pick fields.
-    const o = d as Record<string, unknown>;
-    return empUpsertSchema.parse({
-      ...o,
-      slid: o["target_slid"] ?? o["slid"],
-    });
-  })
-  .handler(async ({ data }) => {
-    // NOTE: caller credentials come on data.slid/pik because of how creds extends.
-    // We need the caller's SLID/PIK separately. The wrapper above merges; instead use explicit fields.
-    throw new Error("__unused__");
-  });
-
-// Simpler: split caller creds from target payload via dedicated schema
 const empPayload = z.object({
   caller_slid: z.string(),
   caller_pik: z.string(),
