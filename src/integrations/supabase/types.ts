@@ -14,7 +14,101 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      crm_data: {
+        Row: {
+          company: string | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          owner_slid: string
+          phone: string | null
+          status: string
+          tags: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          owner_slid: string
+          phone?: string | null
+          status?: string
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          company?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          owner_slid?: string
+          phone?: string | null
+          status?: string
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_data_owner_slid_fkey"
+            columns: ["owner_slid"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["slid"]
+          },
+        ]
+      }
+      employees: {
+        Row: {
+          cip: string
+          created_at: string
+          email: string | null
+          hl: number
+          kwn: string | null
+          kwn_active: boolean
+          name: string
+          notes: string | null
+          pik: string
+          regid: string
+          slid: string
+          updated_at: string
+        }
+        Insert: {
+          cip: string
+          created_at?: string
+          email?: string | null
+          hl: number
+          kwn?: string | null
+          kwn_active?: boolean
+          name: string
+          notes?: string | null
+          pik: string
+          regid: string
+          slid: string
+          updated_at?: string
+        }
+        Update: {
+          cip?: string
+          created_at?: string
+          email?: string | null
+          hl?: number
+          kwn?: string | null
+          kwn_active?: boolean
+          name?: string
+          notes?: string | null
+          pik?: string
+          regid?: string
+          slid?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
