@@ -149,19 +149,24 @@ function CollectivePage() {
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Kollektiv</h1>
           <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
             <ShieldAlert className="h-3.5 w-3.5" style={{ color: "var(--neural-magenta)" }} />
-            HL ≥ 5 – Mitarbeiterverwaltung, SLIDs & KWN-Aktivierung.
+            HL ≥ 5 – Mitarbeiter, Partner & Kunden verwalten.
           </p>
         </div>
-        <button
-          onClick={() => setEditing({ hl: 1, kwn_active: false })}
-          className="syn-btn"
-        >
-          <Plus className="h-4 w-4" /> Neuer Mitarbeiter
-        </button>
+        <div className="flex gap-2">
+          <button onClick={() => setEditing({ hl: 1, kwn_active: false, kind: "kunde" })} className="syn-btn-ghost">
+            <Plus className="h-4 w-4" /> Kunde
+          </button>
+          <button onClick={() => setEditing({ hl: 2, kwn_active: false, kind: "partner" })} className="syn-btn-ghost">
+            <Plus className="h-4 w-4" /> Partner
+          </button>
+          <button onClick={() => setEditing({ hl: 3, kwn_active: false, kind: "mitarbeiter" })} className="syn-btn">
+            <Plus className="h-4 w-4" /> Mitarbeiter
+          </button>
+        </div>
       </header>
 
-      <div className="syn-card p-3 md:p-4 mb-5">
-        <div className="relative">
+      <div className="syn-card p-3 md:p-4 mb-5 flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[200px]">
           <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
             value={q}
@@ -170,6 +175,16 @@ function CollectivePage() {
             className="syn-input pl-9"
           />
         </div>
+        <select
+          value={kindFilter}
+          onChange={(e) => setKindFilter(e.target.value as typeof kindFilter)}
+          className="syn-input md:w-44"
+        >
+          <option value="all">Alle Mitglieder</option>
+          <option value="mitarbeiter">Mitarbeiter</option>
+          <option value="partner">Partner</option>
+          <option value="kunde">Kunden</option>
+        </select>
       </div>
 
       {error && <div className="mb-4 text-xs text-destructive mono">{error}</div>}
