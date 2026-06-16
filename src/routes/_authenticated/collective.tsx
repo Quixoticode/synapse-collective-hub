@@ -263,7 +263,7 @@ function EmployeeModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
       <div className="syn-card syn-gradient-border w-full max-w-xl p-6 relative">
         <button onClick={onClose} className="absolute top-3 right-3 syn-btn-ghost p-2"><X className="h-4 w-4" /></button>
-        <h2 className="text-lg font-semibold mb-1">{value.original_slid ? "Mitarbeiter bearbeiten" : "Neuer Mitarbeiter"}</h2>
+        <h2 className="text-lg font-semibold mb-1">{value.original_slid ? "Mitglied bearbeiten" : "Neues Mitglied"}</h2>
         <p className="text-xs text-muted-foreground mb-4">PIK muss als sha256-Hex bereitgestellt werden.</p>
 
         <div className="grid grid-cols-2 gap-3">
