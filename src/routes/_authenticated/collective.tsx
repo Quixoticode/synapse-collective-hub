@@ -20,11 +20,14 @@ export const Route = createFileRoute("/_authenticated/collective")({
   component: CollectivePage,
 });
 
+type MemberKind = "mitarbeiter" | "partner" | "kunde";
+
 type Employee = {
   slid: string;
   hl: number;
   regid: string;
   name: string;
+  kind: MemberKind;
   pik?: string;
   cip?: string;
   kwn: string | null;
@@ -33,6 +36,20 @@ type Employee = {
   notes: string | null;
   created_at?: string;
 };
+
+const KIND_LABEL: Record<MemberKind, string> = {
+  mitarbeiter: "Mitarbeiter",
+  partner: "Partner",
+  kunde: "Kunde",
+};
+
+function kindBadge(k: MemberKind) {
+  return {
+    mitarbeiter: "bg-[rgba(0,255,209,0.12)] text-[#7fffe0] border-[rgba(0,255,209,0.35)]",
+    partner: "bg-[rgba(123,97,255,0.15)] text-[#c8bcff] border-[rgba(123,97,255,0.35)]",
+    kunde: "bg-[rgba(0,163,255,0.15)] text-[#9ad8ff] border-[rgba(0,163,255,0.35)]",
+  }[k];
+}
 
 function hlBadge(hl: number) {
   if (hl >= 6) return "bg-[rgba(255,60,172,0.15)] text-[#ffb1da] border-[rgba(255,60,172,0.35)]";
@@ -49,6 +66,7 @@ function CollectivePage() {
 
   const [rows, setRows] = useState<Employee[]>([]);
   const [q, setQ] = useState("");
+  const [kindFilter, setKindFilter] = useState<"all" | MemberKind>("all");
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<(Partial<Employee> & { original_slid?: string }) | null>(null);
   const [busy, setBusy] = useState(false);
@@ -72,9 +90,12 @@ function CollectivePage() {
 
   const filtered = useMemo(() => {
     const t = q.trim().toLowerCase();
-    if (!t) return rows;
-    return rows.filter((e) => [e.name, e.slid, e.regid, e.kwn].some((v) => (v ?? "").toLowerCase().includes(t)));
-  }, [rows, q]);
+    return rows.filter((e) => {
+      if (kindFilter !== "all" && (e.kind ?? "mitarbeiter") !== kindFilter) return false;
+      if (!t) return true;
+      return [e.name, e.slid, e.regid, e.kwn].some((v) => (v ?? "").toLowerCase().includes(t));
+    });
+  }, [rows, q, kindFilter]);
 
   async function doSave() {
     if (!editing) return;
@@ -90,6 +111,7 @@ function CollectivePage() {
           target_slid: editing.slid ?? "",
           name: editing.name ?? "",
           hl: Number(editing.hl ?? 1),
+          kind: (editing.kind ?? "mitarbeiter") as MemberKind,
           regid: editing.regid ?? "",
           pik: editing.pik ?? "",
           cip: editing.cip ?? "",
@@ -127,19 +149,24 @@ function CollectivePage() {
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Kollektiv</h1>
           <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
             <ShieldAlert className="h-3.5 w-3.5" style={{ color: "var(--neural-magenta)" }} />
-            HL ≥ 5 – Mitarbeiterverwaltung, SLIDs & KWN-Aktivierung.
+            HL ≥ 5 – Mitarbeiter, Partner & Kunden verwalten.
           </p>
         </div>
-        <button
-          onClick={() => setEditing({ hl: 1, kwn_active: false })}
-          className="syn-btn"
-        >
-          <Plus className="h-4 w-4" /> Neuer Mitarbeiter
-        </button>
+        <div className="flex gap-2">
+          <button onClick={() => setEditing({ hl: 1, kwn_active: false, kind: "kunde" })} className="syn-btn-ghost">
+            <Plus className="h-4 w-4" /> Kunde
+          </button>
+          <button onClick={() => setEditing({ hl: 2, kwn_active: false, kind: "partner" })} className="syn-btn-ghost">
+            <Plus className="h-4 w-4" /> Partner
+          </button>
+          <button onClick={() => setEditing({ hl: 3, kwn_active: false, kind: "mitarbeiter" })} className="syn-btn">
+            <Plus className="h-4 w-4" /> Mitarbeiter
+          </button>
+        </div>
       </header>
 
-      <div className="syn-card p-3 md:p-4 mb-5">
-        <div className="relative">
+      <div className="syn-card p-3 md:p-4 mb-5 flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[200px]">
           <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
             value={q}
@@ -148,6 +175,16 @@ function CollectivePage() {
             className="syn-input pl-9"
           />
         </div>
+        <select
+          value={kindFilter}
+          onChange={(e) => setKindFilter(e.target.value as typeof kindFilter)}
+          className="syn-input md:w-44"
+        >
+          <option value="all">Alle Mitglieder</option>
+          <option value="mitarbeiter">Mitarbeiter</option>
+          <option value="partner">Partner</option>
+          <option value="kunde">Kunden</option>
+        </select>
       </div>
 
       {error && <div className="mb-4 text-xs text-destructive mono">{error}</div>}
@@ -163,6 +200,9 @@ function CollectivePage() {
               <div className="flex-1 min-w-[220px]">
                 <div className="flex items-center gap-2 flex-wrap">
                   <h3 className="font-semibold">{e.name}</h3>
+                  <span className={`syn-chip border ${kindBadge((e.kind ?? "mitarbeiter") as MemberKind)}`}>
+                    {KIND_LABEL[(e.kind ?? "mitarbeiter") as MemberKind]}
+                  </span>
                   <span className={`syn-chip border ${hlBadge(e.hl)}`}>HL {e.hl}</span>
                   {e.kwn && (
                     <span className={`syn-chip ${e.kwn_active ? "border-[rgba(0,255,209,0.4)] text-[#7fffe0]" : "opacity-60"}`}>
@@ -223,10 +263,22 @@ function EmployeeModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
       <div className="syn-card syn-gradient-border w-full max-w-xl p-6 relative">
         <button onClick={onClose} className="absolute top-3 right-3 syn-btn-ghost p-2"><X className="h-4 w-4" /></button>
-        <h2 className="text-lg font-semibold mb-1">{value.original_slid ? "Mitarbeiter bearbeiten" : "Neuer Mitarbeiter"}</h2>
+        <h2 className="text-lg font-semibold mb-1">{value.original_slid ? "Mitglied bearbeiten" : "Neues Mitglied"}</h2>
         <p className="text-xs text-muted-foreground mb-4">PIK muss als sha256-Hex bereitgestellt werden.</p>
 
         <div className="grid grid-cols-2 gap-3">
+          <div className="col-span-2">
+            <label className="text-[11px] mono uppercase tracking-wider text-muted-foreground">Mitglieds-Typ</label>
+            <select
+              className="syn-input mt-1"
+              value={(value.kind as MemberKind) ?? "mitarbeiter"}
+              onChange={(e) => onChange({ ...value, kind: e.target.value as MemberKind })}
+            >
+              <option value="mitarbeiter">Mitarbeiter</option>
+              <option value="partner">Partner</option>
+              <option value="kunde">Kunde</option>
+            </select>
+          </div>
           <Field label="SLID" value={value.slid} onChange={(v) => onChange({ ...value, slid: v })} />
           <Field label="HL (1-7)" type="number" value={String(value.hl ?? "")} onChange={(v) => onChange({ ...value, hl: Number(v) })} />
           <Field label="Name" wide value={value.name} onChange={(v) => onChange({ ...value, name: v })} />

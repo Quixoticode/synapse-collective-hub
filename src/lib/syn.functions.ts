@@ -125,7 +125,7 @@ export const employeesList = createServerFn({ method: "POST" })
     const admin = await getAdmin();
     const { data: rows, error } = await admin
       .from("employees")
-      .select("slid,hl,regid,name,kwn,kwn_active,email,notes,created_at,updated_at")
+      .select("slid,hl,regid,name,kind,kwn,kwn_active,email,notes,created_at,updated_at")
       .order("hl", { ascending: false });
     if (error) throw new Error(error.message);
     return rows ?? [];
@@ -138,6 +138,7 @@ const empPayload = z.object({
   original_slid: z.string().optional(),
   name: z.string().min(1),
   hl: z.number().int().min(1).max(7),
+  kind: z.enum(["mitarbeiter", "partner", "kunde"]).default("mitarbeiter"),
   regid: z.string().min(1),
   pik: z.string().min(8),
   cip: z.string().min(1),
@@ -160,6 +161,7 @@ export const employeeSave = createServerFn({ method: "POST" })
       regid: data.regid,
       pik: data.pik,
       cip: data.cip,
+      kind: data.kind,
       kwn: data.kwn || null,
       kwn_active: data.kwn_active,
       email: data.email || null,
