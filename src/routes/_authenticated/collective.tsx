@@ -20,11 +20,14 @@ export const Route = createFileRoute("/_authenticated/collective")({
   component: CollectivePage,
 });
 
+type MemberKind = "mitarbeiter" | "partner" | "kunde";
+
 type Employee = {
   slid: string;
   hl: number;
   regid: string;
   name: string;
+  kind: MemberKind;
   pik?: string;
   cip?: string;
   kwn: string | null;
@@ -33,6 +36,20 @@ type Employee = {
   notes: string | null;
   created_at?: string;
 };
+
+const KIND_LABEL: Record<MemberKind, string> = {
+  mitarbeiter: "Mitarbeiter",
+  partner: "Partner",
+  kunde: "Kunde",
+};
+
+function kindBadge(k: MemberKind) {
+  return {
+    mitarbeiter: "bg-[rgba(0,255,209,0.12)] text-[#7fffe0] border-[rgba(0,255,209,0.35)]",
+    partner: "bg-[rgba(123,97,255,0.15)] text-[#c8bcff] border-[rgba(123,97,255,0.35)]",
+    kunde: "bg-[rgba(0,163,255,0.15)] text-[#9ad8ff] border-[rgba(0,163,255,0.35)]",
+  }[k];
+}
 
 function hlBadge(hl: number) {
   if (hl >= 6) return "bg-[rgba(255,60,172,0.15)] text-[#ffb1da] border-[rgba(255,60,172,0.35)]";
