@@ -70,6 +70,7 @@ export type Database = {
           created_at: string
           email: string | null
           hl: number
+          kind: string
           kwn: string | null
           kwn_active: boolean
           name: string
@@ -84,6 +85,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           hl: number
+          kind?: string
           kwn?: string | null
           kwn_active?: boolean
           name: string
@@ -98,6 +100,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           hl?: number
+          kind?: string
           kwn?: string | null
           kwn_active?: boolean
           name?: string
