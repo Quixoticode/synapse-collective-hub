@@ -111,6 +111,7 @@ function CollectivePage() {
           target_slid: editing.slid ?? "",
           name: editing.name ?? "",
           hl: Number(editing.hl ?? 1),
+          kind: (editing.kind ?? "mitarbeiter") as MemberKind,
           regid: editing.regid ?? "",
           pik: editing.pik ?? "",
           cip: editing.cip ?? "",
