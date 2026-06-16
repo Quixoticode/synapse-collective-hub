@@ -66,6 +66,7 @@ function CollectivePage() {
 
   const [rows, setRows] = useState<Employee[]>([]);
   const [q, setQ] = useState("");
+  const [kindFilter, setKindFilter] = useState<"all" | MemberKind>("all");
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<(Partial<Employee> & { original_slid?: string }) | null>(null);
   const [busy, setBusy] = useState(false);
@@ -89,9 +90,12 @@ function CollectivePage() {
 
   const filtered = useMemo(() => {
     const t = q.trim().toLowerCase();
-    if (!t) return rows;
-    return rows.filter((e) => [e.name, e.slid, e.regid, e.kwn].some((v) => (v ?? "").toLowerCase().includes(t)));
-  }, [rows, q]);
+    return rows.filter((e) => {
+      if (kindFilter !== "all" && (e.kind ?? "mitarbeiter") !== kindFilter) return false;
+      if (!t) return true;
+      return [e.name, e.slid, e.regid, e.kwn].some((v) => (v ?? "").toLowerCase().includes(t));
+    });
+  }, [rows, q, kindFilter]);
 
   async function doSave() {
     if (!editing) return;
