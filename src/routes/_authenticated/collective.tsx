@@ -267,6 +267,18 @@ function EmployeeModal({
         <p className="text-xs text-muted-foreground mb-4">PIK muss als sha256-Hex bereitgestellt werden.</p>
 
         <div className="grid grid-cols-2 gap-3">
+          <div className="col-span-2">
+            <label className="text-[11px] mono uppercase tracking-wider text-muted-foreground">Mitglieds-Typ</label>
+            <select
+              className="syn-input mt-1"
+              value={(value.kind as MemberKind) ?? "mitarbeiter"}
+              onChange={(e) => onChange({ ...value, kind: e.target.value as MemberKind })}
+            >
+              <option value="mitarbeiter">Mitarbeiter</option>
+              <option value="partner">Partner</option>
+              <option value="kunde">Kunde</option>
+            </select>
+          </div>
           <Field label="SLID" value={value.slid} onChange={(v) => onChange({ ...value, slid: v })} />
           <Field label="HL (1-7)" type="number" value={String(value.hl ?? "")} onChange={(v) => onChange({ ...value, hl: Number(v) })} />
           <Field label="Name" wide value={value.name} onChange={(v) => onChange({ ...value, name: v })} />
