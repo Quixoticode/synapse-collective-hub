@@ -161,6 +161,7 @@ export const employeeSave = createServerFn({ method: "POST" })
       regid: data.regid,
       pik: data.pik,
       cip: data.cip,
+      kind: data.kind,
       kwn: data.kwn || null,
       kwn_active: data.kwn_active,
       email: data.email || null,
