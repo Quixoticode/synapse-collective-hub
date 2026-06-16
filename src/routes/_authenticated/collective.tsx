@@ -200,6 +200,9 @@ function CollectivePage() {
               <div className="flex-1 min-w-[220px]">
                 <div className="flex items-center gap-2 flex-wrap">
                   <h3 className="font-semibold">{e.name}</h3>
+                  <span className={`syn-chip border ${kindBadge((e.kind ?? "mitarbeiter") as MemberKind)}`}>
+                    {KIND_LABEL[(e.kind ?? "mitarbeiter") as MemberKind]}
+                  </span>
                   <span className={`syn-chip border ${hlBadge(e.hl)}`}>HL {e.hl}</span>
                   {e.kwn && (
                     <span className={`syn-chip ${e.kwn_active ? "border-[rgba(0,255,209,0.4)] text-[#7fffe0]" : "opacity-60"}`}>
