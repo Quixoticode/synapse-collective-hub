@@ -14,6 +14,160 @@ export type Database = {
   }
   public: {
     Tables: {
+      basics_docs: {
+        Row: {
+          body_md: string
+          created_at: string
+          file_url: string | null
+          id: string
+          kind: string
+          pinned: boolean
+          slug: string
+          title: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          body_md?: string
+          created_at?: string
+          file_url?: string | null
+          id?: string
+          kind?: string
+          pinned?: boolean
+          slug: string
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          body_md?: string
+          created_at?: string
+          file_url?: string | null
+          id?: string
+          kind?: string
+          pinned?: boolean
+          slug?: string
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "basics_docs_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["slid"]
+          },
+        ]
+      }
+      chat_members: {
+        Row: {
+          joined_at: string
+          slid: string
+          thread_id: string
+        }
+        Insert: {
+          joined_at?: string
+          slid: string
+          thread_id: string
+        }
+        Update: {
+          joined_at?: string
+          slid?: string
+          thread_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_members_slid_fkey"
+            columns: ["slid"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["slid"]
+          },
+          {
+            foreignKeyName: "chat_members_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "chat_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_messages: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          sender_slid: string
+          thread_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          sender_slid: string
+          thread_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          sender_slid?: string
+          thread_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_sender_slid_fkey"
+            columns: ["sender_slid"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["slid"]
+          },
+          {
+            foreignKeyName: "chat_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "chat_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_threads: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          is_group: boolean
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          is_group?: boolean
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          is_group?: boolean
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_threads_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["slid"]
+          },
+        ]
+      }
       crm_data: {
         Row: {
           company: string | null
@@ -58,6 +212,35 @@ export type Database = {
           {
             foreignKeyName: "crm_data_owner_slid_fkey"
             columns: ["owner_slid"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["slid"]
+          },
+        ]
+      }
+      employee_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          slid: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          slid: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          slid?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_roles_slid_fkey"
+            columns: ["slid"]
             isOneToOne: false
             referencedRelation: "employees"
             referencedColumns: ["slid"]
@@ -112,15 +295,197 @@ export type Database = {
         }
         Relationships: []
       }
+      mail_accounts: {
+        Row: {
+          address: string
+          created_at: string
+          display_name: string | null
+          id: string
+          slid: string
+        }
+        Insert: {
+          address: string
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          slid: string
+        }
+        Update: {
+          address?: string
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          slid?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mail_accounts_slid_fkey"
+            columns: ["slid"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["slid"]
+          },
+        ]
+      }
+      mail_messages: {
+        Row: {
+          account_id: string
+          body_html: string | null
+          body_text: string | null
+          cc_addrs: string[]
+          created_at: string
+          direction: string
+          from_addr: string
+          id: string
+          provider_id: string | null
+          read_at: string | null
+          received_at: string | null
+          sent_at: string | null
+          subject: string | null
+          to_addrs: string[]
+        }
+        Insert: {
+          account_id: string
+          body_html?: string | null
+          body_text?: string | null
+          cc_addrs?: string[]
+          created_at?: string
+          direction: string
+          from_addr: string
+          id?: string
+          provider_id?: string | null
+          read_at?: string | null
+          received_at?: string | null
+          sent_at?: string | null
+          subject?: string | null
+          to_addrs?: string[]
+        }
+        Update: {
+          account_id?: string
+          body_html?: string | null
+          body_text?: string | null
+          cc_addrs?: string[]
+          created_at?: string
+          direction?: string
+          from_addr?: string
+          id?: string
+          provider_id?: string | null
+          read_at?: string | null
+          received_at?: string | null
+          sent_at?: string | null
+          subject?: string | null
+          to_addrs?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mail_messages_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "mail_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vault_entries: {
+        Row: {
+          created_at: string
+          id: string
+          label: string
+          notes: string | null
+          owner_slid: string
+          secret_enc: string
+          secret_iv: string
+          updated_at: string
+          url: string | null
+          username: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label: string
+          notes?: string | null
+          owner_slid: string
+          secret_enc: string
+          secret_iv: string
+          updated_at?: string
+          url?: string | null
+          username?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string
+          notes?: string | null
+          owner_slid?: string
+          secret_enc?: string
+          secret_iv?: string
+          updated_at?: string
+          url?: string | null
+          username?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vault_entries_owner_slid_fkey"
+            columns: ["owner_slid"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["slid"]
+          },
+        ]
+      }
+      workspace_docs: {
+        Row: {
+          content_md: string
+          created_at: string
+          id: string
+          owner_slid: string
+          tags: string[]
+          title: string
+          updated_at: string
+          visibility: string
+        }
+        Insert: {
+          content_md?: string
+          created_at?: string
+          id?: string
+          owner_slid: string
+          tags?: string[]
+          title: string
+          updated_at?: string
+          visibility?: string
+        }
+        Update: {
+          content_md?: string
+          created_at?: string
+          id?: string
+          owner_slid?: string
+          tags?: string[]
+          title?: string
+          updated_at?: string
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_docs_owner_slid_fkey"
+            columns: ["owner_slid"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["slid"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: { _role: Database["public"]["Enums"]["app_role"]; _slid: string }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "superuser" | "admin" | "mitarbeiter" | "partner" | "kunde"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -247,6 +612,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["superuser", "admin", "mitarbeiter", "partner", "kunde"],
+    },
   },
 } as const

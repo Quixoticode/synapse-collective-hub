@@ -29,6 +29,8 @@ export const synLogin = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => creds.parse(d))
   .handler(async ({ data }) => {
     const me = await verify(data.slid, data.pik);
+    const admin = await getAdmin();
+    const { data: su } = await admin.rpc("has_role", { _slid: me.slid, _role: "superuser" });
     return {
       slid: me.slid,
       pik: me.pik,
@@ -36,6 +38,7 @@ export const synLogin = createServerFn({ method: "POST" })
       hl: me.hl,
       regid: me.regid,
       cip: me.cip,
+      isSuperuser: !!su,
     };
   });
 

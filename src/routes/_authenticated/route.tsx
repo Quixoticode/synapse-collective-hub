@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { LogOut, Users, Contact, Sparkles } from "lucide-react";
+import { LogOut, Users, Contact, Sparkles, MessageSquare, KeyRound, Mail, FileText, BookOpen } from "lucide-react";
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { getSession, clearSession, type SynSession } from "@/lib/syn-session";
 
@@ -35,7 +35,12 @@ function AuthedLayout() {
 
   const tabs = [
     { to: "/contacts", label: "Kontakte", icon: Contact, show: true },
-    { to: "/collective", label: "Kollektiv", icon: Users, show: isHl5 },
+    { to: "/chat", label: "Chat", icon: MessageSquare, show: true },
+    { to: "/mail", label: "SynMail", icon: Mail, show: true },
+    { to: "/vault", label: "Tresor", icon: KeyRound, show: true },
+    { to: "/workspace", label: "Workspace", icon: FileText, show: true },
+    { to: "/basics", label: "xSyna Basics", icon: BookOpen, show: true },
+    { to: "/collective", label: "Kollektiv", icon: Users, show: isHl5 || !!session.isSuperuser },
   ];
 
   function handleLogout() {

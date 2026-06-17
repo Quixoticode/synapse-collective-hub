@@ -12,7 +12,7 @@ export const Route = createFileRoute("/_authenticated/collective")({
     if (!raw) throw redirect({ to: "/auth" });
     try {
       const s = JSON.parse(raw);
-      if ((s?.hl ?? 0) < 5) throw redirect({ to: "/contacts" });
+      if ((s?.hl ?? 0) < 5 && !s?.isSuperuser) throw redirect({ to: "/contacts" });
     } catch {
       throw redirect({ to: "/auth" });
     }

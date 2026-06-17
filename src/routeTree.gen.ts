@@ -12,8 +12,14 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedWorkspaceRouteImport } from './routes/_authenticated/workspace'
+import { Route as AuthenticatedVaultRouteImport } from './routes/_authenticated/vault'
+import { Route as AuthenticatedMailRouteImport } from './routes/_authenticated/mail'
 import { Route as AuthenticatedContactsRouteImport } from './routes/_authenticated/contacts'
 import { Route as AuthenticatedCollectiveRouteImport } from './routes/_authenticated/collective'
+import { Route as AuthenticatedChatRouteImport } from './routes/_authenticated/chat'
+import { Route as AuthenticatedBasicsRouteImport } from './routes/_authenticated/basics'
+import { Route as ApiPublicMailCfInboundRouteImport } from './routes/api/public/mail/cf-inbound'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -29,6 +35,21 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedWorkspaceRoute = AuthenticatedWorkspaceRouteImport.update({
+  id: '/workspace',
+  path: '/workspace',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedVaultRoute = AuthenticatedVaultRouteImport.update({
+  id: '/vault',
+  path: '/vault',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedMailRoute = AuthenticatedMailRouteImport.update({
+  id: '/mail',
+  path: '/mail',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedContactsRoute = AuthenticatedContactsRouteImport.update({
   id: '/contacts',
   path: '/contacts',
@@ -39,45 +60,105 @@ const AuthenticatedCollectiveRoute = AuthenticatedCollectiveRouteImport.update({
   path: '/collective',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedChatRoute = AuthenticatedChatRouteImport.update({
+  id: '/chat',
+  path: '/chat',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedBasicsRoute = AuthenticatedBasicsRouteImport.update({
+  id: '/basics',
+  path: '/basics',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const ApiPublicMailCfInboundRoute = ApiPublicMailCfInboundRouteImport.update({
+  id: '/api/public/mail/cf-inbound',
+  path: '/api/public/mail/cf-inbound',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/basics': typeof AuthenticatedBasicsRoute
+  '/chat': typeof AuthenticatedChatRoute
   '/collective': typeof AuthenticatedCollectiveRoute
   '/contacts': typeof AuthenticatedContactsRoute
+  '/mail': typeof AuthenticatedMailRoute
+  '/vault': typeof AuthenticatedVaultRoute
+  '/workspace': typeof AuthenticatedWorkspaceRoute
+  '/api/public/mail/cf-inbound': typeof ApiPublicMailCfInboundRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/basics': typeof AuthenticatedBasicsRoute
+  '/chat': typeof AuthenticatedChatRoute
   '/collective': typeof AuthenticatedCollectiveRoute
   '/contacts': typeof AuthenticatedContactsRoute
+  '/mail': typeof AuthenticatedMailRoute
+  '/vault': typeof AuthenticatedVaultRoute
+  '/workspace': typeof AuthenticatedWorkspaceRoute
+  '/api/public/mail/cf-inbound': typeof ApiPublicMailCfInboundRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/basics': typeof AuthenticatedBasicsRoute
+  '/_authenticated/chat': typeof AuthenticatedChatRoute
   '/_authenticated/collective': typeof AuthenticatedCollectiveRoute
   '/_authenticated/contacts': typeof AuthenticatedContactsRoute
+  '/_authenticated/mail': typeof AuthenticatedMailRoute
+  '/_authenticated/vault': typeof AuthenticatedVaultRoute
+  '/_authenticated/workspace': typeof AuthenticatedWorkspaceRoute
+  '/api/public/mail/cf-inbound': typeof ApiPublicMailCfInboundRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/collective' | '/contacts'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/basics'
+    | '/chat'
+    | '/collective'
+    | '/contacts'
+    | '/mail'
+    | '/vault'
+    | '/workspace'
+    | '/api/public/mail/cf-inbound'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/collective' | '/contacts'
+  to:
+    | '/'
+    | '/auth'
+    | '/basics'
+    | '/chat'
+    | '/collective'
+    | '/contacts'
+    | '/mail'
+    | '/vault'
+    | '/workspace'
+    | '/api/public/mail/cf-inbound'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/basics'
+    | '/_authenticated/chat'
     | '/_authenticated/collective'
     | '/_authenticated/contacts'
+    | '/_authenticated/mail'
+    | '/_authenticated/vault'
+    | '/_authenticated/workspace'
+    | '/api/public/mail/cf-inbound'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ApiPublicMailCfInboundRoute: typeof ApiPublicMailCfInboundRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -103,6 +184,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/workspace': {
+      id: '/_authenticated/workspace'
+      path: '/workspace'
+      fullPath: '/workspace'
+      preLoaderRoute: typeof AuthenticatedWorkspaceRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/vault': {
+      id: '/_authenticated/vault'
+      path: '/vault'
+      fullPath: '/vault'
+      preLoaderRoute: typeof AuthenticatedVaultRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/mail': {
+      id: '/_authenticated/mail'
+      path: '/mail'
+      fullPath: '/mail'
+      preLoaderRoute: typeof AuthenticatedMailRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/contacts': {
       id: '/_authenticated/contacts'
       path: '/contacts'
@@ -117,17 +219,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCollectiveRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/chat': {
+      id: '/_authenticated/chat'
+      path: '/chat'
+      fullPath: '/chat'
+      preLoaderRoute: typeof AuthenticatedChatRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/basics': {
+      id: '/_authenticated/basics'
+      path: '/basics'
+      fullPath: '/basics'
+      preLoaderRoute: typeof AuthenticatedBasicsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/api/public/mail/cf-inbound': {
+      id: '/api/public/mail/cf-inbound'
+      path: '/api/public/mail/cf-inbound'
+      fullPath: '/api/public/mail/cf-inbound'
+      preLoaderRoute: typeof ApiPublicMailCfInboundRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedBasicsRoute: typeof AuthenticatedBasicsRoute
+  AuthenticatedChatRoute: typeof AuthenticatedChatRoute
   AuthenticatedCollectiveRoute: typeof AuthenticatedCollectiveRoute
   AuthenticatedContactsRoute: typeof AuthenticatedContactsRoute
+  AuthenticatedMailRoute: typeof AuthenticatedMailRoute
+  AuthenticatedVaultRoute: typeof AuthenticatedVaultRoute
+  AuthenticatedWorkspaceRoute: typeof AuthenticatedWorkspaceRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedBasicsRoute: AuthenticatedBasicsRoute,
+  AuthenticatedChatRoute: AuthenticatedChatRoute,
   AuthenticatedCollectiveRoute: AuthenticatedCollectiveRoute,
   AuthenticatedContactsRoute: AuthenticatedContactsRoute,
+  AuthenticatedMailRoute: AuthenticatedMailRoute,
+  AuthenticatedVaultRoute: AuthenticatedVaultRoute,
+  AuthenticatedWorkspaceRoute: AuthenticatedWorkspaceRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -137,17 +270,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  ApiPublicMailCfInboundRoute: ApiPublicMailCfInboundRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
