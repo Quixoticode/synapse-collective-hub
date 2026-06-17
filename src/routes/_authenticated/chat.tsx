@@ -83,7 +83,7 @@ function ChatPage() {
       const t = await createFn({ data: { ...c, title: title || null, member_slids: picked, is_group: picked.length > 1 } });
       setNewOpen(false); setPicked([]); setTitle("");
       await reload();
-      setActiveId((t as Thread).id);
+      setActiveId((t as { id: string }).id);
     } finally { setBusy(false); }
   }
 
