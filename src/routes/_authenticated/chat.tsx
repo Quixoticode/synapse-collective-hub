@@ -37,9 +37,10 @@ function ChatPage() {
     const c = getCredentials();
     if (!c) return;
     const [t, p] = await Promise.all([listFn({ data: c }), peopleFn({ data: c })]);
-    setThreads(t as Thread[]);
+    const threadsArr = t as unknown as Thread[];
+    setThreads(threadsArr);
     setPeople(p as Person[]);
-    if (!activeId && t.length) setActiveId((t[0] as Thread).id);
+    if (!activeId && threadsArr.length) setActiveId(threadsArr[0].id);
   }
   async function loadMsgs(id: string) {
     const c = getCredentials();
