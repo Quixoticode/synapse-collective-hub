@@ -35,7 +35,12 @@ function AuthedLayout() {
 
   const tabs = [
     { to: "/contacts", label: "Kontakte", icon: Contact, show: true },
-    { to: "/collective", label: "Kollektiv", icon: Users, show: isHl5 },
+    { to: "/chat", label: "Chat", icon: MessageSquare, show: true },
+    { to: "/mail", label: "SynMail", icon: Mail, show: true },
+    { to: "/vault", label: "Tresor", icon: KeyRound, show: true },
+    { to: "/workspace", label: "Workspace", icon: FileText, show: true },
+    { to: "/basics", label: "xSyna Basics", icon: BookOpen, show: true },
+    { to: "/collective", label: "Kollektiv", icon: Users, show: isHl5 || !!session.isSuperuser },
   ];
 
   function handleLogout() {
