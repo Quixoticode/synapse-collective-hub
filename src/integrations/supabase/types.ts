@@ -386,6 +386,42 @@ export type Database = {
           },
         ]
       }
+      syn_external_configs: {
+        Row: {
+          anon_key: string
+          created_at: string
+          key: string
+          label: string
+          notes: string | null
+          service_key: string | null
+          supabase_url: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          anon_key: string
+          created_at?: string
+          key: string
+          label: string
+          notes?: string | null
+          service_key?: string | null
+          supabase_url: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          anon_key?: string
+          created_at?: string
+          key?: string
+          label?: string
+          notes?: string | null
+          service_key?: string | null
+          supabase_url?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       vault_entries: {
         Row: {
           created_at: string
