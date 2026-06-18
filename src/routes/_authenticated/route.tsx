@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { LogOut, Users, Contact, Sparkles, MessageSquare, KeyRound, Mail, FileText, BookOpen, Plug, ExternalLink } from "lucide-react";
+import { LogOut, Users, Contact, Sparkles, MessageSquare, KeyRound, Mail, FileText, BookOpen, Plug } from "lucide-react";
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { getSession, clearSession, type SynSession } from "@/lib/syn-session";
 
