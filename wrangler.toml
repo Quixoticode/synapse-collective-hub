@@ -11,6 +11,12 @@ not_found_handling = "single-page-application"
 [observability]
 enabled = true
 
+# --- HIER TRÄGST DU DIE VARIABLEN EIN ---
+[vars]
+SUPABASE_URL = "https://dyhyqgtvmkgsycwvwrfl.supabase.co"
+SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR5aHlxZ3R2bWtnc3ljd3Z3cmZsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MTA5NTkxNiwiZXhwIjoyMDk2NjcxOTE2fQ.y2HRDXO_7rp2WQgXTwJNa8-ZZExZ62EJy1E7fwpGxCw"
+
+
 # Geheimnisse setzt du via `bunx wrangler secret put <NAME>`:
 #   SUPABASE_URL
 #   SUPABASE_PUBLISHABLE_KEY
