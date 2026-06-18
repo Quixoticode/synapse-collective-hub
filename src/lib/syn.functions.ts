@@ -25,21 +25,40 @@ const creds = z.object({ slid: z.string().min(1), pik: z.string().min(8) });
 
 // --- AUTH ------------------------------------------------------------------
 
+async function buildSession(me: {
+  slid: string; pik: string; name: string; hl: number; regid: string; cip: string;
+}) {
+  const admin = await getAdmin();
+  const { data: su } = await admin.rpc("has_role", { _slid: me.slid, _role: "superuser" });
+  return {
+    slid: me.slid,
+    pik: me.pik,
+    name: me.name,
+    hl: me.hl,
+    regid: me.regid,
+    cip: me.cip,
+    isSuperuser: !!su,
+  };
+}
+
 export const synLogin = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => creds.parse(d))
+  .handler(async ({ data }) => buildSession(await verify(data.slid, data.pik)));
+
+// PIK-only login: PIK is a long (64-char hex) hash, unique per user.
+export const synLoginByPik = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => z.object({ pik: z.string().min(16) }).parse(d))
   .handler(async ({ data }) => {
-    const me = await verify(data.slid, data.pik);
     const admin = await getAdmin();
-    const { data: su } = await admin.rpc("has_role", { _slid: me.slid, _role: "superuser" });
-    return {
-      slid: me.slid,
-      pik: me.pik,
-      name: me.name,
-      hl: me.hl,
-      regid: me.regid,
-      cip: me.cip,
-      isSuperuser: !!su,
-    };
+    const { data: rows, error } = await admin
+      .from("employees")
+      .select("*")
+      .eq("pik", data.pik)
+      .limit(2);
+    if (error) throw new Error(error.message);
+    if (!rows || rows.length === 0) throw new Error("PIK nicht erkannt.");
+    if (rows.length > 1) throw new Error("Mehrdeutige PIK – bitte SLID zusätzlich angeben.");
+    return buildSession(rows[0]);
   });
 
 // --- CRM -------------------------------------------------------------------

@@ -1,0 +1,15 @@
+{
+  "name": "SynCRM – xSyna Kollektiv",
+  "short_name": "SynCRM",
+  "description": "Zentrales Management-System für das xSyna-Kollektiv.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#05050D",
+  "theme_color": "#05050D",
+  "icons": [
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
