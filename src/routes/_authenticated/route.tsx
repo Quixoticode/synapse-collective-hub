@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { LogOut, Users, Contact, Sparkles, MessageSquare, KeyRound, Mail, FileText, BookOpen } from "lucide-react";
+import { LogOut, Users, Contact, Sparkles, MessageSquare, KeyRound, Mail, FileText, BookOpen, Plug, ExternalLink } from "lucide-react";
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { getSession, clearSession, type SynSession } from "@/lib/syn-session";
 
@@ -41,6 +41,7 @@ function AuthedLayout() {
     { to: "/workspace", label: "Workspace", icon: FileText, show: true },
     { to: "/basics", label: "xSyna Basics", icon: BookOpen, show: true },
     { to: "/collective", label: "Kollektiv", icon: Users, show: isHl5 || !!session.isSuperuser },
+    { to: "/settings/integrations", label: "Integrations", icon: Plug, show: !!session.isSuperuser },
   ];
 
   function handleLogout() {
@@ -84,6 +85,22 @@ function AuthedLayout() {
               Kollektiv-Verwaltung erfordert HL ≥ 5.
             </div>
           )}
+
+          <a
+            href="https://synid.xsyna.de"
+            target="_blank"
+            rel="noreferrer"
+            className="mt-4 flex items-center gap-3 px-3 py-2.5 rounded-2xl text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-all"
+          >
+            <ExternalLink className="h-4 w-4" />
+            <span>SynID</span>
+            <span
+              className="ml-auto rounded px-1.5 py-0.5 text-[9px] font-bold text-black tracking-wider"
+              style={{ background: "linear-gradient(135deg,#00FFD1,#00A3FF,#7B61FF,#FF3CAC)" }}
+            >
+              BETA
+            </span>
+          </a>
         </nav>
 
         <div className="p-3 border-t border-border">
