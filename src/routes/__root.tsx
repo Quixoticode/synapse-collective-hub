@@ -80,10 +80,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "SynCRM – xSyna Kollektiv" },
       { name: "description", content: "Zentrales Management-System für das xSyna-Kollektiv." },
       { name: "author", content: "xSyna" },
-      { property: "og:title", content: "SynCRM" },
-      { property: "og:description", content: "Neuromorphic Liquid CRM für das xSyna-Kollektiv." },
+      { property: "og:title", content: "SynCRM – xSyna Kollektiv" },
+      { property: "og:description", content: "Zentrales Management-System für das xSyna-Kollektiv." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
+      { name: "twitter:title", content: "SynCRM – xSyna Kollektiv" },
+      { name: "twitter:description", content: "Zentrales Management-System für das xSyna-Kollektiv." },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/5be3eb47-2a26-404c-8579-2b4a043875a3" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/5be3eb47-2a26-404c-8579-2b4a043875a3" },
     ],
     links: [
       {
