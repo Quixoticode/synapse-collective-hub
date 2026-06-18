@@ -1,3 +1,20 @@
-name = "synapse-collective-hub"
+name = "syncrm"
+main = "dist/server/index.mjs"
 compatibility_date = "2024-11-06"
 compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = "dist/client"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+
+[observability]
+enabled = true
+
+# Geheimnisse setzt du via `bunx wrangler secret put <NAME>`:
+#   SUPABASE_URL
+#   SUPABASE_PUBLISHABLE_KEY
+#   SUPABASE_SERVICE_ROLE_KEY
+#   LOVABLE_API_KEY
+#   BREVO_API_KEY
+#   CF_EMAIL_WEBHOOK_SECRET
