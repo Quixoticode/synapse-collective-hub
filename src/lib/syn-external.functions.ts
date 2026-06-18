@@ -53,18 +53,17 @@ export const externalUpsert = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     await requireSuper(data.slid, data.pik);
     const admin = await getAdmin();
-    const row: Record<string, unknown> = {
+    const row = {
       key: data.key,
       label: data.label,
       supabase_url: data.supabase_url,
       anon_key: data.anon_key,
       notes: data.notes || null,
       updated_by: data.slid,
+      ...(typeof data.service_key === "string" && data.service_key.length > 0
+        ? { service_key: data.service_key }
+        : {}),
     };
-    // Only overwrite service_key when explicitly provided (non-empty string)
-    if (typeof data.service_key === "string" && data.service_key.length > 0) {
-      row.service_key = data.service_key;
-    }
     const { error } = await admin.from("syn_external_configs").upsert(row, { onConflict: "key" });
     if (error) throw new Error(error.message);
     return { ok: true };

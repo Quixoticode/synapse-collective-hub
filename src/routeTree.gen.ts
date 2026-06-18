@@ -19,6 +19,7 @@ import { Route as AuthenticatedContactsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedCollectiveRouteImport } from './routes/_authenticated/collective'
 import { Route as AuthenticatedChatRouteImport } from './routes/_authenticated/chat'
 import { Route as AuthenticatedBasicsRouteImport } from './routes/_authenticated/basics'
+import { Route as AuthenticatedSettingsIntegrationsRouteImport } from './routes/_authenticated/settings.integrations'
 import { Route as ApiPublicMailCfInboundRouteImport } from './routes/api/public/mail/cf-inbound'
 
 const AuthRoute = AuthRouteImport.update({
@@ -70,6 +71,12 @@ const AuthenticatedBasicsRoute = AuthenticatedBasicsRouteImport.update({
   path: '/basics',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSettingsIntegrationsRoute =
+  AuthenticatedSettingsIntegrationsRouteImport.update({
+    id: '/settings/integrations',
+    path: '/settings/integrations',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const ApiPublicMailCfInboundRoute = ApiPublicMailCfInboundRouteImport.update({
   id: '/api/public/mail/cf-inbound',
   path: '/api/public/mail/cf-inbound',
@@ -86,6 +93,7 @@ export interface FileRoutesByFullPath {
   '/mail': typeof AuthenticatedMailRoute
   '/vault': typeof AuthenticatedVaultRoute
   '/workspace': typeof AuthenticatedWorkspaceRoute
+  '/settings/integrations': typeof AuthenticatedSettingsIntegrationsRoute
   '/api/public/mail/cf-inbound': typeof ApiPublicMailCfInboundRoute
 }
 export interface FileRoutesByTo {
@@ -98,6 +106,7 @@ export interface FileRoutesByTo {
   '/mail': typeof AuthenticatedMailRoute
   '/vault': typeof AuthenticatedVaultRoute
   '/workspace': typeof AuthenticatedWorkspaceRoute
+  '/settings/integrations': typeof AuthenticatedSettingsIntegrationsRoute
   '/api/public/mail/cf-inbound': typeof ApiPublicMailCfInboundRoute
 }
 export interface FileRoutesById {
@@ -112,6 +121,7 @@ export interface FileRoutesById {
   '/_authenticated/mail': typeof AuthenticatedMailRoute
   '/_authenticated/vault': typeof AuthenticatedVaultRoute
   '/_authenticated/workspace': typeof AuthenticatedWorkspaceRoute
+  '/_authenticated/settings/integrations': typeof AuthenticatedSettingsIntegrationsRoute
   '/api/public/mail/cf-inbound': typeof ApiPublicMailCfInboundRoute
 }
 export interface FileRouteTypes {
@@ -126,6 +136,7 @@ export interface FileRouteTypes {
     | '/mail'
     | '/vault'
     | '/workspace'
+    | '/settings/integrations'
     | '/api/public/mail/cf-inbound'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -138,6 +149,7 @@ export interface FileRouteTypes {
     | '/mail'
     | '/vault'
     | '/workspace'
+    | '/settings/integrations'
     | '/api/public/mail/cf-inbound'
   id:
     | '__root__'
@@ -151,6 +163,7 @@ export interface FileRouteTypes {
     | '/_authenticated/mail'
     | '/_authenticated/vault'
     | '/_authenticated/workspace'
+    | '/_authenticated/settings/integrations'
     | '/api/public/mail/cf-inbound'
   fileRoutesById: FileRoutesById
 }
@@ -233,6 +246,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedBasicsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/settings/integrations': {
+      id: '/_authenticated/settings/integrations'
+      path: '/settings/integrations'
+      fullPath: '/settings/integrations'
+      preLoaderRoute: typeof AuthenticatedSettingsIntegrationsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/api/public/mail/cf-inbound': {
       id: '/api/public/mail/cf-inbound'
       path: '/api/public/mail/cf-inbound'
@@ -251,6 +271,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedMailRoute: typeof AuthenticatedMailRoute
   AuthenticatedVaultRoute: typeof AuthenticatedVaultRoute
   AuthenticatedWorkspaceRoute: typeof AuthenticatedWorkspaceRoute
+  AuthenticatedSettingsIntegrationsRoute: typeof AuthenticatedSettingsIntegrationsRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -261,6 +282,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedMailRoute: AuthenticatedMailRoute,
   AuthenticatedVaultRoute: AuthenticatedVaultRoute,
   AuthenticatedWorkspaceRoute: AuthenticatedWorkspaceRoute,
+  AuthenticatedSettingsIntegrationsRoute:
+    AuthenticatedSettingsIntegrationsRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
