@@ -1,5 +1,5 @@
-name = "syncrm"
-main = "dist/server/assets/index-BTU5dmpx.js"
+name = "synapse-collective-hub"
+main = "dist/server/server.js"
 compatibility_date = "2024-11-06"
 compatibility_flags = ["nodejs_compat"]
 
