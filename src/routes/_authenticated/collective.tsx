@@ -143,16 +143,16 @@ function CollectivePage() {
   }
 
   return (
-    <div className="p-6 md:p-8 max-w-6xl">
-      <header className="flex flex-wrap items-center justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Kollektiv</h1>
-          <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
-            <ShieldAlert className="h-3.5 w-3.5" style={{ color: "var(--neural-magenta)" }} />
-            HL ≥ 5 – Mitarbeiter, Partner & Kunden verwalten.
+    <div className="p-4 sm:p-6 md:p-8 max-w-6xl mx-auto pb-28 md:pb-8">
+      <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 mb-5 sm:flex sm:flex-wrap sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight truncate">Kollektiv</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1 flex items-center gap-2">
+            <ShieldAlert className="h-3.5 w-3.5 shrink-0" style={{ color: "var(--neural-magenta)" }} />
+            <span className="truncate">HL ≥ 5 – Mitarbeiter, Partner &amp; Kunden.</span>
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="hidden sm:flex gap-2 shrink-0">
           <button onClick={() => setEditing({ hl: 1, kwn_active: false, kind: "kunde" })} className="syn-btn-ghost">
             <Plus className="h-4 w-4" /> Kunde
           </button>
@@ -163,7 +163,18 @@ function CollectivePage() {
             <Plus className="h-4 w-4" /> Mitarbeiter
           </button>
         </div>
+        {/* Mobile: single primary add */}
+        <button onClick={() => setEditing({ hl: 1, kwn_active: false, kind: "kunde" })} className="syn-btn sm:hidden shrink-0">
+          <Plus className="h-4 w-4" /> Neu
+        </button>
       </header>
+
+      {/* Mobile FAB menu (always reachable) */}
+      <MobileAddMenu onPick={(kind) => {
+        const hl = kind === "kunde" ? 1 : kind === "partner" ? 2 : 3;
+        setEditing({ hl, kwn_active: false, kind });
+      }} />
+
 
       <div className="syn-card p-3 md:p-4 mb-5 flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px]">
@@ -325,6 +336,26 @@ function Field({
     <div className={wide ? "col-span-2" : ""}>
       <label className="text-[11px] mono uppercase tracking-wider text-muted-foreground">{label}</label>
       <input type={type} className="syn-input mt-1" value={value ?? ""} onChange={(e) => onChange(e.target.value)} />
+    </div>
+  );
+}
+
+function MobileAddMenu({ onPick }: { onPick: (kind: MemberKind) => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="md:hidden">
+      {open && (
+        <div className="fixed inset-0 z-40" onClick={() => setOpen(false)}>
+          <div className="absolute right-4 bottom-32 syn-card p-2 flex flex-col gap-1 min-w-[160px] animate-in fade-in slide-in-from-bottom-2 duration-200">
+            <button onClick={(e) => { e.stopPropagation(); onPick("kunde"); setOpen(false); }} className="syn-btn-ghost justify-start"><Plus className="h-4 w-4" /> Kunde</button>
+            <button onClick={(e) => { e.stopPropagation(); onPick("partner"); setOpen(false); }} className="syn-btn-ghost justify-start"><Plus className="h-4 w-4" /> Partner</button>
+            <button onClick={(e) => { e.stopPropagation(); onPick("mitarbeiter"); setOpen(false); }} className="syn-btn-ghost justify-start"><Plus className="h-4 w-4" /> Mitarbeiter</button>
+          </div>
+        </div>
+      )}
+      <button onClick={() => setOpen(v => !v)} className="syn-fab" aria-label="Mitglied hinzufügen">
+        <Plus className="h-5 w-5" />
+      </button>
     </div>
   );
 }

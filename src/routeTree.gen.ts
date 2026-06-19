@@ -19,6 +19,7 @@ import { Route as AuthenticatedContactsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedCollectiveRouteImport } from './routes/_authenticated/collective'
 import { Route as AuthenticatedChatRouteImport } from './routes/_authenticated/chat'
 import { Route as AuthenticatedBasicsRouteImport } from './routes/_authenticated/basics'
+import { Route as AuthenticatedAppsRouteImport } from './routes/_authenticated/apps'
 import { Route as AuthenticatedSettingsIntegrationsRouteImport } from './routes/_authenticated/settings.integrations'
 import { Route as ApiPublicMailCfInboundRouteImport } from './routes/api/public/mail/cf-inbound'
 
@@ -71,6 +72,11 @@ const AuthenticatedBasicsRoute = AuthenticatedBasicsRouteImport.update({
   path: '/basics',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAppsRoute = AuthenticatedAppsRouteImport.update({
+  id: '/apps',
+  path: '/apps',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedSettingsIntegrationsRoute =
   AuthenticatedSettingsIntegrationsRouteImport.update({
     id: '/settings/integrations',
@@ -86,6 +92,7 @@ const ApiPublicMailCfInboundRoute = ApiPublicMailCfInboundRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/apps': typeof AuthenticatedAppsRoute
   '/basics': typeof AuthenticatedBasicsRoute
   '/chat': typeof AuthenticatedChatRoute
   '/collective': typeof AuthenticatedCollectiveRoute
@@ -99,6 +106,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/apps': typeof AuthenticatedAppsRoute
   '/basics': typeof AuthenticatedBasicsRoute
   '/chat': typeof AuthenticatedChatRoute
   '/collective': typeof AuthenticatedCollectiveRoute
@@ -114,6 +122,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/apps': typeof AuthenticatedAppsRoute
   '/_authenticated/basics': typeof AuthenticatedBasicsRoute
   '/_authenticated/chat': typeof AuthenticatedChatRoute
   '/_authenticated/collective': typeof AuthenticatedCollectiveRoute
@@ -129,6 +138,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/apps'
     | '/basics'
     | '/chat'
     | '/collective'
@@ -142,6 +152,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/apps'
     | '/basics'
     | '/chat'
     | '/collective'
@@ -156,6 +167,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/apps'
     | '/_authenticated/basics'
     | '/_authenticated/chat'
     | '/_authenticated/collective'
@@ -246,6 +258,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedBasicsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/apps': {
+      id: '/_authenticated/apps'
+      path: '/apps'
+      fullPath: '/apps'
+      preLoaderRoute: typeof AuthenticatedAppsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/settings/integrations': {
       id: '/_authenticated/settings/integrations'
       path: '/settings/integrations'
@@ -264,6 +283,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAppsRoute: typeof AuthenticatedAppsRoute
   AuthenticatedBasicsRoute: typeof AuthenticatedBasicsRoute
   AuthenticatedChatRoute: typeof AuthenticatedChatRoute
   AuthenticatedCollectiveRoute: typeof AuthenticatedCollectiveRoute
@@ -275,6 +295,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAppsRoute: AuthenticatedAppsRoute,
   AuthenticatedBasicsRoute: AuthenticatedBasicsRoute,
   AuthenticatedChatRoute: AuthenticatedChatRoute,
   AuthenticatedCollectiveRoute: AuthenticatedCollectiveRoute,

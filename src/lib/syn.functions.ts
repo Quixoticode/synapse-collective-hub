@@ -61,6 +61,23 @@ export const synLoginByPik = createServerFn({ method: "POST" })
     return buildSession(rows[0]);
   });
 
+// Public verify: returns ONLY public-card fields, never grants a session.
+// Used by the "SynID verifizieren" button on /auth.
+export const synVerifyByPik = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => z.object({ pik: z.string().min(16) }).parse(d))
+  .handler(async ({ data }) => {
+    const admin = await getAdmin();
+    const { data: rows, error } = await admin
+      .from("employees")
+      .select("slid,name,hl,kind,regid,kwn,kwn_active")
+      .eq("pik", data.pik)
+      .limit(2);
+    if (error) throw new Error(error.message);
+    if (!rows || rows.length === 0) return { valid: false as const, reason: "unknown" as const };
+    if (rows.length > 1) return { valid: false as const, reason: "ambiguous" as const };
+    return { valid: true as const, card: rows[0] };
+  });
+
 // --- CRM -------------------------------------------------------------------
 
 export const crmList = createServerFn({ method: "POST" })

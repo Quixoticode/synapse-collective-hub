@@ -1,6 +1,6 @@
 {
-  "name": "SynCRM – xSyna Kollektiv",
-  "short_name": "SynCRM",
+  "name": "xSyna Central",
+  "short_name": "xSyna",
   "description": "Zentrales Management-System für das xSyna-Kollektiv.",
   "start_url": "/",
   "scope": "/",
