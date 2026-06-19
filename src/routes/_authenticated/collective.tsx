@@ -339,3 +339,23 @@ function Field({
     </div>
   );
 }
+
+function MobileAddMenu({ onPick }: { onPick: (kind: MemberKind) => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="md:hidden">
+      {open && (
+        <div className="fixed inset-0 z-40" onClick={() => setOpen(false)}>
+          <div className="absolute right-4 bottom-32 syn-card p-2 flex flex-col gap-1 min-w-[160px] animate-in fade-in slide-in-from-bottom-2 duration-200">
+            <button onClick={(e) => { e.stopPropagation(); onPick("kunde"); setOpen(false); }} className="syn-btn-ghost justify-start"><Plus className="h-4 w-4" /> Kunde</button>
+            <button onClick={(e) => { e.stopPropagation(); onPick("partner"); setOpen(false); }} className="syn-btn-ghost justify-start"><Plus className="h-4 w-4" /> Partner</button>
+            <button onClick={(e) => { e.stopPropagation(); onPick("mitarbeiter"); setOpen(false); }} className="syn-btn-ghost justify-start"><Plus className="h-4 w-4" /> Mitarbeiter</button>
+          </div>
+        </div>
+      )}
+      <button onClick={() => setOpen(v => !v)} className="syn-fab" aria-label="Mitglied hinzufügen">
+        <Plus className="h-5 w-5" />
+      </button>
+    </div>
+  );
+}
