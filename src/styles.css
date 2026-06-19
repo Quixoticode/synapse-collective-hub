@@ -166,3 +166,44 @@
     color: #05050D !important;
   }
 }
+
+/* ---- xSynID Card ---- */
+.syn-id-card {
+  background: radial-gradient(120% 80% at 0% 0%, rgba(0,200,255,0.10), transparent 60%),
+              radial-gradient(120% 80% at 100% 100%, rgba(123,97,255,0.12), transparent 60%),
+              #050810;
+}
+.syn-id-card__glow {
+  position: absolute; inset: -40%;
+  background: conic-gradient(from 120deg, rgba(0,255,209,0.10), rgba(0,163,255,0.08), rgba(123,97,255,0.10), transparent 60%);
+  filter: blur(30px); animation: synSpin 18s linear infinite; pointer-events: none;
+}
+.syn-id-card__sigil {
+  background:
+    linear-gradient(135deg, rgba(0,255,209,0.6), rgba(0,163,255,0.6)) padding-box,
+    linear-gradient(135deg, rgba(0,255,209,0.9), rgba(123,97,255,0.9)) border-box;
+  border: 1px solid transparent;
+  box-shadow: 0 0 24px rgba(0,200,255,0.35) inset;
+}
+.syn-id-card__photo {
+  background: linear-gradient(180deg, rgba(0,200,255,0.35), rgba(123,97,255,0.35)), url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><rect width='120' height='120' fill='%23001a2e'/></svg>");
+  background-size: cover; border: 1px solid rgba(255,255,255,0.10);
+  box-shadow: 0 0 20px rgba(0,180,255,0.25) inset;
+}
+@keyframes synSpin { to { transform: rotate(360deg); } }
+
+/* ---- App launcher tiles ---- */
+.syn-app-tile { animation: synRise 0.5s both cubic-bezier(.2,.7,.2,1); }
+@keyframes synRise { from { opacity:0; transform: translateY(8px);} to { opacity:1; transform:none;} }
+
+/* ---- Mobile FAB ---- */
+.syn-fab {
+  position: fixed; right: 1rem; z-index: 40;
+  bottom: calc(env(safe-area-inset-bottom) + 5rem);
+  height: 56px; width: 56px; border-radius: 9999px;
+  display: grid; place-items: center; color: white;
+  background: linear-gradient(135deg, var(--synapse), var(--neural-violet));
+  box-shadow: 0 18px 40px -10px rgba(0,200,255,0.55), 0 0 0 1px rgba(255,255,255,0.10) inset;
+  transition: transform .15s ease;
+}
+.syn-fab:active { transform: scale(0.95); }
