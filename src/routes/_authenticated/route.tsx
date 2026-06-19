@@ -57,7 +57,7 @@ function AuthedLayout() {
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-xl syn-gradient-border" style={{ background: "var(--gradient-neural-soft)" }} />
             <div>
-              <div className="text-sm font-semibold tracking-wide">SynCRM</div>
+              <div className="text-sm font-semibold tracking-wide">xSyna Central</div>
               <div className="text-[10px] mono text-muted-foreground">xSyna · Kollektiv</div>
             </div>
           </div>
@@ -108,7 +108,7 @@ function AuthedLayout() {
         <div className="md:hidden flex items-center justify-between px-4 py-3 border-b border-border bg-card/40 backdrop-blur">
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4" style={{ color: "var(--synapse)" }} />
-            <span className="font-semibold">SynCRM</span>
+            <span className="font-semibold">xSyna Central</span>
           </div>
           <button onClick={handleLogout} className="syn-btn-ghost text-xs"><LogOut className="h-3.5 w-3.5" /></button>
         </div>

@@ -9,7 +9,7 @@ export const Route = createFileRoute("/auth")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "SynID Verbinden – SynCRM" },
+      { title: "SynID Verbinden – xSyna Central" },
       { name: "description", content: "Sichere SynID-Anmeldung zum xSyna-Kollektiv." },
     ],
   }),
@@ -86,7 +86,7 @@ function AuthPage() {
             <Sparkles className="h-3 w-3" /> xSyna Kollektiv
           </div>
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
-            <span className="syn-gradient-text">SynCRM</span>
+            <span className="syn-gradient-text">xSyna Central</span>
           </h1>
           <p className="mt-2 text-xs sm:text-sm text-muted-foreground">
             Anmelden mit deinem persönlichen Integritäts-Key (PIK).
