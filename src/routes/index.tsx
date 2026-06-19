@@ -5,7 +5,7 @@ export const Route = createFileRoute("/")({
   beforeLoad: () => {
     if (typeof window === "undefined") return;
     const has = !!localStorage.getItem("syn.session.v1");
-    throw redirect({ to: has ? "/contacts" : "/auth" });
+    throw redirect({ to: has ? "/apps" : "/auth" });
   },
   component: () => null,
 });
