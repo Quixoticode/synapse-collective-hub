@@ -116,18 +116,27 @@ function ContactsPage() {
   }
 
   return (
-    <div className="p-6 md:p-8 max-w-6xl">
-      <header className="flex flex-wrap items-center justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Kontakte</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {session && session.hl >= 5 ? "Vollzugriff (HL ≥ 5) – alle Kollektiv-Kontakte." : "Deine persönlichen CRM-Kontakte."}
+    <div className="p-4 sm:p-6 md:p-8 max-w-6xl mx-auto pb-28 md:pb-8">
+      <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 mb-5 sm:flex sm:flex-wrap sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight truncate">Kontakte</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+            {session && session.hl >= 5 ? "Vollzugriff (HL ≥ 5)." : "Deine CRM-Kontakte."}
           </p>
         </div>
-        <button onClick={() => setEditing({ status: "lead", tags: [] })} className="syn-btn">
-          <Plus className="h-4 w-4" /> Neuer Kontakt
+        <button onClick={() => setEditing({ status: "lead", tags: [] })} className="syn-btn shrink-0">
+          <Plus className="h-4 w-4" /> <span className="hidden sm:inline">Neuer Kontakt</span><span className="sm:hidden">Neu</span>
         </button>
       </header>
+
+      {/* Mobile FAB so add is always reachable */}
+      <button
+        onClick={() => setEditing({ status: "lead", tags: [] })}
+        className="md:hidden syn-fab"
+        aria-label="Neuer Kontakt"
+      >
+        <Plus className="h-5 w-5" />
+      </button>
 
       <div className="syn-card p-3 md:p-4 mb-5 flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px]">
