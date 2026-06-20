@@ -164,7 +164,7 @@ export const employeesList = createServerFn({ method: "POST" })
     const admin = await getAdmin();
     const { data: rows, error } = await admin
       .from("employees")
-      .select("slid,hl,regid,name,kind,kwn,kwn_active,email,notes,created_at,updated_at")
+      .select("slid,hl,regid,name,kind,kwn,kwn_active,email,notes,department,position,created_at,updated_at")
       .order("hl", { ascending: false });
     if (error) throw new Error(error.message);
     return rows ?? [];
@@ -185,6 +185,8 @@ const empPayload = z.object({
   kwn_active: z.boolean().default(false),
   email: z.string().email().optional().or(z.literal("")).nullable(),
   notes: z.string().optional().nullable(),
+  department: z.string().optional().nullable(),
+  position: z.string().optional().nullable(),
 });
 
 export const employeeSave = createServerFn({ method: "POST" })
@@ -205,6 +207,8 @@ export const employeeSave = createServerFn({ method: "POST" })
       kwn_active: data.kwn_active,
       email: data.email || null,
       notes: data.notes || null,
+      department: data.department || null,
+      position: data.position || null,
     };
     if (data.original_slid && data.original_slid !== data.target_slid) {
       // Treat as update where slid is changed → delete + insert (PK change)
