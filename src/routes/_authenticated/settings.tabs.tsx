@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Settings, GripVertical } from "lucide-react";
 import { tabPrefsForMe, tabPermsForMe, tabPrefSet } from "@/lib/permissions.functions";
-import { TABS, visibleTabs } from "@/lib/tabs-registry";
+import { TABS } from "@/lib/tabs-registry";
 import { getCredentials, getSession } from "@/lib/syn-session";
 
 export const Route = createFileRoute("/_authenticated/settings/tabs")({
@@ -46,7 +46,6 @@ function TabPrefsPage() {
     await reload();
   }
 
-  const ctx = session ? { hl: session.hl, isSuperuser: session.isSuperuser } : { hl: 0 };
   const eligible = TABS.filter((t) => {
     if (t.requires?.superuser && !session?.isSuperuser) return false;
     if (t.requires?.hl && (session?.hl ?? 0) < t.requires.hl && !session?.isSuperuser) return false;
