@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Plus, Wallet, Trash2, Pencil, X, ArrowDownLeft, ArrowUpRight, Calendar } from "lucide-react";
+import { Plus, Wallet, Trash2, X, ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import {
   finAccountsList, finAccountUpsert, finAccountDelete,
   finTxList, finTxUpsert, finTxDelete,
