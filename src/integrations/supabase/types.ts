@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_versions: {
+        Row: {
+          bugfix_ids: string[]
+          created_at: string
+          created_by: string | null
+          feature_ids: string[]
+          id: string
+          notes_md: string
+          published: boolean
+          published_at: string | null
+          title: string
+          updated_at: string
+          version: string
+        }
+        Insert: {
+          bugfix_ids?: string[]
+          created_at?: string
+          created_by?: string | null
+          feature_ids?: string[]
+          id?: string
+          notes_md?: string
+          published?: boolean
+          published_at?: string | null
+          title: string
+          updated_at?: string
+          version: string
+        }
+        Update: {
+          bugfix_ids?: string[]
+          created_at?: string
+          created_by?: string | null
+          feature_ids?: string[]
+          id?: string
+          notes_md?: string
+          published?: boolean
+          published_at?: string | null
+          title?: string
+          updated_at?: string
+          version?: string
+        }
+        Relationships: []
+      }
       basics_docs: {
         Row: {
           body_md: string
@@ -60,6 +102,51 @@ export type Database = {
             referencedColumns: ["slid"]
           },
         ]
+      }
+      cal_events: {
+        Row: {
+          all_day: boolean
+          color: string | null
+          created_at: string
+          description: string | null
+          ends_at: string
+          id: string
+          location: string | null
+          owner_slid: string
+          starts_at: string
+          title: string
+          updated_at: string
+          visibility: string
+        }
+        Insert: {
+          all_day?: boolean
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          ends_at: string
+          id?: string
+          location?: string | null
+          owner_slid: string
+          starts_at: string
+          title: string
+          updated_at?: string
+          visibility?: string
+        }
+        Update: {
+          all_day?: boolean
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          ends_at?: string
+          id?: string
+          location?: string | null
+          owner_slid?: string
+          starts_at?: string
+          title?: string
+          updated_at?: string
+          visibility?: string
+        }
+        Relationships: []
       }
       chat_members: {
         Row: {
@@ -251,6 +338,7 @@ export type Database = {
         Row: {
           cip: string
           created_at: string
+          department: string | null
           email: string | null
           hl: number
           kind: string
@@ -259,6 +347,7 @@ export type Database = {
           name: string
           notes: string | null
           pik: string
+          position: string | null
           regid: string
           slid: string
           updated_at: string
@@ -266,6 +355,7 @@ export type Database = {
         Insert: {
           cip: string
           created_at?: string
+          department?: string | null
           email?: string | null
           hl: number
           kind?: string
@@ -274,6 +364,7 @@ export type Database = {
           name: string
           notes?: string | null
           pik: string
+          position?: string | null
           regid: string
           slid: string
           updated_at?: string
@@ -281,6 +372,7 @@ export type Database = {
         Update: {
           cip?: string
           created_at?: string
+          department?: string | null
           email?: string | null
           hl?: number
           kind?: string
@@ -289,11 +381,119 @@ export type Database = {
           name?: string
           notes?: string | null
           pik?: string
+          position?: string | null
           regid?: string
           slid?: string
           updated_at?: string
         }
         Relationships: []
+      }
+      fin_accounts: {
+        Row: {
+          archived: boolean
+          bic: string | null
+          created_at: string
+          created_by: string | null
+          currency: string
+          iban: string | null
+          id: string
+          name: string
+          notes: string | null
+          opening_balance: number
+          updated_at: string
+        }
+        Insert: {
+          archived?: boolean
+          bic?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          iban?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          opening_balance?: number
+          updated_at?: string
+        }
+        Update: {
+          archived?: boolean
+          bic?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          iban?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          opening_balance?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      fin_transactions: {
+        Row: {
+          account_id: string
+          amount: number
+          booking_date: string
+          category: string | null
+          counterparty: string | null
+          counterparty_iban: string | null
+          created_at: string
+          created_by: string | null
+          currency: string
+          description: string | null
+          direction: string
+          id: string
+          purpose: string
+          receipt_no: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          amount: number
+          booking_date?: string
+          category?: string | null
+          counterparty?: string | null
+          counterparty_iban?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          description?: string | null
+          direction: string
+          id?: string
+          purpose?: string
+          receipt_no?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          amount?: number
+          booking_date?: string
+          category?: string | null
+          counterparty?: string | null
+          counterparty_iban?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          description?: string | null
+          direction?: string
+          id?: string
+          purpose?: string
+          receipt_no?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_transactions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "fin_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       mail_accounts: {
         Row: {
@@ -386,6 +586,110 @@ export type Database = {
           },
         ]
       }
+      roadmap_items: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string
+          id: string
+          sort_order: number
+          status: string
+          target_quarter: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          id?: string
+          sort_order?: number
+          status?: string
+          target_quarter?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          id?: string
+          sort_order?: number
+          status?: string
+          target_quarter?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      support_messages: {
+        Row: {
+          author_role: string
+          author_slid: string
+          body: string
+          created_at: string
+          id: string
+          ticket_id: string
+        }
+        Insert: {
+          author_role?: string
+          author_slid: string
+          body: string
+          created_at?: string
+          id?: string
+          ticket_id: string
+        }
+        Update: {
+          author_role?: string
+          author_slid?: string
+          body?: string
+          created_at?: string
+          id?: string
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_messages_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_tickets: {
+        Row: {
+          assigned_slid: string | null
+          created_at: string
+          id: string
+          opener_slid: string
+          priority: string
+          status: string
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_slid?: string | null
+          created_at?: string
+          id?: string
+          opener_slid: string
+          priority?: string
+          status?: string
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_slid?: string | null
+          created_at?: string
+          id?: string
+          opener_slid?: string
+          priority?: string
+          status?: string
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       syn_external_configs: {
         Row: {
           anon_key: string
@@ -419,6 +723,63 @@ export type Database = {
           supabase_url?: string
           updated_at?: string
           updated_by?: string | null
+        }
+        Relationships: []
+      }
+      user_tab_permissions: {
+        Row: {
+          allowed: boolean
+          id: string
+          slid: string
+          tab_key: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          allowed?: boolean
+          id?: string
+          slid: string
+          tab_key: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          allowed?: boolean
+          id?: string
+          slid?: string
+          tab_key?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      user_tab_prefs: {
+        Row: {
+          id: string
+          pinned: boolean
+          slid: string
+          sort_order: number
+          tab_key: string
+          updated_at: string
+          visible: boolean
+        }
+        Insert: {
+          id?: string
+          pinned?: boolean
+          slid: string
+          sort_order?: number
+          tab_key: string
+          updated_at?: string
+          visible?: boolean
+        }
+        Update: {
+          id?: string
+          pinned?: boolean
+          slid?: string
+          sort_order?: number
+          tab_key?: string
+          updated_at?: string
+          visible?: boolean
         }
         Relationships: []
       }
