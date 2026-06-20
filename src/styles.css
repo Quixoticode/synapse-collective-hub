@@ -207,3 +207,62 @@
   transition: transform .15s ease;
 }
 .syn-fab:active { transform: scale(0.95); }
+
+/* ---- Startup animation "xSyna erwacht" ---- */
+.syn-startup-nucleus {
+  position: absolute; top: 50%; left: 50%;
+  width: 18px; height: 18px; margin: -9px 0 0 -9px;
+  border-radius: 9999px;
+  background: radial-gradient(circle, #fff 0%, var(--neural-mint) 40%, var(--synapse) 100%);
+  box-shadow: 0 0 28px var(--synapse), 0 0 60px var(--neural-violet);
+  opacity: 0; transform: scale(0.2);
+  transition: opacity .4s ease, transform .6s cubic-bezier(.2,.7,.2,1);
+}
+.syn-startup-nucleus.on { opacity: 1; transform: scale(1); }
+
+.syn-startup-ring {
+  position: absolute; top: 50%; left: 50%;
+  width: 20px; height: 20px; margin: -10px 0 0 -10px;
+  border-radius: 9999px;
+  border: 1px solid rgba(0, 200, 255, 0.7);
+  opacity: 0;
+}
+.syn-startup-ring--on { animation: synRingPulse 1.6s ease-out forwards; }
+@keyframes synRingPulse {
+  0% { opacity: 0.9; transform: scale(0.3); }
+  100% { opacity: 0; transform: scale(14); border-color: rgba(123,97,255,0.0); }
+}
+
+.syn-startup-synapse {
+  position: absolute; top: 50%; left: 50%;
+  width: 100px; height: 1px;
+  background: linear-gradient(90deg, rgba(0,200,255,0.0), rgba(0,255,209,0.9), rgba(0,200,255,0.0));
+  transform-origin: left center;
+  opacity: 0;
+  transform: translate(-50%, -50%) rotate(0deg) scaleX(0);
+}
+.syn-startup-synapse.on { animation: synSynapse 0.9s cubic-bezier(.2,.7,.2,1) forwards; }
+@keyframes synSynapse {
+  0% { opacity: 0; transform: translate(-50%, -50%) rotate(var(--r, 0)) scaleX(0); }
+  60% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scaleX(1.4); }
+}
+
+.syn-startup-logo {
+  position: absolute; inset: 0; display: grid; place-items: center; text-align: center;
+  opacity: 0; transform: scale(0.96);
+  transition: opacity .5s ease, transform .5s cubic-bezier(.2,.7,.2,1);
+}
+.syn-startup-logo.on { opacity: 1; transform: scale(1); }
+
+/* ---- Update-Screen pulse ---- */
+.syn-update-pulse {
+  width: 64px; height: 64px; border-radius: 9999px;
+  background: radial-gradient(circle, var(--neural-mint), var(--synapse) 60%, transparent 70%);
+  box-shadow: 0 0 60px var(--synapse);
+  animation: synUpdatePulse 1.4s ease-in-out infinite;
+}
+@keyframes synUpdatePulse {
+  0%, 100% { transform: scale(0.9); filter: brightness(1); }
+  50% { transform: scale(1.15); filter: brightness(1.3); }
+}
