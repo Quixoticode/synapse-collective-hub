@@ -34,6 +34,8 @@ type Employee = {
   kwn_active: boolean;
   email: string | null;
   notes: string | null;
+  department: string | null;
+  position: string | null;
   created_at?: string;
 };
 
@@ -119,6 +121,8 @@ function CollectivePage() {
           kwn_active: !!editing.kwn_active,
           email: editing.email ?? "",
           notes: editing.notes ?? "",
+          department: editing.department ?? "",
+          position: editing.position ?? "",
         },
       });
       setEditing(null);
@@ -295,6 +299,8 @@ function EmployeeModal({
           <Field label="Name" wide value={value.name} onChange={(v) => onChange({ ...value, name: v })} />
           <Field label="REGID" value={value.regid} onChange={(v) => onChange({ ...value, regid: v })} />
           <Field label="CIP" value={value.cip} onChange={(v) => onChange({ ...value, cip: v })} />
+          <Field label="Abteilung" value={value.department} onChange={(v) => onChange({ ...value, department: v })} />
+          <Field label="Position" value={value.position} onChange={(v) => onChange({ ...value, position: v })} />
           <Field label="PIK (sha256)" wide value={value.pik} onChange={(v) => onChange({ ...value, pik: v })} />
           <Field label="KWN" value={value.kwn} onChange={(v) => onChange({ ...value, kwn: v })} />
           <div className="flex items-center gap-2 mt-6">

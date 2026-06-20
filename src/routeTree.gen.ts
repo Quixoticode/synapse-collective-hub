@@ -14,12 +14,18 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedWorkspaceRouteImport } from './routes/_authenticated/workspace'
 import { Route as AuthenticatedVaultRouteImport } from './routes/_authenticated/vault'
+import { Route as AuthenticatedSupportRouteImport } from './routes/_authenticated/support'
+import { Route as AuthenticatedPermissionsRouteImport } from './routes/_authenticated/permissions'
+import { Route as AuthenticatedNewsRouteImport } from './routes/_authenticated/news'
 import { Route as AuthenticatedMailRouteImport } from './routes/_authenticated/mail'
+import { Route as AuthenticatedFinancesRouteImport } from './routes/_authenticated/finances'
 import { Route as AuthenticatedContactsRouteImport } from './routes/_authenticated/contacts'
 import { Route as AuthenticatedCollectiveRouteImport } from './routes/_authenticated/collective'
 import { Route as AuthenticatedChatRouteImport } from './routes/_authenticated/chat'
+import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
 import { Route as AuthenticatedBasicsRouteImport } from './routes/_authenticated/basics'
 import { Route as AuthenticatedAppsRouteImport } from './routes/_authenticated/apps'
+import { Route as AuthenticatedSettingsTabsRouteImport } from './routes/_authenticated/settings.tabs'
 import { Route as AuthenticatedSettingsIntegrationsRouteImport } from './routes/_authenticated/settings.integrations'
 import { Route as ApiPublicMailCfInboundRouteImport } from './routes/api/public/mail/cf-inbound'
 
@@ -47,9 +53,30 @@ const AuthenticatedVaultRoute = AuthenticatedVaultRouteImport.update({
   path: '/vault',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSupportRoute = AuthenticatedSupportRouteImport.update({
+  id: '/support',
+  path: '/support',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedPermissionsRoute =
+  AuthenticatedPermissionsRouteImport.update({
+    id: '/permissions',
+    path: '/permissions',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedNewsRoute = AuthenticatedNewsRouteImport.update({
+  id: '/news',
+  path: '/news',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedMailRoute = AuthenticatedMailRouteImport.update({
   id: '/mail',
   path: '/mail',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedFinancesRoute = AuthenticatedFinancesRouteImport.update({
+  id: '/finances',
+  path: '/finances',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedContactsRoute = AuthenticatedContactsRouteImport.update({
@@ -67,6 +94,11 @@ const AuthenticatedChatRoute = AuthenticatedChatRouteImport.update({
   path: '/chat',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedCalendarRoute = AuthenticatedCalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedBasicsRoute = AuthenticatedBasicsRouteImport.update({
   id: '/basics',
   path: '/basics',
@@ -77,6 +109,12 @@ const AuthenticatedAppsRoute = AuthenticatedAppsRouteImport.update({
   path: '/apps',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSettingsTabsRoute =
+  AuthenticatedSettingsTabsRouteImport.update({
+    id: '/settings/tabs',
+    path: '/settings/tabs',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedSettingsIntegrationsRoute =
   AuthenticatedSettingsIntegrationsRouteImport.update({
     id: '/settings/integrations',
@@ -94,13 +132,19 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/apps': typeof AuthenticatedAppsRoute
   '/basics': typeof AuthenticatedBasicsRoute
+  '/calendar': typeof AuthenticatedCalendarRoute
   '/chat': typeof AuthenticatedChatRoute
   '/collective': typeof AuthenticatedCollectiveRoute
   '/contacts': typeof AuthenticatedContactsRoute
+  '/finances': typeof AuthenticatedFinancesRoute
   '/mail': typeof AuthenticatedMailRoute
+  '/news': typeof AuthenticatedNewsRoute
+  '/permissions': typeof AuthenticatedPermissionsRoute
+  '/support': typeof AuthenticatedSupportRoute
   '/vault': typeof AuthenticatedVaultRoute
   '/workspace': typeof AuthenticatedWorkspaceRoute
   '/settings/integrations': typeof AuthenticatedSettingsIntegrationsRoute
+  '/settings/tabs': typeof AuthenticatedSettingsTabsRoute
   '/api/public/mail/cf-inbound': typeof ApiPublicMailCfInboundRoute
 }
 export interface FileRoutesByTo {
@@ -108,13 +152,19 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/apps': typeof AuthenticatedAppsRoute
   '/basics': typeof AuthenticatedBasicsRoute
+  '/calendar': typeof AuthenticatedCalendarRoute
   '/chat': typeof AuthenticatedChatRoute
   '/collective': typeof AuthenticatedCollectiveRoute
   '/contacts': typeof AuthenticatedContactsRoute
+  '/finances': typeof AuthenticatedFinancesRoute
   '/mail': typeof AuthenticatedMailRoute
+  '/news': typeof AuthenticatedNewsRoute
+  '/permissions': typeof AuthenticatedPermissionsRoute
+  '/support': typeof AuthenticatedSupportRoute
   '/vault': typeof AuthenticatedVaultRoute
   '/workspace': typeof AuthenticatedWorkspaceRoute
   '/settings/integrations': typeof AuthenticatedSettingsIntegrationsRoute
+  '/settings/tabs': typeof AuthenticatedSettingsTabsRoute
   '/api/public/mail/cf-inbound': typeof ApiPublicMailCfInboundRoute
 }
 export interface FileRoutesById {
@@ -124,13 +174,19 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/apps': typeof AuthenticatedAppsRoute
   '/_authenticated/basics': typeof AuthenticatedBasicsRoute
+  '/_authenticated/calendar': typeof AuthenticatedCalendarRoute
   '/_authenticated/chat': typeof AuthenticatedChatRoute
   '/_authenticated/collective': typeof AuthenticatedCollectiveRoute
   '/_authenticated/contacts': typeof AuthenticatedContactsRoute
+  '/_authenticated/finances': typeof AuthenticatedFinancesRoute
   '/_authenticated/mail': typeof AuthenticatedMailRoute
+  '/_authenticated/news': typeof AuthenticatedNewsRoute
+  '/_authenticated/permissions': typeof AuthenticatedPermissionsRoute
+  '/_authenticated/support': typeof AuthenticatedSupportRoute
   '/_authenticated/vault': typeof AuthenticatedVaultRoute
   '/_authenticated/workspace': typeof AuthenticatedWorkspaceRoute
   '/_authenticated/settings/integrations': typeof AuthenticatedSettingsIntegrationsRoute
+  '/_authenticated/settings/tabs': typeof AuthenticatedSettingsTabsRoute
   '/api/public/mail/cf-inbound': typeof ApiPublicMailCfInboundRoute
 }
 export interface FileRouteTypes {
@@ -140,13 +196,19 @@ export interface FileRouteTypes {
     | '/auth'
     | '/apps'
     | '/basics'
+    | '/calendar'
     | '/chat'
     | '/collective'
     | '/contacts'
+    | '/finances'
     | '/mail'
+    | '/news'
+    | '/permissions'
+    | '/support'
     | '/vault'
     | '/workspace'
     | '/settings/integrations'
+    | '/settings/tabs'
     | '/api/public/mail/cf-inbound'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -154,13 +216,19 @@ export interface FileRouteTypes {
     | '/auth'
     | '/apps'
     | '/basics'
+    | '/calendar'
     | '/chat'
     | '/collective'
     | '/contacts'
+    | '/finances'
     | '/mail'
+    | '/news'
+    | '/permissions'
+    | '/support'
     | '/vault'
     | '/workspace'
     | '/settings/integrations'
+    | '/settings/tabs'
     | '/api/public/mail/cf-inbound'
   id:
     | '__root__'
@@ -169,13 +237,19 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/apps'
     | '/_authenticated/basics'
+    | '/_authenticated/calendar'
     | '/_authenticated/chat'
     | '/_authenticated/collective'
     | '/_authenticated/contacts'
+    | '/_authenticated/finances'
     | '/_authenticated/mail'
+    | '/_authenticated/news'
+    | '/_authenticated/permissions'
+    | '/_authenticated/support'
     | '/_authenticated/vault'
     | '/_authenticated/workspace'
     | '/_authenticated/settings/integrations'
+    | '/_authenticated/settings/tabs'
     | '/api/public/mail/cf-inbound'
   fileRoutesById: FileRoutesById
 }
@@ -223,11 +297,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedVaultRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/support': {
+      id: '/_authenticated/support'
+      path: '/support'
+      fullPath: '/support'
+      preLoaderRoute: typeof AuthenticatedSupportRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/permissions': {
+      id: '/_authenticated/permissions'
+      path: '/permissions'
+      fullPath: '/permissions'
+      preLoaderRoute: typeof AuthenticatedPermissionsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/news': {
+      id: '/_authenticated/news'
+      path: '/news'
+      fullPath: '/news'
+      preLoaderRoute: typeof AuthenticatedNewsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/mail': {
       id: '/_authenticated/mail'
       path: '/mail'
       fullPath: '/mail'
       preLoaderRoute: typeof AuthenticatedMailRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/finances': {
+      id: '/_authenticated/finances'
+      path: '/finances'
+      fullPath: '/finances'
+      preLoaderRoute: typeof AuthenticatedFinancesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/contacts': {
@@ -251,6 +353,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedChatRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/calendar': {
+      id: '/_authenticated/calendar'
+      path: '/calendar'
+      fullPath: '/calendar'
+      preLoaderRoute: typeof AuthenticatedCalendarRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/basics': {
       id: '/_authenticated/basics'
       path: '/basics'
@@ -263,6 +372,13 @@ declare module '@tanstack/react-router' {
       path: '/apps'
       fullPath: '/apps'
       preLoaderRoute: typeof AuthenticatedAppsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/settings/tabs': {
+      id: '/_authenticated/settings/tabs'
+      path: '/settings/tabs'
+      fullPath: '/settings/tabs'
+      preLoaderRoute: typeof AuthenticatedSettingsTabsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/settings/integrations': {
@@ -285,26 +401,38 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAppsRoute: typeof AuthenticatedAppsRoute
   AuthenticatedBasicsRoute: typeof AuthenticatedBasicsRoute
+  AuthenticatedCalendarRoute: typeof AuthenticatedCalendarRoute
   AuthenticatedChatRoute: typeof AuthenticatedChatRoute
   AuthenticatedCollectiveRoute: typeof AuthenticatedCollectiveRoute
   AuthenticatedContactsRoute: typeof AuthenticatedContactsRoute
+  AuthenticatedFinancesRoute: typeof AuthenticatedFinancesRoute
   AuthenticatedMailRoute: typeof AuthenticatedMailRoute
+  AuthenticatedNewsRoute: typeof AuthenticatedNewsRoute
+  AuthenticatedPermissionsRoute: typeof AuthenticatedPermissionsRoute
+  AuthenticatedSupportRoute: typeof AuthenticatedSupportRoute
   AuthenticatedVaultRoute: typeof AuthenticatedVaultRoute
   AuthenticatedWorkspaceRoute: typeof AuthenticatedWorkspaceRoute
   AuthenticatedSettingsIntegrationsRoute: typeof AuthenticatedSettingsIntegrationsRoute
+  AuthenticatedSettingsTabsRoute: typeof AuthenticatedSettingsTabsRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAppsRoute: AuthenticatedAppsRoute,
   AuthenticatedBasicsRoute: AuthenticatedBasicsRoute,
+  AuthenticatedCalendarRoute: AuthenticatedCalendarRoute,
   AuthenticatedChatRoute: AuthenticatedChatRoute,
   AuthenticatedCollectiveRoute: AuthenticatedCollectiveRoute,
   AuthenticatedContactsRoute: AuthenticatedContactsRoute,
+  AuthenticatedFinancesRoute: AuthenticatedFinancesRoute,
   AuthenticatedMailRoute: AuthenticatedMailRoute,
+  AuthenticatedNewsRoute: AuthenticatedNewsRoute,
+  AuthenticatedPermissionsRoute: AuthenticatedPermissionsRoute,
+  AuthenticatedSupportRoute: AuthenticatedSupportRoute,
   AuthenticatedVaultRoute: AuthenticatedVaultRoute,
   AuthenticatedWorkspaceRoute: AuthenticatedWorkspaceRoute,
   AuthenticatedSettingsIntegrationsRoute:
     AuthenticatedSettingsIntegrationsRoute,
+  AuthenticatedSettingsTabsRoute: AuthenticatedSettingsTabsRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -319,13 +447,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

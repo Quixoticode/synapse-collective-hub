@@ -69,13 +69,16 @@ function WorkspacePage() {
     await reload();
   }
 
+  // Mobile: show list OR active doc, not both.
+  const [mobileView, setMobileView] = useState<"list"|"doc">("list");
+
   return (
-    <div className="h-screen flex">
-      <div className="w-80 border-r border-border flex flex-col">
+    <div className="flex flex-col md:flex-row min-h-[calc(100dvh-110px)] md:min-h-[100dvh] pb-28 md:pb-0">
+      <div className={`${active && mobileView === "doc" ? "hidden md:flex" : "flex"} md:w-80 w-full md:border-r border-border flex-col`}>
         <div className="p-4 border-b border-border space-y-2">
-          <div className="flex items-center justify-between">
-            <h2 className="font-semibold flex items-center gap-2"><FileText className="h-4 w-4" /> Workspace</h2>
-            <button className="syn-btn-ghost" onClick={() => setEditing({ title: "", content_md: "", tags: [], visibility: "team" })}><Plus className="h-4 w-4" /></button>
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="font-semibold flex items-center gap-2 min-w-0 truncate"><FileText className="h-4 w-4 shrink-0" /> Workspace</h2>
+            <button className="syn-btn-ghost shrink-0" onClick={() => setEditing({ title: "", content_md: "", tags: [], visibility: "team" })}><Plus className="h-4 w-4" /></button>
           </div>
           <div className="relative">
             <Search className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -84,7 +87,7 @@ function WorkspacePage() {
         </div>
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
           {filtered.map((d) => (
-            <button key={d.id} onClick={() => setActive(d)}
+            <button key={d.id} onClick={() => { setActive(d); setMobileView("doc"); }}
               className={`w-full text-left px-3 py-2 rounded-xl ${active?.id === d.id ? "syn-tab-active" : "hover:bg-accent"}`}>
               <div className="text-sm font-medium truncate">{d.title}</div>
               <div className="text-[10px] mono text-muted-foreground">{d.visibility} · {new Date(d.updated_at).toLocaleDateString()}</div>
@@ -94,12 +97,13 @@ function WorkspacePage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className={`${active && mobileView === "doc" ? "flex" : "hidden md:flex"} flex-1 min-w-0 overflow-y-auto p-4 sm:p-6 flex-col`}>
         {active ? (
-          <div className="max-w-3xl">
-            <div className="flex items-center justify-between mb-3">
-              <h1 className="text-2xl font-bold">{active.title}</h1>
-              <div className="flex gap-1">
+          <div className="max-w-3xl w-full">
+            <button className="syn-btn-ghost md:hidden mb-3 text-xs" onClick={() => setMobileView("list")}>← Liste</button>
+            <div className="flex items-center justify-between mb-3 gap-2">
+              <h1 className="text-xl sm:text-2xl font-bold min-w-0 truncate">{active.title}</h1>
+              <div className="flex gap-1 shrink-0">
                 {(active.owner_slid === session?.slid || session?.isSuperuser) && (
                   <>
                     <button className="syn-btn-ghost" onClick={() => setEditing(active)}><Pencil className="h-4 w-4" /></button>
@@ -108,10 +112,10 @@ function WorkspacePage() {
                 )}
               </div>
             </div>
-            <div className="flex gap-2 mb-4">
+            <div className="flex gap-2 mb-4 flex-wrap">
               {active.tags.map((t) => <span key={t} className="syn-chip">{t}</span>)}
             </div>
-            <pre className="syn-card p-5 whitespace-pre-wrap font-sans text-sm leading-relaxed">{active.content_md}</pre>
+            <pre className="syn-card p-4 sm:p-5 whitespace-pre-wrap font-sans text-sm leading-relaxed">{active.content_md}</pre>
           </div>
         ) : (
           <div className="text-muted-foreground text-sm">Wähle ein Dokument oder erstelle eines.</div>

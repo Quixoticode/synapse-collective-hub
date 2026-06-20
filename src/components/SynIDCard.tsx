@@ -8,6 +8,8 @@ export type SynIDCardData = {
   kind?: string | null;
   kwn?: string | null;
   kwn_active?: boolean | null;
+  department?: string | null;
+  position?: string | null;
 };
 
 /**
@@ -15,7 +17,8 @@ export type SynIDCardData = {
  * Used on /auth (own profile preview & verify result) and on /apps (header).
  */
 export function SynIDCard({ data, compact = false }: { data: SynIDCardData; compact?: boolean }) {
-  const department = data.kind ? data.kind.charAt(0).toUpperCase() + data.kind.slice(1) : "Mitglied";
+  const department = data.department || (data.kind ? `xSyna ${data.kind.charAt(0).toUpperCase() + data.kind.slice(1)}` : "xSyna Mitglied");
+  const position = data.position || "Mitglied";
   const issued = "01/01";
   const validUntil = "31/12";
 
@@ -41,9 +44,9 @@ export function SynIDCard({ data, compact = false }: { data: SynIDCardData; comp
           <div className="min-w-0">
             <div className="text-[10px] mono text-white/70 uppercase tracking-wider">Abteilung &amp; Position</div>
             <div className="mt-0.5 text-xl sm:text-2xl font-semibold text-cyan-300 leading-tight break-words">
-              xSyna {department}
+              {department}
               <br />
-              {data.kwn || "Mitglied"}
+              {position}
             </div>
           </div>
           <div className="h-16 w-16 sm:h-20 sm:w-20 shrink-0 rounded-md syn-id-card__photo" />
