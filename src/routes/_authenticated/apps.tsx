@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { getSession, getCredentials, type SynSession } from "@/lib/syn-session";
 import { SynIDCard } from "@/components/SynIDCard";
-import { TABS, visibleTabs } from "@/lib/tabs-registry";
+import { visibleTabs } from "@/lib/tabs-registry";
 import { tabPermsForMe, tabPrefsForMe } from "@/lib/permissions.functions";
 
 export const Route = createFileRoute("/_authenticated/apps")({
