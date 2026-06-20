@@ -4,7 +4,7 @@ import { LogOut, Sparkles, MoreHorizontal, X } from "lucide-react";
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { getSession, clearSession, getCredentials, type SynSession } from "@/lib/syn-session";
-import { TABS, visibleTabs } from "@/lib/tabs-registry";
+import { visibleTabs } from "@/lib/tabs-registry";
 import { tabPermsForMe, tabPrefsForMe } from "@/lib/permissions.functions";
 import { StartupAnimation } from "@/components/StartupAnimation";
 import { UpdateScreen } from "@/components/UpdateScreen";
