@@ -6,6 +6,9 @@ export type SynSession = {
   hl: number;
   regid: string;
   cip: string;
+  department?: string | null;
+  position?: string | null;
+  kind?: string | null;
   isSuperuser?: boolean;
 };
 

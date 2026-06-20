@@ -27,6 +27,7 @@ const creds = z.object({ slid: z.string().min(1), pik: z.string().min(8) });
 
 async function buildSession(me: {
   slid: string; pik: string; name: string; hl: number; regid: string; cip: string;
+  department?: string | null; position?: string | null; kind?: string;
 }) {
   const admin = await getAdmin();
   const { data: su } = await admin.rpc("has_role", { _slid: me.slid, _role: "superuser" });
@@ -37,6 +38,9 @@ async function buildSession(me: {
     hl: me.hl,
     regid: me.regid,
     cip: me.cip,
+    department: me.department ?? null,
+    position: me.position ?? null,
+    kind: me.kind ?? null,
     isSuperuser: !!su,
   };
 }
@@ -69,7 +73,7 @@ export const synVerifyByPik = createServerFn({ method: "POST" })
     const admin = await getAdmin();
     const { data: rows, error } = await admin
       .from("employees")
-      .select("slid,name,hl,kind,regid,kwn,kwn_active")
+      .select("slid,name,hl,kind,regid,kwn,kwn_active,department,position")
       .eq("pik", data.pik)
       .limit(2);
     if (error) throw new Error(error.message);
