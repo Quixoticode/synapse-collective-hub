@@ -6,8 +6,10 @@ import { useServerFn } from "@tanstack/react-start";
 import { getSession, clearSession, getCredentials, type SynSession } from "@/lib/syn-session";
 import { visibleTabs } from "@/lib/tabs-registry";
 import { tabPermsForMe, tabPrefsForMe } from "@/lib/permissions.functions";
+import { banStatus } from "@/lib/security.functions";
 import { StartupAnimation } from "@/components/StartupAnimation";
 import { UpdateScreen } from "@/components/UpdateScreen";
+import { BanScreen } from "@/components/BanScreen";
 import { STARTUP_PLAYED_KEY } from "@/lib/app-version";
 
 export const Route = createFileRoute("/_authenticated")({
