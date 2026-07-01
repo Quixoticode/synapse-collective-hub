@@ -22,7 +22,8 @@ export const designGet = createServerFn({ method: "POST" })
     const { data: e } = await a.from("employees").select("slid").eq("slid", data.slid).eq("pik", data.pik).maybeSingle();
     if (!e) throw new Error("Ungültige SynID.");
     const { data: row } = await a.from("user_prefs").select("design_json").eq("slid", data.slid).maybeSingle();
-    return { ...defaults, ...(row?.design_json ?? {}) } as DesignPrefs;
+    const j = (row?.design_json ?? {}) as Partial<DesignPrefs>;
+    return { ...defaults, ...j } as DesignPrefs;
   });
 
 export const designSet = createServerFn({ method: "POST" })
