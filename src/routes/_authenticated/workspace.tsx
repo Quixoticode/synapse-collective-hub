@@ -149,3 +149,26 @@ function WorkspacePage() {
     </div>
   );
 }
+
+function ContractExportButton({ title, body, author }: { title: string; body: string; author?: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button className="syn-btn-ghost" onClick={() => setOpen(true)} title="Als Vertrag exportieren (PDF)"><Printer className="h-4 w-4" /></button>
+      {open && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setOpen(false)}>
+          <div className="syn-card syn-gradient-border w-full max-w-sm p-5 space-y-2" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-semibold">Als PDF exportieren</h3>
+            <p className="text-xs text-muted-foreground mb-2">Template wählen – der PDF-Druck-Dialog öffnet sich automatisch.</p>
+            {(["vertrag","angebot","bestaetigung"] as ContractTemplate[]).map((t) => (
+              <button key={t} className="syn-btn w-full" onClick={() => { printContract({ template: t, title, body, meta: { author } }); setOpen(false); }}>
+                {t === "vertrag" ? "Vertrag" : t === "angebot" ? "Angebot" : "Bestätigung"}
+              </button>
+            ))}
+            <button className="syn-btn-ghost w-full" onClick={() => setOpen(false)}>Abbrechen</button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
