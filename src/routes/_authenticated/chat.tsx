@@ -96,9 +96,11 @@ function ChatPage() {
     return others.map((s) => peopleMap.get(s)?.name || s).join(", ") || "Thread";
   }
 
+  const showList = !activeId; // mobile: threads list, else show conversation
   return (
-    <div className="h-[calc(100vh-0px)] md:h-screen flex">
-      <div className="w-72 shrink-0 border-r border-border flex flex-col">
+    <div className="h-[calc(100dvh-110px)] md:h-screen flex pb-20 md:pb-0">
+      {/* Sidebar: full-width on mobile when no active thread, fixed width on desktop */}
+      <div className={`${activeId ? "hidden md:flex" : "flex"} md:w-72 w-full shrink-0 md:border-r border-border flex-col`}>
         <div className="p-4 flex items-center justify-between border-b border-border">
           <div>
             <h2 className="text-lg font-semibold">Chats</h2>
@@ -121,17 +123,20 @@ function ChatPage() {
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col min-w-0">
-        <div className="px-5 py-4 border-b border-border">
-          <h1 className="text-lg font-semibold">{activeThread ? threadLabel(activeThread) : "Chat"}</h1>
-          {activeThread && <p className="text-xs text-muted-foreground mono">{activeThread.members.length} Teilnehmer</p>}
+      <div className={`${activeId ? "flex" : "hidden md:flex"} flex-1 flex-col min-w-0`}>
+        <div className="px-5 py-3 border-b border-border flex items-center gap-2">
+          <button onClick={() => setActiveId(null)} className="syn-btn-ghost md:hidden text-xs shrink-0">← Chats</button>
+          <div className="min-w-0">
+            <h1 className="text-base font-semibold truncate">{activeThread ? threadLabel(activeThread) : "Chat"}</h1>
+            {activeThread && <p className="text-xs text-muted-foreground mono">{activeThread.members.length} Teilnehmer</p>}
+          </div>
         </div>
         <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-2">
           {msgs.map((m) => {
             const own = m.sender_slid === session?.slid;
             return (
               <div key={m.id} className={`flex ${own ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-[70%] rounded-2xl px-4 py-2 ${own ? "syn-tab-active" : "bg-card border border-border"}`}>
+                <div className={`max-w-[80%] rounded-2xl px-4 py-2 ${own ? "syn-tab-active" : "bg-card border border-border"}`}>
                   {!own && <div className="text-[10px] text-muted-foreground mono mb-0.5">{peopleMap.get(m.sender_slid)?.name || m.sender_slid}</div>}
                   <div className="text-sm whitespace-pre-wrap break-words">{m.body}</div>
                   <div className="text-[9px] mono text-muted-foreground mt-1">{new Date(m.created_at).toLocaleTimeString()}</div>
@@ -142,7 +147,7 @@ function ChatPage() {
           {activeId && msgs.length === 0 && <div className="text-xs text-muted-foreground text-center mt-8">Keine Nachrichten. Schreib die erste.</div>}
         </div>
         {activeId && (
-          <div className="p-3 border-t border-border flex gap-2">
+          <div className="p-3 border-t border-border flex gap-2" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.75rem)" }}>
             <input className="syn-input flex-1" value={draft} onChange={(e) => setDraft(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void handleSend(); } }}
               placeholder="Nachricht…" />

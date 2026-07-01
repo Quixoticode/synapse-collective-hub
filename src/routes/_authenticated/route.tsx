@@ -6,8 +6,10 @@ import { useServerFn } from "@tanstack/react-start";
 import { getSession, clearSession, getCredentials, type SynSession } from "@/lib/syn-session";
 import { visibleTabs } from "@/lib/tabs-registry";
 import { tabPermsForMe, tabPrefsForMe } from "@/lib/permissions.functions";
+import { banStatus } from "@/lib/security.functions";
 import { StartupAnimation } from "@/components/StartupAnimation";
 import { UpdateScreen } from "@/components/UpdateScreen";
+import { BanScreen } from "@/components/BanScreen";
 import { STARTUP_PLAYED_KEY } from "@/lib/app-version";
 
 export const Route = createFileRoute("/_authenticated")({
@@ -26,17 +28,18 @@ function AuthedLayout() {
   const [prefs, setPrefs] = useState<Record<string, { visible: boolean; sort_order?: number }>>({});
   const [showStartup, setShowStartup] = useState(false);
   const [mobileMore, setMobileMore] = useState(false);
+  const [ban, setBan] = useState<{ message: string; expires_at: string | null } | null>(null);
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const fetchPerms = useServerFn(tabPermsForMe);
   const fetchPrefs = useServerFn(tabPrefsForMe);
+  const checkBan = useServerFn(banStatus);
 
   useEffect(() => {
     const sync = () => setSessionState(getSession());
     sync();
     window.addEventListener("syn-session-change", sync);
     window.addEventListener("storage", sync);
-    // play startup once per session
     if (typeof window !== "undefined" && !sessionStorage.getItem(STARTUP_PLAYED_KEY)) {
       setShowStartup(true);
     }
@@ -51,6 +54,10 @@ function AuthedLayout() {
     const c = getCredentials(); if (!c) return;
     void (async () => {
       try {
+        // Ban check first — blocks the whole UI
+        const b = await checkBan({ data: { slid: session.slid } }) as { banned: boolean; message?: string; expires_at?: string | null };
+        if (b.banned) { setBan({ message: b.message || "Zugriff gesperrt.", expires_at: b.expires_at ?? null }); return; }
+        setBan(null);
         const [p, q] = await Promise.all([
           fetchPerms({ data: c }) as Promise<{ tab_key: string; allowed: boolean }[]>,
           fetchPrefs({ data: c }) as Promise<{ tab_key: string; visible: boolean; sort_order: number }[]>,
@@ -59,16 +66,15 @@ function AuthedLayout() {
         setPrefs(Object.fromEntries(q.map((x) => [x.tab_key, { visible: x.visible, sort_order: x.sort_order }])));
       } catch { /* tolerate */ }
     })();
-  }, [session?.slid, fetchPerms, fetchPrefs]);
+  }, [session?.slid, fetchPerms, fetchPrefs, checkBan]);
 
   if (!session) return null;
+  function handleLogout() { clearSession(); navigate({ to: "/auth" }); }
+  if (ban) return <BanScreen message={ban.message} expiresAt={ban.expires_at} onLogout={handleLogout} />;
+
   const ctx = { hl: session.hl, isSuperuser: session.isSuperuser };
   const tabs = visibleTabs(ctx, { permissions: perms, prefs });
-  // bottom nav: keep apps + first 4 + more
   const bottomPrimary = tabs.slice(0, 5);
-  const bottomOverflow = tabs.slice(5);
-
-  function handleLogout() { clearSession(); navigate({ to: "/auth" }); }
 
   return (
     <>
