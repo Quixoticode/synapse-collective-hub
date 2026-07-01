@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Plus, X, Trash2, Pencil, FileText, Search } from "lucide-react";
+import { Plus, X, Trash2, Pencil, FileText, Search, Printer } from "lucide-react";
 import { wsList, wsUpsert, wsDelete } from "@/lib/workspace.functions";
 import { getSession, getCredentials } from "@/lib/syn-session";
+import { printContract, type ContractTemplate } from "@/components/ContractPrint";
 
 export const Route = createFileRoute("/_authenticated/workspace")({
   ssr: false,
@@ -104,6 +105,7 @@ function WorkspacePage() {
             <div className="flex items-center justify-between mb-3 gap-2">
               <h1 className="text-xl sm:text-2xl font-bold min-w-0 truncate">{active.title}</h1>
               <div className="flex gap-1 shrink-0">
+                <ContractExportButton title={active.title} body={active.content_md} author={session?.name} />
                 {(active.owner_slid === session?.slid || session?.isSuperuser) && (
                   <>
                     <button className="syn-btn-ghost" onClick={() => setEditing(active)}><Pencil className="h-4 w-4" /></button>
