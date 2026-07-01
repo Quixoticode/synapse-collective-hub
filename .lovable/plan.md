@@ -1,122 +1,71 @@
-## Ziel
+# Juli-Update xSyna Central
 
-1. Eigene SynID-Supabase-Instanz in SynCRM hinterlegen und nutzen.
-2. Sidebar-Link „SynID" → `https://synid.xsyna.de` mit Zusatz „BETA".
-3. `wrangler.toml` komplett überarbeiten und Build-/Deploy-Befehle dokumentieren.
+Sehr großer Umfang — deshalb hier der Plan zur Freigabe, bevor ich in einem Rutsch alles baue.
 
----
+## A) Bugfixes
 
-## 1) SynID-Verbindung in der DB konfigurierbar
+- **A-21062601 (Kollektiv, Handy)**: Modal für Mitarbeiter-Anlage bekommt `max-h-[85dvh]` + `overflow-y-auto` und einen sticky Footer mit Speichern-Button, damit der Button auf iOS immer sichtbar bleibt. Gleiche Anpassung für Kontakte-Modal.
+- **A-21062602 (Workspace/Chat auf iOS)**: Umstellung auf **Subpage-Mechanik** — Liste und Detail werden auf `< md` als zwei getrennte Routen behandelt. Klick auf ein Item pusht in die URL (`?doc=ID` / `?thread=ID`), Back-Button des Browsers/iOS-Swipe funktioniert. Sidebar wird auf Mobile nie gleichzeitig mit dem Inhalt angezeigt. Betrifft: `workspace.tsx`, `chat.tsx`, `mail.tsx`, `basics.tsx`, `support.tsx`, `news.tsx`.
+- **A-01072601 (CIP/PIK bei Mitarbeiter-Edit)**: In `/collective` Edit-Modus — CIP und PIK werden nur beim **Neuanlegen** verlangt. Beim Editieren sind sie optional; leer = unverändert. Server-Fn `employeeUpsert` akzeptiert leere Felder und lässt sie serverseitig weg.
 
-Neue Tabelle in der SynCRM-Cloud, in der **du als Superuser** die SynID-Zugänge einträgst. So bleibt SynCRM auf seiner eigenen Cloud, kann aber SynID lesen/schreiben.
+## B) Neue Module
 
-Schema:
+1. **Security-Tab** (`/security`, HL≥4)
+   - Anzeige: letzter Login je Mitarbeiter, aktive Sessions/Geräte, Login-Historie.
+   - Aktion: **temporärer Bann** mit selbst definierter Nachricht + Dauer. Gebannter User sieht Ban-Screen statt App.
+   - Tabellen: `login_events`, `user_sessions`, `user_bans`.
 
-```text
-syn_external_configs
-  key            text PK            -- z. B. 'synid'
-  label          text
-  supabase_url   text
-  anon_key       text               -- publishable key (browser-safe)
-  service_key    text               -- nur server-seitig genutzt
-  notes          text
-  updated_by     text (slid)
-  updated_at     timestamptz
-```
+2. **Support-Accounts (Public Tickets)** (`/support` erweitert)
+   - Neuer Login-Modus auf `/auth`: "Support-Login" mit **Name + 6-stelliger Code**. Landet direkt im eigenen Ticket, kein SynID.
+   - Erstellung: entweder self-service auf `/auth` (Ticket öffnen) oder durch Mitarbeiter.
+   - Mitarbeiter können abgeschlossene Support-Accounts einsehen/löschen.
+   - Tabelle: `support_accounts` (name, code_hash, ticket_id, closed_at).
 
-- RLS `deny all`; Zugriff nur über Server-Functions.
-- Lese-Function `syn-external.functions.ts → externalGet(key)` gibt nur `url + anon_key` an den Client zurück; `service_key` bleibt server-only.
-- Admin-UI unter `/settings/integrations` (nur Superuser): Formular „SynID-Verbindung" mit Feldern URL / anon key / service key / Notiz.
-- Neue Helper-Function `getSynIdClient()` baut bei Bedarf einen zweiten Supabase-Client (`createClient(url, service_key)`) für SynID-Operationen — wird später für Sync/Lookup-Features genutzt.
+3. **Tasks-Tab** (`/tasks`)
+   - Jeder kann Aufgaben erstellen und einer Person (SLID) zuweisen.
+   - Felder: Titel, Beschreibung, Deadline, Priorität, Status (offen/in Arbeit/erledigt), Zuweiser, Zugewiesener.
+   - Filter: "Mir zugewiesen" / "Von mir erstellt" / "Alle".
+   - Tabelle: `tasks`.
 
-Damit kannst du jederzeit in der DB (oder UI) URL/Keys aktualisieren, ohne Code zu ändern.
+4. **Workspace → Vertrags-PDF-Export**
+   - Neuer Button "Als Vertrag exportieren (PDF)" pro Doc.
+   - Design-Templates (HTML/CSS) — Auswahl: "Vertrag", "Angebot", "Bestätigung".
+   - Rendering im Browser (jsPDF + html2canvas oder `window.print` mit dediziertem Print-Stylesheet). Wir nehmen `window.print` mit versteckter Render-Layer → keine neue Dependency, iOS-kompatibel.
+   - Text bleibt Markdown im Doc, wird beim Export ins Template geklebt.
 
-## 2) Sidebar: SynID-Link mit BETA-Badge
+5. **Device-Registrierung / "Trusted Devices"**
+   - Nach erstem Login: Prompt "Dieses Gerät als vertrauenswürdig registrieren?". Bei Ja: Device-Fingerprint + Gerätemodell + OS-Version + IP → `trusted_devices` gespeichert; Session-Cookie 90 Tage. Nächster Aufruf → Auto-Login ohne PIK.
+   - Sichtbar & widerrufbar unter `/security` und in eigenen Einstellungen.
 
-In der Sidebar (`_authenticated/route.tsx`) externen Link einbauen:
+6. **Neuromorphic-Liquid-Background**
+   - SVG/Canvas-Animation mit driftenden neuronalen Pfaden + Blur-Blobs, respektiert `prefers-reduced-motion`.
+   - Als fester Layer hinter `__root.tsx`.
+   - **Design-Tab (BETA)** unter `/settings/design`: Toggle Animation an/aus, Farbschema (Synapse/Mint/Amber), Intensität.
+   - Speicherung in `user_prefs.design_json`.
 
-```tsx
-<a href="https://synid.xsyna.de" target="_blank" rel="noreferrer">
-  SynID <span className="ml-2 rounded bg-gradient-to-r from-[#00FFD1] to-[#FF3CAC] px-1.5 py-0.5 text-[10px] font-bold text-black">BETA</span>
-</a>
-```
+7. **Notify-Tab + Service-Worker Push**
+   - Service-Worker `public/sw.js` (nur PROD, mit Preview-Guards laut PWA-Skill) registriert Web-Push.
+   - Neue Tabelle `push_subscriptions` (slid, endpoint, p256dh, auth, ua).
+   - Neue Tabelle `notifications` (recipient_slid, title, body, url, source: chat|calendar|task|custom, sent_at, read_at).
+   - Backend-Trigger: bei neuer Chat-Message / neuem Kalender-Event / neuer Task → Server-Fn erzeugt Notification-Rows für alle betroffenen SLIDs; Push-Delivery per Web-Push (VAPID).
+   - **In-App-Erzeugung ab HL≥5**: `/notify` Tab → Empfänger wählen, Titel/Body eingeben, senden.
+   - Zeitfenster-Check: Client-Poller alle 5 Min als Fallback (nicht jeder iOS-Browser unterstützt echte Push).
+   - Neue Berechtigungen im `tabs-registry` + `permissions`-Matrix.
 
-Stil passt zum SynDLS-Discharge-Gradient; öffnet in neuem Tab.
+## Technisches
 
-## 3) Cloudflare Worker — Build & Deploy
+- **Migration** (eine große): Tabellen `login_events`, `user_sessions`, `user_bans`, `support_accounts`, `tasks`, `trusted_devices`, `user_prefs`, `push_subscriptions`, `notifications`. Jede mit `GRANT ... TO authenticated` + `service_role` + RLS (SLID-basiert über eigene RLS-Funktionen, analog `has_role`).
+- **Server-Fns** (neu): `security.functions.ts`, `tasks.functions.ts`, `notify.functions.ts`, `devices.functions.ts`, `support-accounts.functions.ts`, `design.functions.ts`. Erweitert: `syn.functions.ts` (Trusted-Device-Login), `workspace.functions.ts` (Contract-Templates).
+- **Routes** (neu): `_authenticated/security.tsx`, `tasks.tsx`, `notify.tsx`, `settings.design.tsx`. Erweitert: `auth.tsx` (Support-Login-Modus + Trusted-Device-Auto-Login), `collective.tsx` (PIK/CIP optional bei Edit + Modal-Fix), `contacts.tsx` (Modal-Fix), `workspace.tsx`/`chat.tsx`/`mail.tsx`/`basics.tsx`/`support.tsx` (Subpage-Mechanik).
+- **Components** (neu): `NeuromorphicBackground.tsx`, `BanScreen.tsx`, `ContractPrintLayer.tsx`, `DeviceTrustPrompt.tsx`, `MobileListDetail.tsx` (shared Subpage-Wrapper).
+- **PWA**: Manifest bleibt; SW nur PROD mit Kill-Switch-fähigem Path; VAPID-Keys als Secrets `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`.
+- **App-Version**: bump auf `v2026.07.01` mit Release-Notes-Eintrag in `app_versions` (via Migration).
+- **Security-Scan** nach Migration.
 
-### Befehle (lokal, in Projekt-Root)
+## Öffnen vor Start
 
-```bash
-bun install                 # Dependencies
-bun run build               # Vite + Nitro → dist/client + dist/server/index.mjs
-bunx wrangler deploy        # Worker + Static Assets nach Cloudflare
-```
+- **VAPID-Keys**: Ich generiere sie und lege sie als Secrets `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` an. OK?
+- **PDF-Export**: `window.print` (0 Dependencies, iOS-safe) oder echte PDF-Lib (`pdf-lib`, größer)? Ich schlage `window.print` vor.
+- **Trusted-Device-TTL**: 90 Tage default, widerrufbar. OK?
 
-Optional Preview/Dev:
-
-```bash
-bun run dev                 # lokaler Vite-Dev (Port 8080)
-bunx wrangler dev           # Worker-Runtime lokal gegen dist/
-```
-
-### Neue `wrangler.toml` (komplett überarbeitet)
-
-```toml
-name = "syncrm"
-main = "dist/server/index.mjs"
-compatibility_date = "2024-11-06"
-compatibility_flags = ["nodejs_compat"]
-
-[assets]
-directory = "dist/client"
-binding = "ASSETS"
-not_found_handling = "single-page-application"
-
-[observability]
-enabled = true
-
-[vars]
-# Öffentliche, nicht-geheime Vars hier eintragen. Geheimnisse via `wrangler secret put`.
-# SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, SUPABASE_SERVICE_ROLE_KEY → als Secrets setzen:
-#   bunx wrangler secret put SUPABASE_URL
-#   bunx wrangler secret put SUPABASE_PUBLISHABLE_KEY
-#   bunx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
-```
-
-### Prüfung, die ich nach dem Generieren ausführe
-
-- `main` zeigt auf existierendes Build-Artefakt `dist/server/index.mjs` (TanStack/Nitro-Output).
-- `[assets].directory = dist/client` matched Vite-Client-Build.
-- `nodejs_compat` aktiv (benötigt für Supabase-Client/Crypto).
-- SPA-Fallback an, damit Deep-Links der Auth-Routen funktionieren.
-- Keine `[build]`-Section (Lovable/CI baut selbst; Wrangler soll nicht erneut bauen).
-
-### Pfade (Übersicht)
-
-
-| Zweck                         | Pfad                    |
-| ----------------------------- | ----------------------- |
-| Worker-Entry (SSR)            | `dist/server/index.mjs` |
-| Static Assets / Client-Bundle | `dist/client/`          |
-| Wrangler-Config               | `wrangler.toml` (Root)  |
-| Supabase-Migrations           | `supabase/migrations/`  |
-
-
----
-
-## Was nach Approval passiert
-
-1. Migration für `syn_external_configs` (+ Grants + RLS deny-all + updated_at-Trigger).
-2. Neue Server-Functions `src/lib/syn-external.functions.ts` (get/list/upsert, Superuser-gated).
-3. Neue Route `src/routes/_authenticated/settings.integrations.tsx` mit Formular und Seed deiner SynID-Daten leer (du trägst URL+Keys ein).
-4. Sidebar-Link „SynID BETA" in `_authenticated/route.tsx`.
-5. `wrangler.toml` ersetzt durch die Variante oben.
-6. `README.md` um die Build-/Deploy-Befehle erweitert.
-
-Sag Bescheid, wenn ich loslegen soll — oder ob du die SynID-Verbindung schon jetzt mit konkreten Werten (URL/anon/service) vorbefüllt haben willst.
-
-SynID-Supabase-Config:
-
-- URL:  [https://dyhyqgtvmkgsycwvwrfl.supabase.co](https://dyhyqgtvmkgsycwvwrfl.supabase.co)
-- ANON: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR5aHlxZ3R2bWtnc3ljd3Z3cmZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwOTU5MTYsImV4cCI6MjA5NjY3MTkxNn0.aYXhmhfnyA3MQfYQ41Dbi8C61oV3zI01ysLtZvPBQLY
+Sag "los" und ich baue alles in einem Rutsch inkl. Prüfungen.
