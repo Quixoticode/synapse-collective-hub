@@ -67,8 +67,8 @@ function BasicsPage() {
   }
 
   return (
-    <div className="h-screen flex">
-      <div className="w-80 border-r border-border flex flex-col">
+    <div className="min-h-[calc(100dvh-110px)] md:h-screen flex flex-col md:flex-row pb-20 md:pb-0">
+      <div className={`${active ? "hidden md:flex" : "flex"} md:w-80 w-full md:border-r border-border flex-col`}>
         <div className="p-4 border-b border-border flex items-center justify-between">
           <h2 className="font-semibold flex items-center gap-2"><BookOpen className="h-4 w-4" /> xSyna Basics</h2>
           {canEdit && (
@@ -93,23 +93,24 @@ function BasicsPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className={`${active ? "flex" : "hidden md:flex"} flex-1 min-w-0 overflow-y-auto p-4 sm:p-6 flex-col`}>
         {active ? (
-          <div className="max-w-3xl">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <h1 className="text-2xl font-bold flex items-center gap-2">{active.pinned && <Pin className="h-5 w-5" style={{ color: "var(--neural-pink)" }} />}{active.title}</h1>
+          <div className="max-w-3xl w-full">
+            <button onClick={() => setActive(null)} className="syn-btn-ghost md:hidden text-xs mb-3">← Liste</button>
+            <div className="flex items-start justify-between mb-3 gap-2">
+              <div className="min-w-0">
+                <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2 truncate">{active.pinned && <Pin className="h-5 w-5 shrink-0" style={{ color: "var(--neural-pink)" }} />}<span className="truncate">{active.title}</span></h1>
                 <div className="text-xs mono text-muted-foreground mt-1">{KIND_LABEL[active.kind]} · /{active.slug}</div>
               </div>
               {canEdit && (
-                <div className="flex gap-1">
+                <div className="flex gap-1 shrink-0">
                   <button className="syn-btn-ghost" onClick={() => setEditing(active)}><Pencil className="h-4 w-4" /></button>
                   <button className="syn-btn-ghost" onClick={() => void remove(active.id)}><Trash2 className="h-4 w-4" /></button>
                 </div>
               )}
             </div>
             {active.file_url && <a className="text-xs text-[var(--synapse)] block mb-3" href={active.file_url} target="_blank" rel="noreferrer">{active.file_url}</a>}
-            <pre className="syn-card p-5 whitespace-pre-wrap font-sans text-sm leading-relaxed">{active.body_md}</pre>
+            <pre className="syn-card p-4 sm:p-5 whitespace-pre-wrap font-sans text-sm leading-relaxed">{active.body_md}</pre>
           </div>
         ) : (
           <div className="text-muted-foreground text-sm">Wähle ein Dokument.</div>
