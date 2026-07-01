@@ -183,8 +183,9 @@ const empPayload = z.object({
   hl: z.number().int().min(1).max(7),
   kind: z.enum(["mitarbeiter", "partner", "kunde"]).default("mitarbeiter"),
   regid: z.string().min(1),
-  pik: z.string().min(8),
-  cip: z.string().min(1),
+  // PIK and CIP are optional on EDIT (empty = keep unchanged); required on create.
+  pik: z.string().optional().default(""),
+  cip: z.string().optional().default(""),
   kwn: z.string().optional().nullable(),
   kwn_active: z.boolean().default(false),
   email: z.string().email().optional().or(z.literal("")).nullable(),
@@ -199,13 +200,20 @@ export const employeeSave = createServerFn({ method: "POST" })
     const me = await verify(data.caller_slid, data.caller_pik);
     requireHl5(me.hl);
     const admin = await getAdmin();
-    const row = {
+    const isEdit = !!data.original_slid;
+
+    if (!isEdit) {
+      // Create: PIK & CIP are mandatory
+      if (!data.pik || data.pik.length < 8) throw new Error("PIK (min. 8 Zeichen) erforderlich.");
+      if (!data.cip) throw new Error("CIP erforderlich.");
+    }
+
+    // Base row without pik/cip
+    const row: Record<string, unknown> = {
       slid: data.target_slid,
       name: data.name,
       hl: data.hl,
       regid: data.regid,
-      pik: data.pik,
-      cip: data.cip,
       kind: data.kind,
       kwn: data.kwn || null,
       kwn_active: data.kwn_active,
@@ -214,16 +222,32 @@ export const employeeSave = createServerFn({ method: "POST" })
       department: data.department || null,
       position: data.position || null,
     };
-    if (data.original_slid && data.original_slid !== data.target_slid) {
-      // Treat as update where slid is changed → delete + insert (PK change)
-      const { error: delErr } = await admin.from("employees").delete().eq("slid", data.original_slid);
+    // Only include pik/cip when provided (so edits without them keep the stored values).
+    if (data.pik) row.pik = data.pik;
+    if (data.cip) row.cip = data.cip;
+
+    if (isEdit && data.original_slid !== data.target_slid) {
+      // PK change: fetch existing row to preserve pik/cip if not provided, then insert+delete
+      const { data: existing } = await admin.from("employees").select("pik,cip").eq("slid", data.original_slid).maybeSingle();
+      if (existing) {
+        if (!row.pik) row.pik = existing.pik;
+        if (!row.cip) row.cip = existing.cip;
+      }
+      const { error: delErr } = await admin.from("employees").delete().eq("slid", data.original_slid!);
       if (delErr) throw new Error(delErr.message);
+      const { data: saved, error } = await admin.from("employees").insert(row).select().single();
+      if (error) throw new Error(error.message);
+      return saved;
     }
-    const { data: saved, error } = await admin
-      .from("employees")
-      .upsert(row, { onConflict: "slid" })
-      .select()
-      .single();
+
+    // Simple update path when editing without slid change: use update (avoids upsert overwriting NOT NULL cols)
+    if (isEdit) {
+      const { data: saved, error } = await admin.from("employees").update(row).eq("slid", data.target_slid).select().single();
+      if (error) throw new Error(error.message);
+      return saved;
+    }
+
+    const { data: saved, error } = await admin.from("employees").insert(row).select().single();
     if (error) throw new Error(error.message);
     return saved;
   });
