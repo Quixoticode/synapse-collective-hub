@@ -495,6 +495,42 @@ export type Database = {
           },
         ]
       }
+      login_events: {
+        Row: {
+          created_at: string
+          device_model: string | null
+          id: string
+          ip: string | null
+          method: string | null
+          ok: boolean
+          os: string | null
+          slid: string
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string
+          device_model?: string | null
+          id?: string
+          ip?: string | null
+          method?: string | null
+          ok?: boolean
+          os?: string | null
+          slid: string
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string
+          device_model?: string | null
+          id?: string
+          ip?: string | null
+          method?: string | null
+          ok?: boolean
+          os?: string | null
+          slid?: string
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       mail_accounts: {
         Row: {
           address: string
@@ -586,6 +622,72 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          body: string | null
+          created_at: string
+          id: string
+          read_at: string | null
+          recipient_slid: string
+          sender_slid: string | null
+          source: string
+          title: string
+          url: string | null
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          recipient_slid: string
+          sender_slid?: string | null
+          source?: string
+          title: string
+          url?: string | null
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          recipient_slid?: string
+          sender_slid?: string | null
+          source?: string
+          title?: string
+          url?: string | null
+        }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          slid: string
+          user_agent: string | null
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          slid: string
+          user_agent?: string | null
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          slid?: string
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       roadmap_items: {
         Row: {
           created_at: string
@@ -619,6 +721,33 @@ export type Database = {
           target_quarter?: string | null
           title?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      support_accounts: {
+        Row: {
+          closed_at: string | null
+          code_hash: string
+          created_at: string
+          id: string
+          name: string
+          ticket_id: string | null
+        }
+        Insert: {
+          closed_at?: string | null
+          code_hash: string
+          created_at?: string
+          id?: string
+          name: string
+          ticket_id?: string | null
+        }
+        Update: {
+          closed_at?: string | null
+          code_hash?: string
+          created_at?: string
+          id?: string
+          name?: string
+          ticket_id?: string | null
         }
         Relationships: []
       }
@@ -723,6 +852,138 @@ export type Database = {
           supabase_url?: string
           updated_at?: string
           updated_by?: string | null
+        }
+        Relationships: []
+      }
+      tasks: {
+        Row: {
+          assignee_slid: string
+          created_at: string
+          creator_slid: string
+          description: string | null
+          due_at: string | null
+          id: string
+          priority: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assignee_slid: string
+          created_at?: string
+          creator_slid: string
+          description?: string | null
+          due_at?: string | null
+          id?: string
+          priority?: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assignee_slid?: string
+          created_at?: string
+          creator_slid?: string
+          description?: string | null
+          due_at?: string | null
+          id?: string
+          priority?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_bans: {
+        Row: {
+          active: boolean
+          banned_by: string | null
+          created_at: string
+          expires_at: string | null
+          id: string
+          message: string
+          slid: string
+        }
+        Insert: {
+          active?: boolean
+          banned_by?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          message: string
+          slid: string
+        }
+        Update: {
+          active?: boolean
+          banned_by?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          message?: string
+          slid?: string
+        }
+        Relationships: []
+      }
+      user_prefs: {
+        Row: {
+          design_json: Json
+          notify_json: Json
+          slid: string
+          updated_at: string
+        }
+        Insert: {
+          design_json?: Json
+          notify_json?: Json
+          slid: string
+          updated_at?: string
+        }
+        Update: {
+          design_json?: Json
+          notify_json?: Json
+          slid?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_sessions: {
+        Row: {
+          created_at: string
+          device_fingerprint: string
+          device_model: string | null
+          expires_at: string | null
+          id: string
+          ip: string | null
+          last_seen_at: string
+          os: string | null
+          slid: string
+          trusted: boolean
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string
+          device_fingerprint: string
+          device_model?: string | null
+          expires_at?: string | null
+          id?: string
+          ip?: string | null
+          last_seen_at?: string
+          os?: string | null
+          slid: string
+          trusted?: boolean
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string
+          device_fingerprint?: string
+          device_model?: string | null
+          expires_at?: string | null
+          id?: string
+          ip?: string | null
+          last_seen_at?: string
+          os?: string | null
+          slid?: string
+          trusted?: boolean
+          user_agent?: string | null
         }
         Relationships: []
       }
