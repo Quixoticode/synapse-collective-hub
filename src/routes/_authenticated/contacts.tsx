@@ -216,11 +216,13 @@ function ContactModal({
   busy: boolean;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="syn-card syn-gradient-border w-full max-w-lg p-6 relative">
-        <button onClick={onClose} className="absolute top-3 right-3 syn-btn-ghost p-2"><X className="h-4 w-4" /></button>
-        <h2 className="text-lg font-semibold mb-4">{value.id ? "Kontakt bearbeiten" : "Neuer Kontakt"}</h2>
-        <div className="space-y-3">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
+      <div className="syn-card syn-gradient-border w-full max-w-lg max-h-[92dvh] flex flex-col rounded-t-3xl sm:rounded-3xl">
+        <div className="flex items-center justify-between p-5 border-b border-border">
+          <h2 className="text-lg font-semibold">{value.id ? "Kontakt bearbeiten" : "Neuer Kontakt"}</h2>
+          <button onClick={onClose} className="syn-btn-ghost p-2"><X className="h-4 w-4" /></button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-5 space-y-3">
           {(["name","company","email","phone"] as const).map((f) => (
             <div key={f}>
               <label className="text-[11px] mono uppercase tracking-wider text-muted-foreground">{f}</label>
@@ -258,7 +260,8 @@ function ContactModal({
             />
           </div>
         </div>
-        <div className="mt-5 flex justify-end gap-2">
+        <div className="p-5 border-t border-border bg-card/95 backdrop-blur sticky bottom-0 flex justify-end gap-2"
+             style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 1.25rem)" }}>
           <button onClick={onClose} className="syn-btn-ghost">Abbrechen</button>
           <button onClick={onSave} disabled={busy || !value.name} className="syn-btn">
             {busy ? "Speichere…" : "Speichern"}

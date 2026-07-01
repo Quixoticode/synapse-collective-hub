@@ -274,59 +274,70 @@ function EmployeeModal({
   onSave: () => void;
   busy: boolean;
 }) {
+  const isEdit = !!value.original_slid;
+  const canSave = !!value.slid && !!value.name && !!value.regid && (isEdit || (!!value.pik && !!value.cip));
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="syn-card syn-gradient-border w-full max-w-xl p-6 relative">
-        <button onClick={onClose} className="absolute top-3 right-3 syn-btn-ghost p-2"><X className="h-4 w-4" /></button>
-        <h2 className="text-lg font-semibold mb-1">{value.original_slid ? "Mitglied bearbeiten" : "Neues Mitglied"}</h2>
-        <p className="text-xs text-muted-foreground mb-4">PIK muss als sha256-Hex bereitgestellt werden.</p>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
+      <div className="syn-card syn-gradient-border w-full max-w-xl max-h-[92dvh] flex flex-col rounded-t-3xl sm:rounded-3xl">
+        <div className="flex items-start justify-between p-5 border-b border-border">
+          <div>
+            <h2 className="text-lg font-semibold">{isEdit ? "Mitglied bearbeiten" : "Neues Mitglied"}</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {isEdit ? "PIK & CIP leer lassen, um sie unverändert zu lassen." : "PIK muss als sha256-Hex bereitgestellt werden."}
+            </p>
+          </div>
+          <button onClick={onClose} className="syn-btn-ghost p-2"><X className="h-4 w-4" /></button>
+        </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="col-span-2">
-            <label className="text-[11px] mono uppercase tracking-wider text-muted-foreground">Mitglieds-Typ</label>
-            <select
-              className="syn-input mt-1"
-              value={(value.kind as MemberKind) ?? "mitarbeiter"}
-              onChange={(e) => onChange({ ...value, kind: e.target.value as MemberKind })}
-            >
-              <option value="mitarbeiter">Mitarbeiter</option>
-              <option value="partner">Partner</option>
-              <option value="kunde">Kunde</option>
-            </select>
-          </div>
-          <Field label="SLID" value={value.slid} onChange={(v) => onChange({ ...value, slid: v })} />
-          <Field label="HL (1-7)" type="number" value={String(value.hl ?? "")} onChange={(v) => onChange({ ...value, hl: Number(v) })} />
-          <Field label="Name" wide value={value.name} onChange={(v) => onChange({ ...value, name: v })} />
-          <Field label="REGID" value={value.regid} onChange={(v) => onChange({ ...value, regid: v })} />
-          <Field label="CIP" value={value.cip} onChange={(v) => onChange({ ...value, cip: v })} />
-          <Field label="Abteilung" value={value.department} onChange={(v) => onChange({ ...value, department: v })} />
-          <Field label="Position" value={value.position} onChange={(v) => onChange({ ...value, position: v })} />
-          <Field label="PIK (sha256)" wide value={value.pik} onChange={(v) => onChange({ ...value, pik: v })} />
-          <Field label="KWN" value={value.kwn} onChange={(v) => onChange({ ...value, kwn: v })} />
-          <div className="flex items-center gap-2 mt-6">
-            <input
-              id="kwn_active"
-              type="checkbox"
-              checked={!!value.kwn_active}
-              onChange={(e) => onChange({ ...value, kwn_active: e.target.checked })}
-              className="h-4 w-4 accent-[color:var(--synapse)]"
-            />
-            <label htmlFor="kwn_active" className="text-sm">KWN aktiv</label>
-          </div>
-          <Field label="E-Mail" wide value={value.email} onChange={(v) => onChange({ ...value, email: v })} />
-          <div className="col-span-2">
-            <label className="text-[11px] mono uppercase tracking-wider text-muted-foreground">Notizen</label>
-            <textarea
-              className="syn-input mt-1 min-h-[80px]"
-              value={value.notes ?? ""}
-              onChange={(e) => onChange({ ...value, notes: e.target.value })}
-            />
+        <div className="flex-1 overflow-y-auto p-5">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2">
+              <label className="text-[11px] mono uppercase tracking-wider text-muted-foreground">Mitglieds-Typ</label>
+              <select
+                className="syn-input mt-1"
+                value={(value.kind as MemberKind) ?? "mitarbeiter"}
+                onChange={(e) => onChange({ ...value, kind: e.target.value as MemberKind })}
+              >
+                <option value="mitarbeiter">Mitarbeiter</option>
+                <option value="partner">Partner</option>
+                <option value="kunde">Kunde</option>
+              </select>
+            </div>
+            <Field label="SLID" value={value.slid} onChange={(v) => onChange({ ...value, slid: v })} />
+            <Field label="HL (1-7)" type="number" value={String(value.hl ?? "")} onChange={(v) => onChange({ ...value, hl: Number(v) })} />
+            <Field label="Name" wide value={value.name} onChange={(v) => onChange({ ...value, name: v })} />
+            <Field label="REGID" value={value.regid} onChange={(v) => onChange({ ...value, regid: v })} />
+            <Field label={isEdit ? "CIP (leer = unverändert)" : "CIP"} value={value.cip} onChange={(v) => onChange({ ...value, cip: v })} />
+            <Field label="Abteilung" value={value.department} onChange={(v) => onChange({ ...value, department: v })} />
+            <Field label="Position" value={value.position} onChange={(v) => onChange({ ...value, position: v })} />
+            <Field label={isEdit ? "PIK (leer = unverändert)" : "PIK (sha256)"} wide value={value.pik} onChange={(v) => onChange({ ...value, pik: v })} />
+            <Field label="KWN" value={value.kwn} onChange={(v) => onChange({ ...value, kwn: v })} />
+            <div className="flex items-center gap-2 mt-6">
+              <input
+                id="kwn_active"
+                type="checkbox"
+                checked={!!value.kwn_active}
+                onChange={(e) => onChange({ ...value, kwn_active: e.target.checked })}
+                className="h-4 w-4 accent-[color:var(--synapse)]"
+              />
+              <label htmlFor="kwn_active" className="text-sm">KWN aktiv</label>
+            </div>
+            <Field label="E-Mail" wide value={value.email} onChange={(v) => onChange({ ...value, email: v })} />
+            <div className="col-span-2">
+              <label className="text-[11px] mono uppercase tracking-wider text-muted-foreground">Notizen</label>
+              <textarea
+                className="syn-input mt-1 min-h-[80px]"
+                value={value.notes ?? ""}
+                onChange={(e) => onChange({ ...value, notes: e.target.value })}
+              />
+            </div>
           </div>
         </div>
 
-        <div className="mt-5 flex justify-end gap-2">
+        <div className="p-5 border-t border-border bg-card/95 backdrop-blur sticky bottom-0 flex justify-end gap-2"
+             style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 1.25rem)" }}>
           <button onClick={onClose} className="syn-btn-ghost">Abbrechen</button>
-          <button onClick={onSave} disabled={busy || !value.slid || !value.name || !value.pik || !value.cip || !value.regid} className="syn-btn">
+          <button onClick={onSave} disabled={busy || !canSave} className="syn-btn">
             {busy ? "Speichere…" : "Speichern"}
           </button>
         </div>
