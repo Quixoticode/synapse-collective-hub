@@ -353,6 +353,37 @@ function SupportSection() {
   );
 }
 
+function QuickLoginSection({ onDone }: { onDone: (s: {
+  slid: string; pik: string; name: string; hl: number; regid: string; cip: string;
+  department: string | null; position: string | null; kind: string | null; isSuperuser: boolean;
+}) => void }) {
+  const consumeFn = useServerFn(quickLoginConsume);
+  const [slid, setSlid] = useState("");
+  const [code, setCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  async function submit() {
+    setBusy(true); setErr(null);
+    try {
+      const s = await consumeFn({ data: { slid: slid.trim(), code } });
+      onDone(s);
+    } catch (e) { setErr(e instanceof Error ? e.message : "Fehler."); }
+    finally { setBusy(false); }
+  }
+  return (
+    <div className="syn-card p-5 space-y-3 syn-gradient-border" style={{ borderColor: "var(--synapse)" }}>
+      <div className="text-xs text-muted-foreground">Quick-Login – Anmeldung per 6-stelligem Code vom Support (gültig 15 Min).</div>
+      <input className="syn-input" placeholder="SLID (z. B. S1234)" value={slid} onChange={(e) => setSlid(e.target.value.toUpperCase())} />
+      <input className="syn-input mono tracking-widest text-center text-lg" placeholder="6-stelliger Code" maxLength={6} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} />
+      <button className="syn-btn w-full" disabled={busy || !slid.trim() || code.length !== 6} onClick={() => void submit()}>
+        <Zap className="h-4 w-4" /> {busy ? "Prüfe…" : "Einloggen"}
+      </button>
+      {err && <div className="text-xs text-destructive mono">{err}</div>}
+      <p className="text-[11px] text-muted-foreground">Fordere den Code beim Support an: +49 177 3374439 (WhatsApp).</p>
+    </div>
+  );
+}
+
 function ModeBtn({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string }) {
   return (
     <button type="button" onClick={onClick}
