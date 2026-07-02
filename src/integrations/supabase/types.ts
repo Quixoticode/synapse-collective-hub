@@ -56,6 +56,95 @@ export type Database = {
         }
         Relationships: []
       }
+      apply_applications: {
+        Row: {
+          applicant_name: string
+          contact: string | null
+          created_at: string
+          created_by_slid: string | null
+          id: string
+          note: string | null
+          position_id: string | null
+          source: string
+          status: string
+          updated_at: string
+          wish: string | null
+        }
+        Insert: {
+          applicant_name: string
+          contact?: string | null
+          created_at?: string
+          created_by_slid?: string | null
+          id?: string
+          note?: string | null
+          position_id?: string | null
+          source?: string
+          status?: string
+          updated_at?: string
+          wish?: string | null
+        }
+        Update: {
+          applicant_name?: string
+          contact?: string | null
+          created_at?: string
+          created_by_slid?: string | null
+          id?: string
+          note?: string | null
+          position_id?: string | null
+          source?: string
+          status?: string
+          updated_at?: string
+          wish?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "apply_applications_position_id_fkey"
+            columns: ["position_id"]
+            isOneToOne: false
+            referencedRelation: "apply_positions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      apply_positions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          department: string
+          description: string | null
+          hl_max: number
+          id: string
+          open: boolean
+          position: string
+          team: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          department: string
+          description?: string | null
+          hl_max?: number
+          id?: string
+          open?: boolean
+          position: string
+          team?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          department?: string
+          description?: string | null
+          hl_max?: number
+          id?: string
+          open?: boolean
+          position?: string
+          team?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       basics_docs: {
         Row: {
           body_md: string
@@ -685,6 +774,36 @@ export type Database = {
           p256dh?: string
           slid?: string
           user_agent?: string | null
+        }
+        Relationships: []
+      }
+      quick_login_codes: {
+        Row: {
+          code_hash: string
+          created_at: string
+          expires_at: string
+          id: string
+          issued_by: string
+          slid: string
+          used: boolean
+        }
+        Insert: {
+          code_hash: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          issued_by: string
+          slid: string
+          used?: boolean
+        }
+        Update: {
+          code_hash?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          issued_by?: string
+          slid?: string
+          used?: boolean
         }
         Relationships: []
       }

@@ -1,71 +1,81 @@
-# Juli-Update xSyna Central
+# Juli-Update #2 · v2026.07.02
 
-Sehr großer Umfang — deshalb hier der Plan zur Freigabe, bevor ich in einem Rutsch alles baue.
+## Bugfixes
 
-## A) Bugfixes
+- **A020726001 · SynID-Karte Placeholder-KWN**  
+  `SynIDCard.tsx` zeigt Werte aus einer falschen Quelle. Wir binden die Karte konsistent an die aktuelle Session (Name, SLID, HL, Abteilung, Position, Kind) und entfernen jeden Fallback-Text „KWN"/Placeholder.
 
-- **A-21062601 (Kollektiv, Handy)**: Modal für Mitarbeiter-Anlage bekommt `max-h-[85dvh]` + `overflow-y-auto` und einen sticky Footer mit Speichern-Button, damit der Button auf iOS immer sichtbar bleibt. Gleiche Anpassung für Kontakte-Modal.
-- **A-21062602 (Workspace/Chat auf iOS)**: Umstellung auf **Subpage-Mechanik** — Liste und Detail werden auf `< md` als zwei getrennte Routen behandelt. Klick auf ein Item pusht in die URL (`?doc=ID` / `?thread=ID`), Back-Button des Browsers/iOS-Swipe funktioniert. Sidebar wird auf Mobile nie gleichzeitig mit dem Inhalt angezeigt. Betrifft: `workspace.tsx`, `chat.tsx`, `mail.tsx`, `basics.tsx`, `support.tsx`, `news.tsx`.
-- **A-01072601 (CIP/PIK bei Mitarbeiter-Edit)**: In `/collective` Edit-Modus — CIP und PIK werden nur beim **Neuanlegen** verlangt. Beim Editieren sind sie optional; leer = unverändert. Server-Fn `employeeUpsert` akzeptiert leere Felder und lässt sie serverseitig weg.
+- **F020726002 · Finances – Konten löschen geht nicht**  
+  Neue Serverfunktion `finAccountDelete` (nur eigene bzw. HL≥4) + Papierkorb-Button in `/finances`. Bestätigt per Confirm-Dialog. Cascade auf `fin_transactions.account_id` per SQL prüfen; falls nötig `ON DELETE SET NULL`.
 
-## B) Neue Module
+- **F020726003 · Security – Geräte werden nicht korrekt angezeigt**  
+  `securityOverview` liefert nur globale Sessions; die Liste zeigt aber pro-Mitarbeiter-Devices nicht gruppiert. Wir gruppieren nach SLID, zeigen Modell/OS/IP/letzter Login/Trusted-Status und Mitarbeitername mit ein.
 
-1. **Security-Tab** (`/security`, HL≥4)
-   - Anzeige: letzter Login je Mitarbeiter, aktive Sessions/Geräte, Login-Historie.
-   - Aktion: **temporärer Bann** mit selbst definierter Nachricht + Dauer. Gebannter User sieht Ban-Screen statt App.
-   - Tabellen: `login_events`, `user_sessions`, `user_bans`.
+- **F020726004 · Security – UI passt nicht**  
+  Redesign der Security-Seite mit klaren Sektionen (Ban-Alerts, Mitarbeiterliste mit ausklappbaren Geräten, Login-Historie als Timeline), Sticky Header, mobile-first Karten statt breiter Reihen.
 
-2. **Support-Accounts (Public Tickets)** (`/support` erweitert)
-   - Neuer Login-Modus auf `/auth`: "Support-Login" mit **Name + 6-stelliger Code**. Landet direkt im eigenen Ticket, kein SynID.
-   - Erstellung: entweder self-service auf `/auth` (Ticket öffnen) oder durch Mitarbeiter.
-   - Mitarbeiter können abgeschlossene Support-Accounts einsehen/löschen.
-   - Tabelle: `support_accounts` (name, code_hash, ticket_id, closed_at).
+- **A020726005 · Animationen unsichtbar durch Hintergrund**  
+  Der `NeuromorphicBackground` wird via `z-index: -1` hinter allen Inhalt gelegt und `pointer-events:none` gesetzt; alle Route-Container bekommen `relative z-0`. Startup/Update-Animationen bekommen `z-[100]`.
 
-3. **Tasks-Tab** (`/tasks`)
-   - Jeder kann Aufgaben erstellen und einer Person (SLID) zuweisen.
-   - Felder: Titel, Beschreibung, Deadline, Priorität, Status (offen/in Arbeit/erledigt), Zuweiser, Zugewiesener.
-   - Filter: "Mir zugewiesen" / "Von mir erstellt" / "Alle".
-   - Tabelle: `tasks`.
+## Neue Funktionen
 
-4. **Workspace → Vertrags-PDF-Export**
-   - Neuer Button "Als Vertrag exportieren (PDF)" pro Doc.
-   - Design-Templates (HTML/CSS) — Auswahl: "Vertrag", "Angebot", "Bestätigung".
-   - Rendering im Browser (jsPDF + html2canvas oder `window.print` mit dediziertem Print-Stylesheet). Wir nehmen `window.print` mit versteckter Render-Layer → keine neue Dependency, iOS-kompatibel.
-   - Text bleibt Markdown im Doc, wird beim Export ins Template geklebt.
+### 1. Tab „Applyance" (`/apply`)
+Bewerbungs-/Einstellungsmodul mit drei Rollen:
 
-5. **Device-Registrierung / "Trusted Devices"**
-   - Nach erstem Login: Prompt "Dieses Gerät als vertrauenswürdig registrieren?". Bei Ja: Device-Fingerprint + Gerätemodell + OS-Version + IP → `trusted_devices` gespeichert; Session-Cookie 90 Tage. Nächster Aufruf → Auto-Login ohne PIK.
-   - Sichtbar & widerrufbar unter `/security` und in eigenen Einstellungen.
+- **Leitung (HL≥5 oder `kind=service`)**: legt freie Stellen an (Abteilung, Team, Position, HL-Grenze, Beschreibung, offen/geschlossen).
+- **Mitarbeiter (eingeloggt)**: sehen freigegebene Stellen unterhalb ihres HL und können Personen dort direkt einstellen (Formular → legt Employee-Datensatz an).
+- **Anonym**: `/apply` ist öffentlich; Bewerbung mit Name, Kontakt, Wunschstelle, Notiz → landet in Bewerbungs-Queue (wie Support-Tickets).
 
-6. **Neuromorphic-Liquid-Background**
-   - SVG/Canvas-Animation mit driftenden neuronalen Pfaden + Blur-Blobs, respektiert `prefers-reduced-motion`.
-   - Als fester Layer hinter `__root.tsx`.
-   - **Design-Tab (BETA)** unter `/settings/design`: Toggle Animation an/aus, Farbschema (Synapse/Mint/Amber), Intensität.
-   - Speicherung in `user_prefs.design_json`.
+Eingeloggte Mitarbeiter sehen zusätzlich einen „Bearbeiten"-Modus auf `/apply`.
 
-7. **Notify-Tab + Service-Worker Push**
-   - Service-Worker `public/sw.js` (nur PROD, mit Preview-Guards laut PWA-Skill) registriert Web-Push.
-   - Neue Tabelle `push_subscriptions` (slid, endpoint, p256dh, auth, ua).
-   - Neue Tabelle `notifications` (recipient_slid, title, body, url, source: chat|calendar|task|custom, sent_at, read_at).
-   - Backend-Trigger: bei neuer Chat-Message / neuem Kalender-Event / neuer Task → Server-Fn erzeugt Notification-Rows für alle betroffenen SLIDs; Push-Delivery per Web-Push (VAPID).
-   - **In-App-Erzeugung ab HL≥5**: `/notify` Tab → Empfänger wählen, Titel/Body eingeben, senden.
-   - Zeitfenster-Check: Client-Poller alle 5 Min als Fallback (nicht jeder iOS-Browser unterstützt echte Push).
-   - Neue Berechtigungen im `tabs-registry` + `permissions`-Matrix.
+Neue Tabellen: `apply_positions`, `apply_applications`. Neue Serverfunktionen in `src/lib/apply.functions.ts`.
 
-## Technisches
+### 2. SynMail deaktivieren
+- Aus Tabs-Registry entfernen (oder `enabled:false`).
+- Route bleibt bestehen, zeigt Info-Screen „Modul deaktiviert".
 
-- **Migration** (eine große): Tabellen `login_events`, `user_sessions`, `user_bans`, `support_accounts`, `tasks`, `trusted_devices`, `user_prefs`, `push_subscriptions`, `notifications`. Jede mit `GRANT ... TO authenticated` + `service_role` + RLS (SLID-basiert über eigene RLS-Funktionen, analog `has_role`).
-- **Server-Fns** (neu): `security.functions.ts`, `tasks.functions.ts`, `notify.functions.ts`, `devices.functions.ts`, `support-accounts.functions.ts`, `design.functions.ts`. Erweitert: `syn.functions.ts` (Trusted-Device-Login), `workspace.functions.ts` (Contract-Templates).
-- **Routes** (neu): `_authenticated/security.tsx`, `tasks.tsx`, `notify.tsx`, `settings.design.tsx`. Erweitert: `auth.tsx` (Support-Login-Modus + Trusted-Device-Auto-Login), `collective.tsx` (PIK/CIP optional bei Edit + Modal-Fix), `contacts.tsx` (Modal-Fix), `workspace.tsx`/`chat.tsx`/`mail.tsx`/`basics.tsx`/`support.tsx` (Subpage-Mechanik).
-- **Components** (neu): `NeuromorphicBackground.tsx`, `BanScreen.tsx`, `ContractPrintLayer.tsx`, `DeviceTrustPrompt.tsx`, `MobileListDetail.tsx` (shared Subpage-Wrapper).
-- **PWA**: Manifest bleibt; SW nur PROD mit Kill-Switch-fähigem Path; VAPID-Keys als Secrets `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`.
-- **App-Version**: bump auf `v2026.07.01` mit Release-Notes-Eintrag in `app_versions` (via Migration).
-- **Security-Scan** nach Migration.
+### 3. Einstellungsmenü `/settings`
+Zentrale Übersicht mit vier Bereichen:
+1. **Design** (verlinkt auf bestehende `/settings/design`)
+2. **Session & Gerät** – zeigt aktuelle Session, Fingerprint, Geräte-Modell, lokal gespeicherte Daten (Preview lokaler Storage-Keys)
+3. **Reset** – Button „Alle lokalen Daten löschen & abmelden" (localStorage/sessionStorage clear + Reload)
+4. **Dark/Light-Mode** – Toggle, Speicherung in `localStorage` + `documentElement.classList`
 
-## Öffnen vor Start
+### 4. Security-Erweiterungen
+- **Auto-Logout beim Entfernen eines Geräts**: `revokeSession` markiert Session; Client pollt beim Reload `user_sessions`; fehlt der eigene Fingerprint → forcierter Logout + Redirect `/auth` mit Hinweis.
+- **Quick Login (Login-Support, HL≥5)**: In `/security` neuer Button pro Mitarbeiter „Quick-Login-Code erzeugen". Serverfunktion `quickLoginIssue` erzeugt 6-stelligen Code (crypto-random), speichert in neuer Tabelle `quick_login_codes` (slid, code_hash, expires_at 15min, used bool, issued_by). Auf `/auth` neuer Tab „Quick Login": SLID + 6-stelliger Code → `quickLoginConsume` → Session wie normal.
 
-- **VAPID-Keys**: Ich generiere sie und lege sie als Secrets `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` an. OK?
-- **PDF-Export**: `window.print` (0 Dependencies, iOS-safe) oder echte PDF-Lib (`pdf-lib`, größer)? Ich schlage `window.print` vor.
-- **Trusted-Device-TTL**: 90 Tage default, widerrufbar. OK?
+### 5. Support-Kontakt
+Footer/Info-Block in `/support` und `/settings`: **Telefonzentrale +49 177 3374439**, WhatsApp-Link `https://wa.me/491773374439`.
 
-Sag "los" und ich baue alles in einem Rutsch inkl. Prüfungen.
+## Technische Umsetzung
+
+**Migration** (`supabase/migrations/`):
+```sql
+-- apply_positions, apply_applications, quick_login_codes
+-- + ggf. ALTER auf fin_transactions falls FK-Cascade fehlt
+-- alle Tabellen: GRANT SELECT,INSERT,UPDATE,DELETE TO authenticated;
+--                GRANT ALL TO service_role; GRANT SELECT TO anon (nur apply_positions offen);
+-- RLS enable + Policies
+```
+
+**Neue Dateien**:
+- `src/lib/apply.functions.ts`
+- `src/lib/quick-login.functions.ts`
+- `src/lib/finances.functions.ts` (delete-Funktion erweitern)
+- `src/routes/apply.tsx` (öffentlich)
+- `src/routes/_authenticated/settings.index.tsx` (`/settings`)
+
+**Edits**:
+- `src/components/SynIDCard.tsx` – Session-Bindung, KWN weg
+- `src/routes/_authenticated/security.tsx` – Redesign, Grouping, Quick-Login-Button
+- `src/routes/_authenticated/finances.tsx` – Delete-Button
+- `src/routes/auth.tsx` – Quick-Login-Tab
+- `src/routes/_authenticated/route.tsx` – Session-Poller (Force-Logout)
+- `src/components/NeuromorphicBackground.tsx` – z-Index-Fix
+- `src/lib/tabs-registry.ts` – SynMail aus, Applyance/Settings rein
+- `src/lib/app-version.ts` – `2026.07.02` + Release Notes
+
+**Verifikation**: Build/Typecheck automatisch; manueller Rundgang Mobile (Security, Finances, /apply, /settings).
+
+Ich implementiere alles in einem Rutsch nach deiner Freigabe.

@@ -115,11 +115,15 @@ export function NeuromorphicBackground() {
 
   if (prefs.bg === "off") return null;
   return (
-    <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden" aria-hidden="true">
+    <div
+      className="pointer-events-none fixed inset-0 overflow-hidden"
+      style={{ zIndex: 0 }}
+      aria-hidden="true"
+    >
       {prefs.bg === "neuromorphic" ? (
-        <canvas ref={canvasRef} className="h-full w-full opacity-70" />
+        <canvas ref={canvasRef} className="h-full w-full opacity-60" />
       ) : (
-        <div className="absolute inset-0" style={{ background: "radial-gradient(circle at 70% 25%, rgba(0,163,255,0.18), transparent 60%), radial-gradient(circle at 20% 80%, rgba(255,60,172,0.14), transparent 60%)" }} />
+        <div className="absolute inset-0" style={{ background: "radial-gradient(circle at 70% 25%, rgba(0,163,255,0.14), transparent 60%), radial-gradient(circle at 20% 80%, rgba(255,60,172,0.10), transparent 60%)" }} />
       )}
     </div>
   );

@@ -116,11 +116,16 @@ function FinancesPage() {
           <div className="text-lg font-bold mono">{totalBalance.toFixed(2)} €</div>
         </button>
         {accounts.map((a) => (
-          <button key={a.id} onClick={() => setActiveAcc(a.id)} className={`syn-card p-3 min-w-[180px] text-left ${activeAcc === a.id ? "syn-gradient-border" : ""}`}>
-            <div className="text-[10px] mono uppercase text-muted-foreground truncate">{a.iban || "Konto"}</div>
-            <div className="text-sm font-semibold truncate">{a.name}</div>
-            <div className="text-lg font-bold mono">{(balances.get(a.id) ?? 0).toFixed(2)} {a.currency}</div>
-          </button>
+          <div key={a.id} className={`syn-card p-3 min-w-[200px] text-left relative ${activeAcc === a.id ? "syn-gradient-border" : ""}`}>
+            <button onClick={() => setActiveAcc(a.id)} className="text-left w-full">
+              <div className="text-[10px] mono uppercase text-muted-foreground truncate pr-6">{a.iban || "Konto"}</div>
+              <div className="text-sm font-semibold truncate pr-6">{a.name}</div>
+              <div className="text-lg font-bold mono">{(balances.get(a.id) ?? 0).toFixed(2)} {a.currency}</div>
+            </button>
+            <button onClick={() => setEditAcc(a)} className="absolute top-2 right-2 syn-btn-ghost !p-1" title="Bearbeiten / Löschen">
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
         ))}
         <button onClick={() => setEditAcc({ currency: "EUR", opening_balance: 0 })} className="syn-card p-3 min-w-[140px] grid place-items-center text-xs text-muted-foreground hover:text-foreground">
           <Plus className="h-4 w-4 mb-1" /> Konto
