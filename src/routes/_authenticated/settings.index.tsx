@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Settings as SettingsIcon, Palette, Sun, Moon, Trash2, LogOut, Smartphone, MessageCircle, Phone, ArrowLeft } from "lucide-react";
 import { getSession, clearSession } from "@/lib/syn-session";
 
-export const Route = createFileRoute("/_authenticated/settings")({
+export const Route = createFileRoute("/_authenticated/settings/")({
   ssr: false,
   component: SettingsIndex,
 });

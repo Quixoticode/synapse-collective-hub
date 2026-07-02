@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as ApplyRouteImport } from './routes/apply'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedWorkspaceRouteImport } from './routes/_authenticated/workspace'
@@ -28,6 +29,7 @@ import { Route as AuthenticatedChatRouteImport } from './routes/_authenticated/c
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
 import { Route as AuthenticatedBasicsRouteImport } from './routes/_authenticated/basics'
 import { Route as AuthenticatedAppsRouteImport } from './routes/_authenticated/apps'
+import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings.index'
 import { Route as AuthenticatedSettingsTabsRouteImport } from './routes/_authenticated/settings.tabs'
 import { Route as AuthenticatedSettingsIntegrationsRouteImport } from './routes/_authenticated/settings.integrations'
 import { Route as AuthenticatedSettingsDesignRouteImport } from './routes/_authenticated/settings.design'
@@ -36,6 +38,11 @@ import { Route as ApiPublicMailCfInboundRouteImport } from './routes/api/public/
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApplyRoute = ApplyRouteImport.update({
+  id: '/apply',
+  path: '/apply',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
@@ -128,6 +135,12 @@ const AuthenticatedAppsRoute = AuthenticatedAppsRouteImport.update({
   path: '/apps',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSettingsIndexRoute =
+  AuthenticatedSettingsIndexRouteImport.update({
+    id: '/settings/',
+    path: '/settings/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedSettingsTabsRoute =
   AuthenticatedSettingsTabsRouteImport.update({
     id: '/settings/tabs',
@@ -154,6 +167,7 @@ const ApiPublicMailCfInboundRoute = ApiPublicMailCfInboundRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/apply': typeof ApplyRoute
   '/auth': typeof AuthRoute
   '/apps': typeof AuthenticatedAppsRoute
   '/basics': typeof AuthenticatedBasicsRoute
@@ -174,10 +188,12 @@ export interface FileRoutesByFullPath {
   '/settings/design': typeof AuthenticatedSettingsDesignRoute
   '/settings/integrations': typeof AuthenticatedSettingsIntegrationsRoute
   '/settings/tabs': typeof AuthenticatedSettingsTabsRoute
+  '/settings/': typeof AuthenticatedSettingsIndexRoute
   '/api/public/mail/cf-inbound': typeof ApiPublicMailCfInboundRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/apply': typeof ApplyRoute
   '/auth': typeof AuthRoute
   '/apps': typeof AuthenticatedAppsRoute
   '/basics': typeof AuthenticatedBasicsRoute
@@ -198,12 +214,14 @@ export interface FileRoutesByTo {
   '/settings/design': typeof AuthenticatedSettingsDesignRoute
   '/settings/integrations': typeof AuthenticatedSettingsIntegrationsRoute
   '/settings/tabs': typeof AuthenticatedSettingsTabsRoute
+  '/settings': typeof AuthenticatedSettingsIndexRoute
   '/api/public/mail/cf-inbound': typeof ApiPublicMailCfInboundRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/apply': typeof ApplyRoute
   '/auth': typeof AuthRoute
   '/_authenticated/apps': typeof AuthenticatedAppsRoute
   '/_authenticated/basics': typeof AuthenticatedBasicsRoute
@@ -224,12 +242,14 @@ export interface FileRoutesById {
   '/_authenticated/settings/design': typeof AuthenticatedSettingsDesignRoute
   '/_authenticated/settings/integrations': typeof AuthenticatedSettingsIntegrationsRoute
   '/_authenticated/settings/tabs': typeof AuthenticatedSettingsTabsRoute
+  '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
   '/api/public/mail/cf-inbound': typeof ApiPublicMailCfInboundRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/apply'
     | '/auth'
     | '/apps'
     | '/basics'
@@ -250,10 +270,12 @@ export interface FileRouteTypes {
     | '/settings/design'
     | '/settings/integrations'
     | '/settings/tabs'
+    | '/settings/'
     | '/api/public/mail/cf-inbound'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/apply'
     | '/auth'
     | '/apps'
     | '/basics'
@@ -274,11 +296,13 @@ export interface FileRouteTypes {
     | '/settings/design'
     | '/settings/integrations'
     | '/settings/tabs'
+    | '/settings'
     | '/api/public/mail/cf-inbound'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/apply'
     | '/auth'
     | '/_authenticated/apps'
     | '/_authenticated/basics'
@@ -299,12 +323,14 @@ export interface FileRouteTypes {
     | '/_authenticated/settings/design'
     | '/_authenticated/settings/integrations'
     | '/_authenticated/settings/tabs'
+    | '/_authenticated/settings/'
     | '/api/public/mail/cf-inbound'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  ApplyRoute: typeof ApplyRoute
   AuthRoute: typeof AuthRoute
   ApiPublicMailCfInboundRoute: typeof ApiPublicMailCfInboundRoute
 }
@@ -316,6 +342,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/apply': {
+      id: '/apply'
+      path: '/apply'
+      fullPath: '/apply'
+      preLoaderRoute: typeof ApplyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -444,6 +477,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/settings/': {
+      id: '/_authenticated/settings/'
+      path: '/settings'
+      fullPath: '/settings/'
+      preLoaderRoute: typeof AuthenticatedSettingsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/settings/tabs': {
       id: '/_authenticated/settings/tabs'
       path: '/settings/tabs'
@@ -495,6 +535,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsDesignRoute: typeof AuthenticatedSettingsDesignRoute
   AuthenticatedSettingsIntegrationsRoute: typeof AuthenticatedSettingsIntegrationsRoute
   AuthenticatedSettingsTabsRoute: typeof AuthenticatedSettingsTabsRoute
+  AuthenticatedSettingsIndexRoute: typeof AuthenticatedSettingsIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -518,6 +559,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsIntegrationsRoute:
     AuthenticatedSettingsIntegrationsRoute,
   AuthenticatedSettingsTabsRoute: AuthenticatedSettingsTabsRoute,
+  AuthenticatedSettingsIndexRoute: AuthenticatedSettingsIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -526,6 +568,7 @@ const AuthenticatedRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  ApplyRoute: ApplyRoute,
   AuthRoute: AuthRoute,
   ApiPublicMailCfInboundRoute: ApiPublicMailCfInboundRoute,
 }
