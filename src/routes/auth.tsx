@@ -1,10 +1,11 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { Sparkles, KeyRound, ShieldCheck, QrCode, Camera, Image as ImageIcon, X, BadgeCheck, ArrowLeft, LogIn, LifeBuoy, Send, Plus } from "lucide-react";
+import { Sparkles, KeyRound, ShieldCheck, QrCode, Camera, Image as ImageIcon, X, BadgeCheck, ArrowLeft, LogIn, LifeBuoy, Send, Plus, Zap, Phone, MessageCircle, UserPlus } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { synLoginByPik, synVerifyByPik } from "@/lib/syn.functions";
 import { registerTrustedDevice, loginByTrustedDevice } from "@/lib/devices.functions";
 import { supportAccountCreate, supportAccountLogin, supportAccountPost } from "@/lib/support-accounts.functions";
+import { quickLoginConsume } from "@/lib/quick-login.functions";
 import { setSession, getSession } from "@/lib/syn-session";
 import { SynIDCard, type SynIDCardData } from "@/components/SynIDCard";
 
@@ -20,7 +21,7 @@ export const Route = createFileRoute("/auth")({
 });
 
 type Mode = "input" | "scan" | "photo";
-type Stage = "login" | "verify" | "support";
+type Stage = "login" | "verify" | "quick" | "support";
 
 const FP_KEY = "xsyna.deviceFp.v1";
 const LAST_SLID_KEY = "xsyna.lastSlid.v1";
@@ -147,9 +148,10 @@ function AuthPage() {
         </div>
 
         {/* Stage switch */}
-        <div className="grid grid-cols-3 gap-2 mb-4">
+        <div className="grid grid-cols-4 gap-1.5 mb-4">
           <StageBtn active={stage === "login"} onClick={() => { setStage("login"); setVerified(null); setError(null); }} icon={<LogIn className="h-4 w-4" />} label="Login" />
-          <StageBtn active={stage === "verify"} onClick={() => { setStage("verify"); setError(null); }} icon={<BadgeCheck className="h-4 w-4" />} label="Verifizieren" />
+          <StageBtn active={stage === "verify"} onClick={() => { setStage("verify"); setError(null); }} icon={<BadgeCheck className="h-4 w-4" />} label="Verify" />
+          <StageBtn active={stage === "quick"} onClick={() => { setStage("quick"); setError(null); }} icon={<Zap className="h-4 w-4" />} label="Quick" />
           <StageBtn active={stage === "support"} onClick={() => { setStage("support"); setError(null); }} icon={<LifeBuoy className="h-4 w-4" />} label="Support" />
         </div>
 
@@ -164,6 +166,8 @@ function AuthPage() {
 
         {stage === "support" ? (
           <SupportSection />
+        ) : stage === "quick" ? (
+          <QuickLoginSection onDone={(s) => { setSession(s); navigate({ to: "/apps" }); }} />
         ) : (
           <div className="syn-card p-4 sm:p-6 space-y-4 syn-gradient-border" style={{ borderColor: accent }}>
             <div className="grid grid-cols-3 gap-2">
@@ -198,10 +202,11 @@ function AuthPage() {
           </div>
         )}
 
-        <div className="mt-4 text-center">
-          <Link to="/" className="syn-btn-ghost text-xs inline-flex items-center gap-1">
-            <ArrowLeft className="h-3 w-3" /> Zurück
-          </Link>
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-xs">
+          <Link to="/" className="syn-btn-ghost inline-flex items-center gap-1"><ArrowLeft className="h-3 w-3" /> Zurück</Link>
+          <Link to="/apply" className="syn-btn-ghost inline-flex items-center gap-1"><UserPlus className="h-3 w-3" /> Bewerben</Link>
+          <a href="tel:+491773374439" className="syn-btn-ghost inline-flex items-center gap-1"><Phone className="h-3 w-3" /> +49 177 3374439</a>
+          <a href="https://wa.me/491773374439" target="_blank" rel="noreferrer" className="syn-btn-ghost inline-flex items-center gap-1"><MessageCircle className="h-3 w-3" style={{ color: "#25d366" }} /> WhatsApp</a>
         </div>
       </div>
 
