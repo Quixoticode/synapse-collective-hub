@@ -81,6 +81,24 @@
   --shadow-neuro-lg: 0 20px 60px -20px rgba(123,97,255,0.45), inset 0 1px 0 rgba(255,255,255,0.06);
 }
 
+/* Light-Mode override (opt-in via html.light) */
+html.light {
+  --background: oklch(0.98 0.005 240);
+  --foreground: oklch(0.16 0.02 260);
+  --card: oklch(0.99 0.005 240);
+  --card-foreground: oklch(0.16 0.02 260);
+  --popover: oklch(0.99 0.005 240);
+  --popover-foreground: oklch(0.16 0.02 260);
+  --secondary: oklch(0.94 0.01 250);
+  --secondary-foreground: oklch(0.16 0.02 260);
+  --muted: oklch(0.94 0.01 250);
+  --muted-foreground: oklch(0.42 0.02 260);
+  --accent: oklch(0.94 0.02 245);
+  --accent-foreground: oklch(0.16 0.02 260);
+  --border: oklch(0.72 0.18 220 / 0.28);
+  --input: oklch(0.94 0.01 250);
+}
+
 @layer base {
   * { border-color: var(--color-border); }
   html { background-color: var(--color-background); color: var(--color-foreground); }
