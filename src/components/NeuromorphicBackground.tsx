@@ -117,7 +117,7 @@ export function NeuromorphicBackground() {
   return (
     <div
       className="pointer-events-none fixed inset-0 overflow-hidden"
-      style={{ zIndex: -1 }}
+      style={{ zIndex: 0 }}
       aria-hidden="true"
     >
       {prefs.bg === "neuromorphic" ? (
