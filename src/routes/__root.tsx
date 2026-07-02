@@ -126,6 +126,12 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   useEffect(() => {
+    // Apply persisted theme early
+    try {
+      const t = localStorage.getItem("xsyna.theme.v1");
+      if (t === "light") document.documentElement.classList.add("light");
+      else document.documentElement.classList.remove("light");
+    } catch { /* ignore */ }
     void import("../lib/sw-register").then((m) => m.registerSwSafely());
   }, []);
 
