@@ -7,10 +7,13 @@ import { getSession, clearSession, getCredentials, type SynSession } from "@/lib
 import { visibleTabs } from "@/lib/tabs-registry";
 import { tabPermsForMe, tabPrefsForMe } from "@/lib/permissions.functions";
 import { banStatus } from "@/lib/security.functions";
+import { listMyDevices } from "@/lib/devices.functions";
 import { StartupAnimation } from "@/components/StartupAnimation";
 import { UpdateScreen } from "@/components/UpdateScreen";
 import { BanScreen } from "@/components/BanScreen";
 import { STARTUP_PLAYED_KEY } from "@/lib/app-version";
+
+const FP_KEY = "xsyna.deviceFp.v1";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -49,6 +52,8 @@ function AuthedLayout() {
     };
   }, []);
 
+  const fetchDevices = useServerFn(listMyDevices);
+
   useEffect(() => {
     if (!session) return;
     const c = getCredentials(); if (!c) return;
@@ -67,6 +72,30 @@ function AuthedLayout() {
       } catch { /* tolerate */ }
     })();
   }, [session?.slid, fetchPerms, fetchPrefs, checkBan]);
+
+  // Device-revoke poller: if my trusted fingerprint was removed by an admin, force logout.
+  useEffect(() => {
+    if (!session) return;
+    const fp = typeof window !== "undefined" ? localStorage.getItem(FP_KEY) : null;
+    if (!fp) return;
+    let firstCheckSeen = false;
+    let cancelled = false;
+    async function check() {
+      const c = getCredentials(); if (!c) return;
+      try {
+        const devs = await fetchDevices({ data: c }) as { device_fingerprint: string }[];
+        const mine = devs.some((d) => d.device_fingerprint === fp);
+        if (mine) { firstCheckSeen = true; return; }
+        if (firstCheckSeen && !cancelled) {
+          clearSession();
+          navigate({ to: "/auth" });
+        }
+      } catch { /* ignore */ }
+    }
+    void check();
+    const id = window.setInterval(() => void check(), 60_000);
+    return () => { cancelled = true; window.clearInterval(id); };
+  }, [session?.slid, fetchDevices, navigate]);
 
   if (!session) return null;
   function handleLogout() { clearSession(); navigate({ to: "/auth" }); }
