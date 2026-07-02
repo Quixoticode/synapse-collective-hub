@@ -21,6 +21,7 @@ export function SynIDCard({ data, compact = false }: { data: SynIDCardData; comp
   const position = data.position || "Mitglied";
   const issued = "01/01";
   const validUntil = "31/12";
+  const showKwn = !!(data.kwn && data.kwn.trim());
 
   return (
     <div className="syn-id-card relative overflow-hidden rounded-3xl border border-white/10 bg-black/80 p-4 sm:p-5 shadow-[0_30px_80px_-30px_rgba(0,200,255,0.45)]">
@@ -34,8 +35,8 @@ export function SynIDCard({ data, compact = false }: { data: SynIDCardData; comp
           </div>
         </div>
         <div className="text-right min-w-0">
-          <div className="text-[10px] mono text-white tracking-widest">[WN] NAME</div>
-          <div className="text-[11px] mono text-cyan-300 truncate">[{String(data.hl).padStart(2, "0")}] {data.name}</div>
+          <div className="text-[10px] mono text-white/60 tracking-widest uppercase">HL {String(data.hl).padStart(2, "0")}</div>
+          <div className="text-[11px] mono text-cyan-300 truncate">{data.name}</div>
         </div>
       </div>
 
@@ -59,7 +60,7 @@ export function SynIDCard({ data, compact = false }: { data: SynIDCardData; comp
         <Field label="REGID" value={data.regid || "—"} />
         <Field label="GÜLTIG" value={validUntil} />
         <Field label="AUSGESTELLT" value={issued} />
-        {data.kwn ? <Field label="KWN" value={`${data.kwn}${data.kwn_active ? " ●" : ""}`} /> : null}
+        {showKwn && <Field label="KWN" value={`${data.kwn}${data.kwn_active ? " ●" : ""}`} />}
       </div>
 
       <div className="relative z-10 mt-3 flex items-center gap-1.5 text-[10px] text-white/50">
