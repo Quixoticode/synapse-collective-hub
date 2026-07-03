@@ -32,6 +32,7 @@ import { Route as AuthenticatedBasicsRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedAppsRouteImport } from './routes/_authenticated/apps'
 import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings.index'
 import { Route as AuthenticatedSettingsTabsRouteImport } from './routes/_authenticated/settings.tabs'
+import { Route as AuthenticatedSettingsPdfRouteImport } from './routes/_authenticated/settings.pdf'
 import { Route as AuthenticatedSettingsIntegrationsRouteImport } from './routes/_authenticated/settings.integrations'
 import { Route as AuthenticatedSettingsDesignRouteImport } from './routes/_authenticated/settings.design'
 import { Route as ApiPublicMailCfInboundRouteImport } from './routes/api/public/mail/cf-inbound'
@@ -153,6 +154,12 @@ const AuthenticatedSettingsTabsRoute =
     path: '/settings/tabs',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedSettingsPdfRoute =
+  AuthenticatedSettingsPdfRouteImport.update({
+    id: '/settings/pdf',
+    path: '/settings/pdf',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedSettingsIntegrationsRoute =
   AuthenticatedSettingsIntegrationsRouteImport.update({
     id: '/settings/integrations',
@@ -194,6 +201,7 @@ export interface FileRoutesByFullPath {
   '/workspace': typeof AuthenticatedWorkspaceRoute
   '/settings/design': typeof AuthenticatedSettingsDesignRoute
   '/settings/integrations': typeof AuthenticatedSettingsIntegrationsRoute
+  '/settings/pdf': typeof AuthenticatedSettingsPdfRoute
   '/settings/tabs': typeof AuthenticatedSettingsTabsRoute
   '/settings/': typeof AuthenticatedSettingsIndexRoute
   '/api/public/mail/cf-inbound': typeof ApiPublicMailCfInboundRoute
@@ -221,6 +229,7 @@ export interface FileRoutesByTo {
   '/workspace': typeof AuthenticatedWorkspaceRoute
   '/settings/design': typeof AuthenticatedSettingsDesignRoute
   '/settings/integrations': typeof AuthenticatedSettingsIntegrationsRoute
+  '/settings/pdf': typeof AuthenticatedSettingsPdfRoute
   '/settings/tabs': typeof AuthenticatedSettingsTabsRoute
   '/settings': typeof AuthenticatedSettingsIndexRoute
   '/api/public/mail/cf-inbound': typeof ApiPublicMailCfInboundRoute
@@ -250,6 +259,7 @@ export interface FileRoutesById {
   '/_authenticated/workspace': typeof AuthenticatedWorkspaceRoute
   '/_authenticated/settings/design': typeof AuthenticatedSettingsDesignRoute
   '/_authenticated/settings/integrations': typeof AuthenticatedSettingsIntegrationsRoute
+  '/_authenticated/settings/pdf': typeof AuthenticatedSettingsPdfRoute
   '/_authenticated/settings/tabs': typeof AuthenticatedSettingsTabsRoute
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
   '/api/public/mail/cf-inbound': typeof ApiPublicMailCfInboundRoute
@@ -279,6 +289,7 @@ export interface FileRouteTypes {
     | '/workspace'
     | '/settings/design'
     | '/settings/integrations'
+    | '/settings/pdf'
     | '/settings/tabs'
     | '/settings/'
     | '/api/public/mail/cf-inbound'
@@ -306,6 +317,7 @@ export interface FileRouteTypes {
     | '/workspace'
     | '/settings/design'
     | '/settings/integrations'
+    | '/settings/pdf'
     | '/settings/tabs'
     | '/settings'
     | '/api/public/mail/cf-inbound'
@@ -334,6 +346,7 @@ export interface FileRouteTypes {
     | '/_authenticated/workspace'
     | '/_authenticated/settings/design'
     | '/_authenticated/settings/integrations'
+    | '/_authenticated/settings/pdf'
     | '/_authenticated/settings/tabs'
     | '/_authenticated/settings/'
     | '/api/public/mail/cf-inbound'
@@ -510,6 +523,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsTabsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/settings/pdf': {
+      id: '/_authenticated/settings/pdf'
+      path: '/settings/pdf'
+      fullPath: '/settings/pdf'
+      preLoaderRoute: typeof AuthenticatedSettingsPdfRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/settings/integrations': {
       id: '/_authenticated/settings/integrations'
       path: '/settings/integrations'
@@ -554,6 +574,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedWorkspaceRoute: typeof AuthenticatedWorkspaceRoute
   AuthenticatedSettingsDesignRoute: typeof AuthenticatedSettingsDesignRoute
   AuthenticatedSettingsIntegrationsRoute: typeof AuthenticatedSettingsIntegrationsRoute
+  AuthenticatedSettingsPdfRoute: typeof AuthenticatedSettingsPdfRoute
   AuthenticatedSettingsTabsRoute: typeof AuthenticatedSettingsTabsRoute
   AuthenticatedSettingsIndexRoute: typeof AuthenticatedSettingsIndexRoute
 }
@@ -579,6 +600,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsDesignRoute: AuthenticatedSettingsDesignRoute,
   AuthenticatedSettingsIntegrationsRoute:
     AuthenticatedSettingsIntegrationsRoute,
+  AuthenticatedSettingsPdfRoute: AuthenticatedSettingsPdfRoute,
   AuthenticatedSettingsTabsRoute: AuthenticatedSettingsTabsRoute,
   AuthenticatedSettingsIndexRoute: AuthenticatedSettingsIndexRoute,
 }

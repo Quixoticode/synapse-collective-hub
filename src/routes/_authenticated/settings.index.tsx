@@ -26,8 +26,10 @@ function applyTheme(t: "dark" | "light") {
 
 function SettingsIndex() {
   const navigate = useNavigate();
+  const quickIssueFn = useServerFn(quickLoginIssue);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [storageKeys, setStorageKeys] = useState<{ key: string; size: number }[]>([]);
+  const [quick, setQuick] = useState<{ code: string; expires_at: string } | null>(null);
   const session = typeof window !== "undefined" ? getSession() : null;
   const fp = typeof window !== "undefined" ? localStorage.getItem(FP_KEY) : null;
 
