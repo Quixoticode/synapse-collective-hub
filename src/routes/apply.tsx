@@ -173,20 +173,37 @@ function ApplyPage() {
           {apps.length === 0 && <div className="text-sm text-muted-foreground">Keine Bewerbungen.</div>}
           {apps.map((a) => {
             const pos = positions.find((p) => p.id === a.position_id);
+            const statusColor = a.status === "rejected" ? "text-rose-300 border-rose-400/40 bg-rose-500/10"
+              : a.status === "accepted" ? "text-emerald-300 border-emerald-400/40 bg-emerald-500/10"
+              : a.status === "hired" ? "text-cyan-300 border-cyan-400/40 bg-cyan-500/10"
+              : "text-muted-foreground";
             return (
-              <div key={a.id} className="syn-card p-3 space-y-2">
+              <div key={a.id} className={`syn-card p-3 space-y-2 ${a.status === "rejected" ? "opacity-70" : ""}`}>
                 <div className="flex items-start gap-2">
                   <Users className="h-4 w-4 mt-0.5" />
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-semibold">{a.applicant_name}</div>
-                    <div className="text-xs mono text-muted-foreground">{a.contact} · {new Date(a.created_at).toLocaleDateString()} · <span className="syn-chip text-[10px]">{a.status}</span></div>
+                    <div className="text-xs mono text-muted-foreground">{a.contact} · {new Date(a.created_at).toLocaleDateString()} · <span className={`inline-flex px-2 py-0.5 rounded-full border text-[10px] ${statusColor}`}>{a.status}</span></div>
                     {a.wish && <div className="text-xs mt-1">Wunsch: {a.wish}</div>}
-                    {a.note && <div className="text-xs text-muted-foreground mt-1">{a.note}</div>}
+                    {a.note && <div className="text-xs text-muted-foreground mt-1"><Markdown>{a.note}</Markdown></div>}
                   </div>
                 </div>
-                <button onClick={() => setHire({ position: pos, app: a })} className="syn-btn w-full text-xs" disabled={a.status === "hired"}>
-                  {a.status === "hired" ? "Bereits eingestellt" : "Einstellen"}
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  <button onClick={() => setHire({ position: pos, app: a })} className="syn-btn text-xs flex-1" disabled={a.status === "hired"}>
+                    <Check className="h-3.5 w-3.5" /> {a.status === "hired" ? "Eingestellt" : "Einstellen"}
+                  </button>
+                  {isLeitung && a.status !== "hired" && (
+                    a.status === "rejected" ? (
+                      <button onClick={async () => { const c = getCredentials(); if (!c) return; await statusFn({ data: { ...c, id: a.id, status: "pending" } }); await reload(); }} className="syn-btn-ghost text-xs">
+                        <RotateCcw className="h-3.5 w-3.5" /> Offen
+                      </button>
+                    ) : (
+                      <button onClick={async () => { if (!confirm("Bewerbung ablehnen?")) return; const c = getCredentials(); if (!c) return; await statusFn({ data: { ...c, id: a.id, status: "rejected" } }); await reload(); }} className="syn-btn-ghost text-xs" style={{ borderColor: "rgba(244,63,94,0.4)" }}>
+                        <Ban className="h-3.5 w-3.5" /> Ablehnen
+                      </button>
+                    )
+                  )}
+                </div>
               </div>
             );
           })}
