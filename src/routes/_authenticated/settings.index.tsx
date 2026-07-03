@@ -1,7 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Settings as SettingsIcon, Palette, Sun, Moon, Trash2, LogOut, Smartphone, MessageCircle, Phone, ArrowLeft } from "lucide-react";
-import { getSession, clearSession } from "@/lib/syn-session";
+import { useServerFn } from "@tanstack/react-start";
+import { Settings as SettingsIcon, Palette, Sun, Moon, Trash2, LogOut, Smartphone, MessageCircle, Phone, ArrowLeft, Zap, FileSignature } from "lucide-react";
+import { getSession, clearSession, getCredentials } from "@/lib/syn-session";
+import { quickLoginIssue } from "@/lib/quick-login.functions";
 
 export const Route = createFileRoute("/_authenticated/settings/")({
   ssr: false,
@@ -24,8 +26,10 @@ function applyTheme(t: "dark" | "light") {
 
 function SettingsIndex() {
   const navigate = useNavigate();
+  const quickIssueFn = useServerFn(quickLoginIssue);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [storageKeys, setStorageKeys] = useState<{ key: string; size: number }[]>([]);
+  const [quick, setQuick] = useState<{ code: string; expires_at: string } | null>(null);
   const session = typeof window !== "undefined" ? getSession() : null;
   const fp = typeof window !== "undefined" ? localStorage.getItem(FP_KEY) : null;
 
@@ -58,13 +62,33 @@ function SettingsIndex() {
 
       <section className="syn-card p-4 space-y-3">
         <div className="flex items-center gap-2 font-semibold text-sm"><Palette className="h-4 w-4" /> Design</div>
-        <p className="text-xs text-muted-foreground">Erscheinungsbild, Hintergrund-Animation & Akzente.</p>
+        <p className="text-xs text-muted-foreground">Erscheinungsbild, Skalierung, Dichte & Animationen.</p>
         <div className="flex gap-2 flex-wrap">
           <Link to="/settings/design" className="syn-btn"><Palette className="h-4 w-4" /> Design-Einstellungen</Link>
           <button onClick={toggleTheme} className="syn-btn-ghost">
             {theme === "dark" ? <><Sun className="h-4 w-4" /> Light-Mode</> : <><Moon className="h-4 w-4" /> Dark-Mode</>}
           </button>
+          {(session?.isSuperuser || (session?.hl ?? 0) >= 5) && (
+            <Link to="/settings/pdf" className="syn-btn-ghost"><FileSignature className="h-4 w-4" /> PDF-Vorlagen</Link>
+          )}
         </div>
+      </section>
+
+      <section className="syn-card p-4 space-y-2">
+        <div className="flex items-center gap-2 font-semibold text-sm"><Zap className="h-4 w-4" style={{ color: "var(--synapse)" }} /> Quick-Login für mich</div>
+        <p className="text-xs text-muted-foreground">Erzeuge einen 6-stelligen Einmal-Code (15 Min gültig) für den Login auf einem Zweitgerät ohne PIK.</p>
+        <button className="syn-btn-ghost text-xs" onClick={async () => {
+          const c = getCredentials(); if (!c || !session) return;
+          try { const r = await quickIssueFn({ data: { ...c, target_slid: session.slid } }); setQuick(r); }
+          catch (e) { alert(e instanceof Error ? e.message : "Fehler."); }
+        }}><Zap className="h-3.5 w-3.5" /> Code erzeugen</button>
+        {quick && (
+          <div className="mt-2 p-3 rounded-2xl bg-white/5 text-center">
+            <div className="text-[10px] mono uppercase text-muted-foreground">Dein Code</div>
+            <div className="text-3xl font-bold mono tracking-widest" style={{ color: "var(--synapse)" }}>{quick.code}</div>
+            <div className="text-[10px] mono text-muted-foreground">gültig bis {new Date(quick.expires_at).toLocaleTimeString()}</div>
+          </div>
+        )}
       </section>
 
       <section className="syn-card p-4 space-y-2">

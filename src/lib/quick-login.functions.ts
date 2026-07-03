@@ -17,7 +17,8 @@ export const quickLoginIssue = createServerFn({ method: "POST" })
   }).parse(d))
   .handler(async ({ data }) => {
     const me = await actor(data.slid, data.pik);
-    if (!me.isSuperuser && me.hl < 5) throw new Error("Nur HL 5+ darf Quick-Login-Codes ausstellen.");
+    const isSelf = me.slid === data.target_slid;
+    if (!isSelf && !me.isSuperuser && me.hl < 5) throw new Error("Nur HL 5+ darf fremde Quick-Login-Codes ausstellen.");
     const sb = await admin();
     const { data: target } = await sb.from("employees").select("slid").eq("slid", data.target_slid).maybeSingle();
     if (!target) throw new Error("Ziel-Mitarbeiter unbekannt.");

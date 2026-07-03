@@ -15,6 +15,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedWorkspaceRouteImport } from './routes/_authenticated/workspace'
 import { Route as AuthenticatedVaultRouteImport } from './routes/_authenticated/vault'
+import { Route as AuthenticatedTeamsRouteImport } from './routes/_authenticated/teams'
 import { Route as AuthenticatedTasksRouteImport } from './routes/_authenticated/tasks'
 import { Route as AuthenticatedSupportRouteImport } from './routes/_authenticated/support'
 import { Route as AuthenticatedSecurityRouteImport } from './routes/_authenticated/security'
@@ -31,6 +32,7 @@ import { Route as AuthenticatedBasicsRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedAppsRouteImport } from './routes/_authenticated/apps'
 import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings.index'
 import { Route as AuthenticatedSettingsTabsRouteImport } from './routes/_authenticated/settings.tabs'
+import { Route as AuthenticatedSettingsPdfRouteImport } from './routes/_authenticated/settings.pdf'
 import { Route as AuthenticatedSettingsIntegrationsRouteImport } from './routes/_authenticated/settings.integrations'
 import { Route as AuthenticatedSettingsDesignRouteImport } from './routes/_authenticated/settings.design'
 import { Route as ApiPublicMailCfInboundRouteImport } from './routes/api/public/mail/cf-inbound'
@@ -62,6 +64,11 @@ const AuthenticatedWorkspaceRoute = AuthenticatedWorkspaceRouteImport.update({
 const AuthenticatedVaultRoute = AuthenticatedVaultRouteImport.update({
   id: '/vault',
   path: '/vault',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedTeamsRoute = AuthenticatedTeamsRouteImport.update({
+  id: '/teams',
+  path: '/teams',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedTasksRoute = AuthenticatedTasksRouteImport.update({
@@ -147,6 +154,12 @@ const AuthenticatedSettingsTabsRoute =
     path: '/settings/tabs',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedSettingsPdfRoute =
+  AuthenticatedSettingsPdfRouteImport.update({
+    id: '/settings/pdf',
+    path: '/settings/pdf',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedSettingsIntegrationsRoute =
   AuthenticatedSettingsIntegrationsRouteImport.update({
     id: '/settings/integrations',
@@ -183,10 +196,12 @@ export interface FileRoutesByFullPath {
   '/security': typeof AuthenticatedSecurityRoute
   '/support': typeof AuthenticatedSupportRoute
   '/tasks': typeof AuthenticatedTasksRoute
+  '/teams': typeof AuthenticatedTeamsRoute
   '/vault': typeof AuthenticatedVaultRoute
   '/workspace': typeof AuthenticatedWorkspaceRoute
   '/settings/design': typeof AuthenticatedSettingsDesignRoute
   '/settings/integrations': typeof AuthenticatedSettingsIntegrationsRoute
+  '/settings/pdf': typeof AuthenticatedSettingsPdfRoute
   '/settings/tabs': typeof AuthenticatedSettingsTabsRoute
   '/settings/': typeof AuthenticatedSettingsIndexRoute
   '/api/public/mail/cf-inbound': typeof ApiPublicMailCfInboundRoute
@@ -209,10 +224,12 @@ export interface FileRoutesByTo {
   '/security': typeof AuthenticatedSecurityRoute
   '/support': typeof AuthenticatedSupportRoute
   '/tasks': typeof AuthenticatedTasksRoute
+  '/teams': typeof AuthenticatedTeamsRoute
   '/vault': typeof AuthenticatedVaultRoute
   '/workspace': typeof AuthenticatedWorkspaceRoute
   '/settings/design': typeof AuthenticatedSettingsDesignRoute
   '/settings/integrations': typeof AuthenticatedSettingsIntegrationsRoute
+  '/settings/pdf': typeof AuthenticatedSettingsPdfRoute
   '/settings/tabs': typeof AuthenticatedSettingsTabsRoute
   '/settings': typeof AuthenticatedSettingsIndexRoute
   '/api/public/mail/cf-inbound': typeof ApiPublicMailCfInboundRoute
@@ -237,10 +254,12 @@ export interface FileRoutesById {
   '/_authenticated/security': typeof AuthenticatedSecurityRoute
   '/_authenticated/support': typeof AuthenticatedSupportRoute
   '/_authenticated/tasks': typeof AuthenticatedTasksRoute
+  '/_authenticated/teams': typeof AuthenticatedTeamsRoute
   '/_authenticated/vault': typeof AuthenticatedVaultRoute
   '/_authenticated/workspace': typeof AuthenticatedWorkspaceRoute
   '/_authenticated/settings/design': typeof AuthenticatedSettingsDesignRoute
   '/_authenticated/settings/integrations': typeof AuthenticatedSettingsIntegrationsRoute
+  '/_authenticated/settings/pdf': typeof AuthenticatedSettingsPdfRoute
   '/_authenticated/settings/tabs': typeof AuthenticatedSettingsTabsRoute
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
   '/api/public/mail/cf-inbound': typeof ApiPublicMailCfInboundRoute
@@ -265,10 +284,12 @@ export interface FileRouteTypes {
     | '/security'
     | '/support'
     | '/tasks'
+    | '/teams'
     | '/vault'
     | '/workspace'
     | '/settings/design'
     | '/settings/integrations'
+    | '/settings/pdf'
     | '/settings/tabs'
     | '/settings/'
     | '/api/public/mail/cf-inbound'
@@ -291,10 +312,12 @@ export interface FileRouteTypes {
     | '/security'
     | '/support'
     | '/tasks'
+    | '/teams'
     | '/vault'
     | '/workspace'
     | '/settings/design'
     | '/settings/integrations'
+    | '/settings/pdf'
     | '/settings/tabs'
     | '/settings'
     | '/api/public/mail/cf-inbound'
@@ -318,10 +341,12 @@ export interface FileRouteTypes {
     | '/_authenticated/security'
     | '/_authenticated/support'
     | '/_authenticated/tasks'
+    | '/_authenticated/teams'
     | '/_authenticated/vault'
     | '/_authenticated/workspace'
     | '/_authenticated/settings/design'
     | '/_authenticated/settings/integrations'
+    | '/_authenticated/settings/pdf'
     | '/_authenticated/settings/tabs'
     | '/_authenticated/settings/'
     | '/api/public/mail/cf-inbound'
@@ -377,6 +402,13 @@ declare module '@tanstack/react-router' {
       path: '/vault'
       fullPath: '/vault'
       preLoaderRoute: typeof AuthenticatedVaultRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/teams': {
+      id: '/_authenticated/teams'
+      path: '/teams'
+      fullPath: '/teams'
+      preLoaderRoute: typeof AuthenticatedTeamsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/tasks': {
@@ -491,6 +523,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsTabsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/settings/pdf': {
+      id: '/_authenticated/settings/pdf'
+      path: '/settings/pdf'
+      fullPath: '/settings/pdf'
+      preLoaderRoute: typeof AuthenticatedSettingsPdfRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/settings/integrations': {
       id: '/_authenticated/settings/integrations'
       path: '/settings/integrations'
@@ -530,10 +569,12 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSecurityRoute: typeof AuthenticatedSecurityRoute
   AuthenticatedSupportRoute: typeof AuthenticatedSupportRoute
   AuthenticatedTasksRoute: typeof AuthenticatedTasksRoute
+  AuthenticatedTeamsRoute: typeof AuthenticatedTeamsRoute
   AuthenticatedVaultRoute: typeof AuthenticatedVaultRoute
   AuthenticatedWorkspaceRoute: typeof AuthenticatedWorkspaceRoute
   AuthenticatedSettingsDesignRoute: typeof AuthenticatedSettingsDesignRoute
   AuthenticatedSettingsIntegrationsRoute: typeof AuthenticatedSettingsIntegrationsRoute
+  AuthenticatedSettingsPdfRoute: typeof AuthenticatedSettingsPdfRoute
   AuthenticatedSettingsTabsRoute: typeof AuthenticatedSettingsTabsRoute
   AuthenticatedSettingsIndexRoute: typeof AuthenticatedSettingsIndexRoute
 }
@@ -553,11 +594,13 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSecurityRoute: AuthenticatedSecurityRoute,
   AuthenticatedSupportRoute: AuthenticatedSupportRoute,
   AuthenticatedTasksRoute: AuthenticatedTasksRoute,
+  AuthenticatedTeamsRoute: AuthenticatedTeamsRoute,
   AuthenticatedVaultRoute: AuthenticatedVaultRoute,
   AuthenticatedWorkspaceRoute: AuthenticatedWorkspaceRoute,
   AuthenticatedSettingsDesignRoute: AuthenticatedSettingsDesignRoute,
   AuthenticatedSettingsIntegrationsRoute:
     AuthenticatedSettingsIntegrationsRoute,
+  AuthenticatedSettingsPdfRoute: AuthenticatedSettingsPdfRoute,
   AuthenticatedSettingsTabsRoute: AuthenticatedSettingsTabsRoute,
   AuthenticatedSettingsIndexRoute: AuthenticatedSettingsIndexRoute,
 }
@@ -575,13 +618,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
