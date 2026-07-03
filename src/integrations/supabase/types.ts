@@ -747,6 +747,42 @@ export type Database = {
         }
         Relationships: []
       }
+      pdf_templates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          css: string | null
+          html: string
+          id: string
+          is_default: boolean
+          kind: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          css?: string | null
+          html: string
+          id?: string
+          is_default?: boolean
+          kind?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          css?: string | null
+          html?: string
+          id?: string
+          is_default?: boolean
+          kind?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       push_subscriptions: {
         Row: {
           auth: string
@@ -1009,6 +1045,77 @@ export type Database = {
           priority?: string
           status?: string
           title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      team_members: {
+        Row: {
+          created_at: string
+          hl_at_join: number | null
+          id: string
+          role: string | null
+          slid: string
+          team_id: string
+        }
+        Insert: {
+          created_at?: string
+          hl_at_join?: number | null
+          id?: string
+          role?: string | null
+          slid: string
+          team_id: string
+        }
+        Update: {
+          created_at?: string
+          hl_at_join?: number | null
+          id?: string
+          role?: string | null
+          slid?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_members_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teams: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          department: string | null
+          description: string | null
+          id: string
+          kind: string
+          leader_slid: string | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          department?: string | null
+          description?: string | null
+          id?: string
+          kind?: string
+          leader_slid?: string | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          department?: string | null
+          description?: string | null
+          id?: string
+          kind?: string
+          leader_slid?: string | null
+          name?: string
           updated_at?: string
         }
         Relationships: []

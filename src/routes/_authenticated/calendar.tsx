@@ -62,7 +62,10 @@ function CalendarPage() {
     await saveFn({ data: {
       ...c, id: editing.id, title: editing.title!,
       description: editing.description || null, location: editing.location || null,
-      starts_at: editing.starts_at!, ends_at: editing.ends_at!,
+      // Convert datetime-local (naive, local wall time) to ISO with the browser's offset,
+      // so Postgres timestamptz stores the exact instant the user picked.
+      starts_at: toIsoLocal(editing.starts_at as string),
+      ends_at: toIsoLocal(editing.ends_at as string),
       all_day: !!editing.all_day, visibility: (editing.visibility || "team") as CalEv["visibility"], color: editing.color || null,
     } });
     setEditing(null); await reload();
@@ -170,4 +173,22 @@ function CalendarPage() {
 function toLocal(d: Date) {
   const tz = d.getTimezoneOffset() * 60000;
   return new Date(d.getTime() - tz).toISOString().slice(0,16);
+}
+
+// Take a naive "YYYY-MM-DDTHH:mm" string (as datetime-local returns) and format
+// it as an ISO string with the browser's current UTC offset, preserving the
+// wall-clock time the user picked instead of shifting it through UTC.
+function toIsoLocal(local: string) {
+  if (!local) return new Date().toISOString();
+  const [d, t] = local.split("T");
+  const [y, mo, day] = d.split("-").map(Number);
+  const [hh, mm] = (t || "00:00").split(":").map(Number);
+  const dt = new Date(y, (mo || 1) - 1, day || 1, hh || 0, mm || 0, 0);
+  const off = -dt.getTimezoneOffset();
+  const sign = off >= 0 ? "+" : "-";
+  const abs = Math.abs(off);
+  const oh = String(Math.floor(abs / 60)).padStart(2, "0");
+  const om = String(abs % 60).padStart(2, "0");
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}:00${sign}${oh}:${om}`;
 }

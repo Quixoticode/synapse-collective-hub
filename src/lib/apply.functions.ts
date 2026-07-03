@@ -128,3 +128,18 @@ export const applyHire = createServerFn({ method: "POST" })
     }
     return { employee: emp, credentials: { slid, pik, regid, cip } };
   });
+
+// ---- Auth: set application status (accept / reject / reopen) ----
+export const applyApplicationSetStatus = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => creds.extend({
+    id: z.string().uuid(),
+    status: z.enum(["pending","accepted","rejected"]),
+  }).parse(d))
+  .handler(async ({ data }) => {
+    const me = await actor(data.slid, data.pik);
+    if (!me.isSuperuser && me.hl < 5 && me.kind !== "service") throw new Error("Nur Leitung darf Bewerbungen entscheiden.");
+    const sb = await admin();
+    const { error } = await sb.from("apply_applications").update({ status: data.status }).eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
