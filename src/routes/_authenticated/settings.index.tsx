@@ -1,7 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Settings as SettingsIcon, Palette, Sun, Moon, Trash2, LogOut, Smartphone, MessageCircle, Phone, ArrowLeft } from "lucide-react";
-import { getSession, clearSession } from "@/lib/syn-session";
+import { useServerFn } from "@tanstack/react-start";
+import { Settings as SettingsIcon, Palette, Sun, Moon, Trash2, LogOut, Smartphone, MessageCircle, Phone, ArrowLeft, Zap, FileSignature } from "lucide-react";
+import { getSession, clearSession, getCredentials } from "@/lib/syn-session";
+import { quickLoginIssue } from "@/lib/quick-login.functions";
 
 export const Route = createFileRoute("/_authenticated/settings/")({
   ssr: false,
