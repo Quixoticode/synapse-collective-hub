@@ -32,6 +32,7 @@ function ApplyPage() {
   const delFn = useServerFn(applyPositionDelete);
   const appsListFn = useServerFn(applyApplicationsList);
   const hireFn = useServerFn(applyHire);
+  const statusFn = useServerFn(applyApplicationSetStatus);
 
   const [positions, setPositions] = useState<Position[]>([]);
   const [apps, setApps] = useState<Application[]>([]);
