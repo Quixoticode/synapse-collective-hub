@@ -11,6 +11,7 @@ import { listMyDevices } from "@/lib/devices.functions";
 import { StartupAnimation } from "@/components/StartupAnimation";
 import { UpdateScreen } from "@/components/UpdateScreen";
 import { BanScreen } from "@/components/BanScreen";
+import { WorkTimeAttentionCheck } from "@/components/WorkTimeAttentionCheck";
 import { STARTUP_PLAYED_KEY } from "@/lib/app-version";
 
 const FP_KEY = "xsyna.deviceFp.v1";
