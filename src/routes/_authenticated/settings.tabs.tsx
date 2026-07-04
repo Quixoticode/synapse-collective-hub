@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Settings, GripVertical } from "lucide-react";
+import { Settings, ChevronUp, ChevronDown } from "lucide-react";
 import { tabPrefsForMe, tabPermsForMe, tabPrefSet } from "@/lib/permissions.functions";
 import { TABS } from "@/lib/tabs-registry";
 import { getCredentials, getSession } from "@/lib/syn-session";
