@@ -115,6 +115,8 @@ function AuthedLayout() {
         }} />
       )}
       <UpdateScreen />
+      <WorkTimeAttentionCheck />
+
 
       <div className="min-h-[100dvh] flex">
         {/* Desktop sidebar */}
