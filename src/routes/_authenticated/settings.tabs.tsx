@@ -42,7 +42,8 @@ function TabPrefsPage() {
     if (!allowed(key)) return;
     const cur = visible(key);
     const c = getCredentials(); if (!c) return;
-    await setFn({ data: { ...c, tab_key: key, visible: !cur, pinned: false, sort_order: 0 } });
+    const p = prefs.find((x) => x.tab_key === key);
+    await setFn({ data: { ...c, tab_key: key, visible: !cur, pinned: false, sort_order: p?.sort_order ?? 0 } });
     await reload();
   }
 
@@ -52,18 +53,44 @@ function TabPrefsPage() {
     return true;
   });
 
+  // Ordered by current sort_order (fallback: registry order)
+  const ordered = [...eligible].sort((a, b) => {
+    const sa = prefs.find((x) => x.tab_key === a.key)?.sort_order ?? 0;
+    const sb = prefs.find((x) => x.tab_key === b.key)?.sort_order ?? 0;
+    return sa - sb;
+  });
+
+  async function move(key: string, dir: -1 | 1) {
+    const c = getCredentials(); if (!c) return;
+    const idx = ordered.findIndex((x) => x.key === key);
+    const swap = idx + dir;
+    if (idx < 0 || swap < 0 || swap >= ordered.length) return;
+    // assign sequential sort_order to make swap deterministic
+    const list = ordered.map((t, i) => ({ key: t.key, order: i * 10 }));
+    list[idx].order = swap * 10;
+    list[swap].order = idx * 10;
+    for (const item of list) {
+      const p = prefs.find((x) => x.tab_key === item.key);
+      await setFn({ data: { ...c, tab_key: item.key, visible: p?.visible ?? true, pinned: false, sort_order: item.order } });
+    }
+    await reload();
+  }
+
   return (
     <div className="p-4 sm:p-6 max-w-3xl mx-auto pb-28 md:pb-8">
       <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2 mb-1"><Settings className="h-5 w-5" /> Meine Tabs</h1>
-      <p className="text-xs text-muted-foreground mb-5">Bestimme, welche Tabs in Sidebar, Bottom-Nav und App-Übersicht erscheinen.</p>
+      <p className="text-xs text-muted-foreground mb-5">Sichtbarkeit umschalten, Reihenfolge per Pfeiltasten ändern (kein Drag-and-Drop nötig).</p>
 
       <div className="syn-card p-3 space-y-1">
-        {eligible.map((t) => {
+        {ordered.map((t, i) => {
           const can = allowed(t.key);
           const vis = visible(t.key);
           return (
-            <div key={t.key} className={`flex items-center gap-3 p-2 rounded-xl border ${can ? "border-border" : "border-rose-500/30 opacity-60"}`}>
-              <GripVertical className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            <div key={t.key} className={`flex items-center gap-2 p-2 rounded-xl border ${can ? "border-border" : "border-rose-500/30 opacity-60"}`}>
+              <div className="flex flex-col shrink-0">
+                <button disabled={i === 0} onClick={() => void move(t.key, -1)} className="syn-btn-ghost p-0.5 disabled:opacity-30"><ChevronUp className="h-3.5 w-3.5" /></button>
+                <button disabled={i === ordered.length - 1} onClick={() => void move(t.key, 1)} className="syn-btn-ghost p-0.5 disabled:opacity-30"><ChevronDown className="h-3.5 w-3.5" /></button>
+              </div>
               <t.icon className="h-4 w-4 shrink-0" />
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium truncate">{t.label}</div>
@@ -79,3 +106,4 @@ function TabPrefsPage() {
     </div>
   );
 }
+
