@@ -12,7 +12,7 @@ export const teamsList = createServerFn({ method: "POST" })
     await actor(data.slid, data.pik);
     const sb = await admin();
     const [{ data: teams }, { data: members }] = await Promise.all([
-      sb.from("teams").select("*").order("kind").order("name"),
+      sb.from("teams").select("*").order("name"),
       sb.from("team_members").select("*"),
     ]);
     return { teams: teams ?? [], members: members ?? [] };
@@ -22,22 +22,25 @@ export const teamUpsert = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => creds.extend({
     id: z.string().uuid().optional(),
     name: z.string().min(1),
-    kind: z.enum(["service","support","labs","department"]),
-    department: z.string().optional().nullable(),
+    parent_id: z.string().uuid().nullable().optional(),
+    min_hl: z.number().int().min(1).max(9).nullable().optional(),
     description: z.string().optional().nullable(),
     leader_slid: z.string().optional().nullable(),
   }).parse(d))
   .handler(async ({ data }) => {
     const me = await actor(data.slid, data.pik);
-    if (!me.isSuperuser && me.hl < 4) throw new Error("Nur Abteilungsleiter (HL 4+) dürfen Teams anlegen/ändern.");
+    if (!me.isSuperuser && me.hl < 4) throw new Error("Nur HL 4+ dürfen Teams anlegen/ändern.");
     const sb = await admin();
     const payload = {
-      name: data.name, kind: data.kind,
-      department: data.department || null, description: data.description || null,
+      name: data.name,
+      parent_id: data.parent_id || null,
+      min_hl: data.min_hl ?? null,
+      description: data.description || null,
       leader_slid: data.leader_slid || null,
       created_by: me.slid,
     };
     if (data.id) {
+      if (data.parent_id === data.id) throw new Error("Ein Team kann nicht sein eigenes Parent sein.");
       const { data: u, error } = await sb.from("teams").update(payload).eq("id", data.id).select().single();
       if (error) throw new Error(error.message); return u;
     }
@@ -64,13 +67,15 @@ export const teamMemberAdd = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const me = await actor(data.slid, data.pik);
     const sb = await admin();
-    // HL 2+ (Teamleiter) or leader of that team, or HL 4+
-    const { data: team } = await sb.from("teams").select("leader_slid").eq("id", data.team_id).maybeSingle();
+    const { data: team } = await sb.from("teams").select("leader_slid,min_hl").eq("id", data.team_id).maybeSingle();
     const isLeaderOfTeam = team?.leader_slid === me.slid;
     if (!me.isSuperuser && me.hl < 4 && !(me.hl >= 2 && isLeaderOfTeam)) {
       throw new Error("Keine Berechtigung, Mitglieder hinzuzufügen.");
     }
     const { data: emp } = await sb.from("employees").select("hl").eq("slid", data.target_slid).maybeSingle();
+    if (team?.min_hl && (emp?.hl ?? 0) < team.min_hl) {
+      throw new Error(`Diese Person erfüllt die Mindest-HL ${team.min_hl} nicht.`);
+    }
     const { error } = await sb.from("team_members").insert({
       team_id: data.team_id, slid: data.target_slid, role: data.role || null, hl_at_join: emp?.hl ?? null,
     });

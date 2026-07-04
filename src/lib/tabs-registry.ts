@@ -2,13 +2,14 @@
 import {
   LayoutGrid, Contact, MessageSquare, KeyRound, FileText, BookOpen,
   Users, Plug, Calendar, LifeBuoy, Wallet, Newspaper, ShieldCheck, Settings,
-  CheckSquare, Bell, Palette, ShieldAlert, UserPlus, UsersRound, FileSignature, type LucideIcon,
+  CheckSquare, Bell, Palette, ShieldAlert, UserPlus, UsersRound, FileSignature,
+  Home, Clock, type LucideIcon,
 } from "lucide-react";
 
 export type TabKey =
-  | "apps" | "contacts" | "chat" | "vault" | "workspace" | "basics"
+  | "home" | "apps" | "contacts" | "chat" | "vault" | "workspace" | "basics"
   | "calendar" | "support" | "finances" | "news" | "collective" | "tasks"
-  | "security" | "notify" | "apply" | "teams"
+  | "security" | "notify" | "apply" | "teams" | "worktime"
   | "permissions" | "settings" | "settings.tabs" | "settings.integrations" | "settings.design" | "settings.pdf";
 
 export type TabDef = {
@@ -24,7 +25,9 @@ export type TabDef = {
 };
 
 export const TABS: TabDef[] = [
-  { key: "apps",       to: "/apps",       label: "Apps",       desc: "Übersicht",         icon: LayoutGrid,   accent: "from-cyan-500/30 to-violet-500/20", category: "core" },
+  { key: "home",       to: "/home",       label: "Start",      desc: "Übersicht heute",   icon: Home,         accent: "from-cyan-500/30 to-emerald-500/20", category: "core" },
+  { key: "apps",       to: "/apps",       label: "Apps",       desc: "Alle Anwendungen",  icon: LayoutGrid,   accent: "from-cyan-500/30 to-violet-500/20", category: "core" },
+  { key: "worktime",   to: "/worktime",   label: "WorkTime",   desc: "Arbeitszeit",       icon: Clock,        accent: "from-amber-500/30 to-cyan-500/20",  category: "core" },
   { key: "contacts",   to: "/contacts",   label: "Kontakte",   desc: "Kunden & Leads",    icon: Contact,      accent: "from-cyan-500/30 to-blue-500/20",   category: "core" },
   { key: "chat",       to: "/chat",       label: "Chat",       desc: "Team-Messaging",    icon: MessageSquare,accent: "from-emerald-500/30 to-cyan-500/20",category: "core" },
   { key: "vault",      to: "/vault",      label: "Tresor",     desc: "Passwort-Tresor",   icon: KeyRound,     accent: "from-amber-500/30 to-rose-500/20",  category: "core" },
