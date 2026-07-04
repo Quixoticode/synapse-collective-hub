@@ -13,6 +13,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ApplyRouteImport } from './routes/apply'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedWorktimeRouteImport } from './routes/_authenticated/worktime'
 import { Route as AuthenticatedWorkspaceRouteImport } from './routes/_authenticated/workspace'
 import { Route as AuthenticatedVaultRouteImport } from './routes/_authenticated/vault'
 import { Route as AuthenticatedTeamsRouteImport } from './routes/_authenticated/teams'
@@ -23,6 +24,7 @@ import { Route as AuthenticatedPermissionsRouteImport } from './routes/_authenti
 import { Route as AuthenticatedNotifyRouteImport } from './routes/_authenticated/notify'
 import { Route as AuthenticatedNewsRouteImport } from './routes/_authenticated/news'
 import { Route as AuthenticatedMailRouteImport } from './routes/_authenticated/mail'
+import { Route as AuthenticatedHomeRouteImport } from './routes/_authenticated/home'
 import { Route as AuthenticatedFinancesRouteImport } from './routes/_authenticated/finances'
 import { Route as AuthenticatedContactsRouteImport } from './routes/_authenticated/contacts'
 import { Route as AuthenticatedCollectiveRouteImport } from './routes/_authenticated/collective'
@@ -55,6 +57,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedWorktimeRoute = AuthenticatedWorktimeRouteImport.update({
+  id: '/worktime',
+  path: '/worktime',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedWorkspaceRoute = AuthenticatedWorkspaceRouteImport.update({
   id: '/workspace',
@@ -105,6 +112,11 @@ const AuthenticatedNewsRoute = AuthenticatedNewsRouteImport.update({
 const AuthenticatedMailRoute = AuthenticatedMailRouteImport.update({
   id: '/mail',
   path: '/mail',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedHomeRoute = AuthenticatedHomeRouteImport.update({
+  id: '/home',
+  path: '/home',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedFinancesRoute = AuthenticatedFinancesRouteImport.update({
@@ -189,6 +201,7 @@ export interface FileRoutesByFullPath {
   '/collective': typeof AuthenticatedCollectiveRoute
   '/contacts': typeof AuthenticatedContactsRoute
   '/finances': typeof AuthenticatedFinancesRoute
+  '/home': typeof AuthenticatedHomeRoute
   '/mail': typeof AuthenticatedMailRoute
   '/news': typeof AuthenticatedNewsRoute
   '/notify': typeof AuthenticatedNotifyRoute
@@ -199,6 +212,7 @@ export interface FileRoutesByFullPath {
   '/teams': typeof AuthenticatedTeamsRoute
   '/vault': typeof AuthenticatedVaultRoute
   '/workspace': typeof AuthenticatedWorkspaceRoute
+  '/worktime': typeof AuthenticatedWorktimeRoute
   '/settings/design': typeof AuthenticatedSettingsDesignRoute
   '/settings/integrations': typeof AuthenticatedSettingsIntegrationsRoute
   '/settings/pdf': typeof AuthenticatedSettingsPdfRoute
@@ -217,6 +231,7 @@ export interface FileRoutesByTo {
   '/collective': typeof AuthenticatedCollectiveRoute
   '/contacts': typeof AuthenticatedContactsRoute
   '/finances': typeof AuthenticatedFinancesRoute
+  '/home': typeof AuthenticatedHomeRoute
   '/mail': typeof AuthenticatedMailRoute
   '/news': typeof AuthenticatedNewsRoute
   '/notify': typeof AuthenticatedNotifyRoute
@@ -227,6 +242,7 @@ export interface FileRoutesByTo {
   '/teams': typeof AuthenticatedTeamsRoute
   '/vault': typeof AuthenticatedVaultRoute
   '/workspace': typeof AuthenticatedWorkspaceRoute
+  '/worktime': typeof AuthenticatedWorktimeRoute
   '/settings/design': typeof AuthenticatedSettingsDesignRoute
   '/settings/integrations': typeof AuthenticatedSettingsIntegrationsRoute
   '/settings/pdf': typeof AuthenticatedSettingsPdfRoute
@@ -247,6 +263,7 @@ export interface FileRoutesById {
   '/_authenticated/collective': typeof AuthenticatedCollectiveRoute
   '/_authenticated/contacts': typeof AuthenticatedContactsRoute
   '/_authenticated/finances': typeof AuthenticatedFinancesRoute
+  '/_authenticated/home': typeof AuthenticatedHomeRoute
   '/_authenticated/mail': typeof AuthenticatedMailRoute
   '/_authenticated/news': typeof AuthenticatedNewsRoute
   '/_authenticated/notify': typeof AuthenticatedNotifyRoute
@@ -257,6 +274,7 @@ export interface FileRoutesById {
   '/_authenticated/teams': typeof AuthenticatedTeamsRoute
   '/_authenticated/vault': typeof AuthenticatedVaultRoute
   '/_authenticated/workspace': typeof AuthenticatedWorkspaceRoute
+  '/_authenticated/worktime': typeof AuthenticatedWorktimeRoute
   '/_authenticated/settings/design': typeof AuthenticatedSettingsDesignRoute
   '/_authenticated/settings/integrations': typeof AuthenticatedSettingsIntegrationsRoute
   '/_authenticated/settings/pdf': typeof AuthenticatedSettingsPdfRoute
@@ -277,6 +295,7 @@ export interface FileRouteTypes {
     | '/collective'
     | '/contacts'
     | '/finances'
+    | '/home'
     | '/mail'
     | '/news'
     | '/notify'
@@ -287,6 +306,7 @@ export interface FileRouteTypes {
     | '/teams'
     | '/vault'
     | '/workspace'
+    | '/worktime'
     | '/settings/design'
     | '/settings/integrations'
     | '/settings/pdf'
@@ -305,6 +325,7 @@ export interface FileRouteTypes {
     | '/collective'
     | '/contacts'
     | '/finances'
+    | '/home'
     | '/mail'
     | '/news'
     | '/notify'
@@ -315,6 +336,7 @@ export interface FileRouteTypes {
     | '/teams'
     | '/vault'
     | '/workspace'
+    | '/worktime'
     | '/settings/design'
     | '/settings/integrations'
     | '/settings/pdf'
@@ -334,6 +356,7 @@ export interface FileRouteTypes {
     | '/_authenticated/collective'
     | '/_authenticated/contacts'
     | '/_authenticated/finances'
+    | '/_authenticated/home'
     | '/_authenticated/mail'
     | '/_authenticated/news'
     | '/_authenticated/notify'
@@ -344,6 +367,7 @@ export interface FileRouteTypes {
     | '/_authenticated/teams'
     | '/_authenticated/vault'
     | '/_authenticated/workspace'
+    | '/_authenticated/worktime'
     | '/_authenticated/settings/design'
     | '/_authenticated/settings/integrations'
     | '/_authenticated/settings/pdf'
@@ -389,6 +413,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/worktime': {
+      id: '/_authenticated/worktime'
+      path: '/worktime'
+      fullPath: '/worktime'
+      preLoaderRoute: typeof AuthenticatedWorktimeRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/workspace': {
       id: '/_authenticated/workspace'
@@ -458,6 +489,13 @@ declare module '@tanstack/react-router' {
       path: '/mail'
       fullPath: '/mail'
       preLoaderRoute: typeof AuthenticatedMailRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/home': {
+      id: '/_authenticated/home'
+      path: '/home'
+      fullPath: '/home'
+      preLoaderRoute: typeof AuthenticatedHomeRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/finances': {
@@ -562,6 +600,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCollectiveRoute: typeof AuthenticatedCollectiveRoute
   AuthenticatedContactsRoute: typeof AuthenticatedContactsRoute
   AuthenticatedFinancesRoute: typeof AuthenticatedFinancesRoute
+  AuthenticatedHomeRoute: typeof AuthenticatedHomeRoute
   AuthenticatedMailRoute: typeof AuthenticatedMailRoute
   AuthenticatedNewsRoute: typeof AuthenticatedNewsRoute
   AuthenticatedNotifyRoute: typeof AuthenticatedNotifyRoute
@@ -572,6 +611,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedTeamsRoute: typeof AuthenticatedTeamsRoute
   AuthenticatedVaultRoute: typeof AuthenticatedVaultRoute
   AuthenticatedWorkspaceRoute: typeof AuthenticatedWorkspaceRoute
+  AuthenticatedWorktimeRoute: typeof AuthenticatedWorktimeRoute
   AuthenticatedSettingsDesignRoute: typeof AuthenticatedSettingsDesignRoute
   AuthenticatedSettingsIntegrationsRoute: typeof AuthenticatedSettingsIntegrationsRoute
   AuthenticatedSettingsPdfRoute: typeof AuthenticatedSettingsPdfRoute
@@ -587,6 +627,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCollectiveRoute: AuthenticatedCollectiveRoute,
   AuthenticatedContactsRoute: AuthenticatedContactsRoute,
   AuthenticatedFinancesRoute: AuthenticatedFinancesRoute,
+  AuthenticatedHomeRoute: AuthenticatedHomeRoute,
   AuthenticatedMailRoute: AuthenticatedMailRoute,
   AuthenticatedNewsRoute: AuthenticatedNewsRoute,
   AuthenticatedNotifyRoute: AuthenticatedNotifyRoute,
@@ -597,6 +638,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedTeamsRoute: AuthenticatedTeamsRoute,
   AuthenticatedVaultRoute: AuthenticatedVaultRoute,
   AuthenticatedWorkspaceRoute: AuthenticatedWorkspaceRoute,
+  AuthenticatedWorktimeRoute: AuthenticatedWorktimeRoute,
   AuthenticatedSettingsDesignRoute: AuthenticatedSettingsDesignRoute,
   AuthenticatedSettingsIntegrationsRoute:
     AuthenticatedSettingsIntegrationsRoute,

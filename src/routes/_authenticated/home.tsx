@@ -16,7 +16,7 @@ export const Route = createFileRoute("/_authenticated/home")({
 
 type Task = { id: string; title: string; status: string; priority: string; due_at: string | null; assignee_slid: string };
 type Event = { id: string; title: string; starts_at: string; ends_at: string; location: string | null };
-type Roadmap = { id: string; title: string; status: string; priority: string | null; description: string | null };
+type Roadmap = { id: string; title: string; status: string; description: string | null; sort_order?: number };
 type Shift = { id: string; slid: string; starts_at: string; ends_at: string; note: string | null };
 type Session = { id: string; started_at: string; status: string };
 
