@@ -66,7 +66,7 @@ function HomePage() {
       ]);
       setTasks(tk.filter((x) => x.status !== "done" && x.assignee_slid === s?.slid).slice(0, 5));
       setEvents(ev.slice(0, 5));
-      setRoadmap(rm.filter((x) => (x.priority === "high" || x.priority === "important") && x.status !== "done").slice(0, 3));
+      setRoadmap(rm.filter((x) => x.status !== "done" && x.status !== "shipped").slice(0, 3));
       setShifts(sh);
       setActive(ac);
     } catch { /* tolerate */ }
