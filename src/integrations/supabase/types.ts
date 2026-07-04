@@ -1088,37 +1088,45 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
-          department: string | null
           description: string | null
           id: string
-          kind: string
           leader_slid: string | null
+          min_hl: number | null
           name: string
+          parent_id: string | null
           updated_at: string
         }
         Insert: {
           created_at?: string
           created_by?: string | null
-          department?: string | null
           description?: string | null
           id?: string
-          kind?: string
           leader_slid?: string | null
+          min_hl?: number | null
           name: string
+          parent_id?: string | null
           updated_at?: string
         }
         Update: {
           created_at?: string
           created_by?: string | null
-          department?: string | null
           description?: string | null
           id?: string
-          kind?: string
           leader_slid?: string | null
+          min_hl?: number | null
           name?: string
+          parent_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "teams_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_bans: {
         Row: {
@@ -1316,6 +1324,86 @@ export type Database = {
             referencedColumns: ["slid"]
           },
         ]
+      }
+      work_sessions: {
+        Row: {
+          created_at: string
+          ended_at: string | null
+          id: string
+          invalidated_reason: string | null
+          last_ping_at: string
+          shift_id: string | null
+          slid: string
+          started_at: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          invalidated_reason?: string | null
+          last_ping_at?: string
+          shift_id?: string | null
+          slid: string
+          started_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          invalidated_reason?: string | null
+          last_ping_at?: string
+          shift_id?: string | null
+          slid?: string
+          started_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_sessions_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "work_shifts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      work_shifts: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          ends_at: string
+          id: string
+          note: string | null
+          slid: string
+          starts_at: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          ends_at: string
+          id?: string
+          note?: string | null
+          slid: string
+          starts_at: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          ends_at?: string
+          id?: string
+          note?: string | null
+          slid?: string
+          starts_at?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       workspace_docs: {
         Row: {
