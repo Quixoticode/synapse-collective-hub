@@ -288,3 +288,53 @@ html.light {
   0%, 100% { transform: scale(0.9); filter: brightness(1); }
   50% { transform: scale(1.15); filter: brightness(1.3); }
 }
+
+/* ---- Markdown renderer (`.syn-markdown`) ---- */
+.syn-markdown { color: var(--color-foreground); font-size: 0.925rem; line-height: 1.65; word-break: break-word; }
+.syn-markdown > * + * { margin-top: 0.75em; }
+.syn-markdown h1 { font-size: 1.75rem; font-weight: 700; letter-spacing: -0.01em; margin-top: 1.2em; line-height: 1.2; }
+.syn-markdown h2 { font-size: 1.35rem; font-weight: 700; letter-spacing: -0.01em; margin-top: 1.1em; line-height: 1.25; }
+.syn-markdown h3 { font-size: 1.125rem; font-weight: 600; margin-top: 1em; }
+.syn-markdown h4 { font-size: 1rem; font-weight: 600; margin-top: 0.9em; color: var(--color-muted-foreground); }
+.syn-markdown h5, .syn-markdown h6 { font-size: 0.9rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: var(--color-muted-foreground); }
+.syn-markdown p { margin: 0; }
+.syn-markdown strong { font-weight: 700; color: var(--color-foreground); }
+.syn-markdown em { font-style: italic; }
+.syn-markdown del { text-decoration: line-through; opacity: 0.6; }
+.syn-markdown ul { list-style: disc; padding-left: 1.4rem; }
+.syn-markdown ol { list-style: decimal; padding-left: 1.4rem; }
+.syn-markdown ul ul, .syn-markdown ol ol, .syn-markdown ul ol, .syn-markdown ol ul { margin-top: 0.35em; }
+.syn-markdown li { margin: 0.25em 0; }
+.syn-markdown li > p { display: inline; }
+.syn-markdown blockquote {
+  border-left: 3px solid var(--synapse);
+  padding: 0.4rem 0.9rem;
+  background: rgba(0,163,255,0.06);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  color: var(--color-muted-foreground);
+}
+.syn-markdown blockquote > * + * { margin-top: 0.4em; }
+.syn-markdown hr { border: 0; border-top: 1px solid var(--border); margin: 1.5em 0; }
+.syn-markdown img { max-width: 100%; border-radius: var(--radius-lg); border: 1px solid var(--border); }
+.syn-markdown table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.syn-markdown th, .syn-markdown td { padding: 0.5rem 0.7rem; border: 1px solid var(--border); text-align: left; }
+.syn-markdown th { background: rgba(0,163,255,0.08); font-weight: 600; }
+.syn-markdown .syn-md-code {
+  padding: 0.15em 0.4em;
+  border-radius: var(--radius-sm);
+  background: rgba(0,163,255,0.10);
+  border: 1px solid rgba(0,163,255,0.20);
+  font-size: 0.85em;
+}
+.syn-markdown .syn-md-pre {
+  padding: 0.9rem 1rem;
+  border-radius: var(--radius-lg);
+  background: rgba(0,0,0,0.35);
+  border: 1px solid var(--border);
+  overflow-x: auto;
+  font-size: 0.85em;
+  line-height: 1.55;
+}
+.syn-markdown .syn-md-pre > code { background: transparent; border: 0; padding: 0; }
+.syn-markdown input[type="checkbox"] { margin-right: 0.4em; }
+

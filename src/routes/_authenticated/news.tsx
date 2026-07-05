@@ -4,13 +4,14 @@ import { useServerFn } from "@tanstack/react-start";
 import { Plus, Newspaper, Pencil, Trash2, X, Sparkles, Wrench, Map } from "lucide-react";
 import { versionsList, versionsUpsert, versionsDelete, roadmapList, roadmapUpsert, roadmapDelete } from "@/lib/versions.functions";
 import { getCredentials, getSession } from "@/lib/syn-session";
+import { Markdown } from "@/components/Markdown";
 
 export const Route = createFileRoute("/_authenticated/news")({
   ssr: false,
   component: NewsPage,
 });
 
-type Version = { id: string; version: string; title: string; notes_md: string; bugfix_ids: string[]; feature_ids: string[]; published: boolean; published_at: string|null; created_at: string };
+type Version = { id: string; version: string; title: string; notes_md: string; kind: "release"|"leak"|"insider"; visibility: "public"|"authenticated"|"insider"; bugfix_ids: string[]; feature_ids: string[]; published: boolean; published_at: string|null; created_at: string };
 type Roadmap = { id: string; title: string; description: string; status: "planned"|"in_progress"|"done"|"cancelled"; target_quarter: string|null; sort_order: number };
 
 function NewsPage() {
@@ -42,6 +43,8 @@ function NewsPage() {
     const c = getCredentials(); if (!c) return;
     await saveV({ data: {
       ...c, id: editV.id, version: editV.version!, title: editV.title!, notes_md: editV.notes_md || "",
+      kind: (editV.kind || "release") as Version["kind"],
+      visibility: (editV.visibility || "authenticated") as Version["visibility"],
       bugfix_ids: (editV._bugfixCsv ?? editV.bugfix_ids?.join(",") ?? "").split(",").map((s) => s.trim()).filter(Boolean),
       feature_ids: (editV._featureCsv ?? editV.feature_ids?.join(",") ?? "").split(",").map((s) => s.trim()).filter(Boolean),
       published: !!editV.published,
@@ -72,7 +75,7 @@ function NewsPage() {
             <div key={v.id} className="syn-card p-4">
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="min-w-0">
-                  <div className="text-[10px] mono uppercase text-cyan-300">v{v.version}{!v.published && " · DRAFT"}</div>
+                  <div className="text-[10px] mono uppercase text-cyan-300 flex items-center gap-1.5">v{v.version} · {v.kind}{!v.published && " · DRAFT"}</div>
                   <h3 className="font-semibold">{v.title}</h3>
                 </div>
                 {canEdit && (
@@ -82,7 +85,7 @@ function NewsPage() {
                   </div>
                 )}
               </div>
-              {v.notes_md && <p className="text-sm whitespace-pre-wrap mt-2 text-muted-foreground">{v.notes_md}</p>}
+              {v.notes_md && <div className="mt-2 text-sm"><Markdown>{v.notes_md}</Markdown></div>}
               {(v.bugfix_ids.length > 0 || v.feature_ids.length > 0) && (
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   {v.bugfix_ids.map((id) => <span key={id} className="syn-chip"><Wrench className="h-2.5 w-2.5" /> {id}</span>)}
@@ -128,6 +131,18 @@ function NewsPage() {
             <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={!!editV.published} onChange={(e) => setEditV({ ...editV, published: e.target.checked })} /> veröffentlicht</label>
           </div>
           <input className="syn-input" placeholder="Titel" value={editV.title || ""} onChange={(e) => setEditV({ ...editV, title: e.target.value })} />
+          <div className="grid grid-cols-2 gap-2">
+            <select className="syn-input" value={editV.kind || "release"} onChange={(e) => setEditV({ ...editV, kind: e.target.value as Version["kind"] })}>
+              <option value="release">Release</option>
+              <option value="leak">Leak</option>
+              <option value="insider">Insider</option>
+            </select>
+            <select className="syn-input" value={editV.visibility || "authenticated"} onChange={(e) => setEditV({ ...editV, visibility: e.target.value as Version["visibility"] })}>
+              <option value="public">Öffentlich (Landing)</option>
+              <option value="authenticated">Nur angemeldet</option>
+              <option value="insider">Nur Insider (HL 5+)</option>
+            </select>
+          </div>
           <textarea className="syn-input min-h-32" placeholder="Release Notes (Markdown)" value={editV.notes_md || ""} onChange={(e) => setEditV({ ...editV, notes_md: e.target.value })} />
           <input className="syn-input" placeholder="Bugfix-IDs (kommagetrennt, z.B. A-20062601, A-20062602)" value={editV._bugfixCsv ?? editV.bugfix_ids?.join(", ") ?? ""} onChange={(e) => setEditV({ ...editV, _bugfixCsv: e.target.value })} />
           <input className="syn-input" placeholder="Feature-IDs (kommagetrennt, z.B. I-20062601)" value={editV._featureCsv ?? editV.feature_ids?.join(", ") ?? ""} onChange={(e) => setEditV({ ...editV, _featureCsv: e.target.value })} />

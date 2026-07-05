@@ -60,7 +60,7 @@ export const wtShiftDelete = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => creds.extend({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data }) => {
     const me = await actor(data.slid, data.pik);
-    if (!me.isSuperuser && me.hl < 4) throw new Error("Nur HL 4+.");
+    if (!me.isSuperuser && me.hl < 7) throw new Error("Nur Administratoren (HL 7+) dürfen Schichten löschen.");
     const sb = await admin();
     const { error } = await sb.from("work_shifts").delete().eq("id", data.id);
     if (error) throw new Error(error.message); return { ok: true };

@@ -21,12 +21,14 @@ export type Database = {
           created_by: string | null
           feature_ids: string[]
           id: string
+          kind: string
           notes_md: string
           published: boolean
           published_at: string | null
           title: string
           updated_at: string
           version: string
+          visibility: string
         }
         Insert: {
           bugfix_ids?: string[]
@@ -34,12 +36,14 @@ export type Database = {
           created_by?: string | null
           feature_ids?: string[]
           id?: string
+          kind?: string
           notes_md?: string
           published?: boolean
           published_at?: string | null
           title: string
           updated_at?: string
           version: string
+          visibility?: string
         }
         Update: {
           bugfix_ids?: string[]
@@ -47,12 +51,14 @@ export type Database = {
           created_by?: string | null
           feature_ids?: string[]
           id?: string
+          kind?: string
           notes_md?: string
           published?: boolean
           published_at?: string | null
           title?: string
           updated_at?: string
           version?: string
+          visibility?: string
         }
         Relationships: []
       }
@@ -779,6 +785,51 @@ export type Database = {
           is_default?: boolean
           kind?: string
           name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      public_docs: {
+        Row: {
+          body_md: string
+          category: string
+          cover_url: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          published: boolean
+          slug: string
+          sort_order: number
+          summary: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body_md?: string
+          category?: string
+          cover_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          published?: boolean
+          slug: string
+          sort_order?: number
+          summary?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          body_md?: string
+          category?: string
+          cover_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          published?: boolean
+          slug?: string
+          sort_order?: number
+          summary?: string | null
+          title?: string
           updated_at?: string
         }
         Relationships: []

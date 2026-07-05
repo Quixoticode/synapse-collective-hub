@@ -160,7 +160,7 @@ function AuthedLayout() {
         <main className="flex-1 min-w-0 flex flex-col">
           {/* mobile top bar */}
           <div className="md:hidden sticky top-0 z-30 flex items-center justify-between px-4 py-3 border-b border-border bg-card/80 backdrop-blur">
-            <Link to="/apps" className="flex items-center gap-2">
+            <Link to="/home" className="flex items-center gap-2">
               <Sparkles className="h-4 w-4" style={{ color: "var(--synapse)" }} />
               <span className="font-semibold">xSyna Central</span>
             </Link>

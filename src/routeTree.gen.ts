@@ -9,10 +9,13 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as DocsRouteImport } from './routes/docs'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ApplyRouteImport } from './routes/apply'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as DocsIndexRouteImport } from './routes/docs.index'
+import { Route as DocsSlugRouteImport } from './routes/docs.$slug'
 import { Route as AuthenticatedWorktimeRouteImport } from './routes/_authenticated/worktime'
 import { Route as AuthenticatedWorkspaceRouteImport } from './routes/_authenticated/workspace'
 import { Route as AuthenticatedVaultRouteImport } from './routes/_authenticated/vault'
@@ -26,6 +29,7 @@ import { Route as AuthenticatedNewsRouteImport } from './routes/_authenticated/n
 import { Route as AuthenticatedMailRouteImport } from './routes/_authenticated/mail'
 import { Route as AuthenticatedHomeRouteImport } from './routes/_authenticated/home'
 import { Route as AuthenticatedFinancesRouteImport } from './routes/_authenticated/finances'
+import { Route as AuthenticatedDocsAdminRouteImport } from './routes/_authenticated/docs-admin'
 import { Route as AuthenticatedContactsRouteImport } from './routes/_authenticated/contacts'
 import { Route as AuthenticatedCollectiveRouteImport } from './routes/_authenticated/collective'
 import { Route as AuthenticatedChatRouteImport } from './routes/_authenticated/chat'
@@ -39,6 +43,11 @@ import { Route as AuthenticatedSettingsIntegrationsRouteImport } from './routes/
 import { Route as AuthenticatedSettingsDesignRouteImport } from './routes/_authenticated/settings.design'
 import { Route as ApiPublicMailCfInboundRouteImport } from './routes/api/public/mail/cf-inbound'
 
+const DocsRoute = DocsRouteImport.update({
+  id: '/docs',
+  path: '/docs',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -57,6 +66,16 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const DocsIndexRoute = DocsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DocsRoute,
+} as any)
+const DocsSlugRoute = DocsSlugRouteImport.update({
+  id: '/$slug',
+  path: '/$slug',
+  getParentRoute: () => DocsRoute,
 } as any)
 const AuthenticatedWorktimeRoute = AuthenticatedWorktimeRouteImport.update({
   id: '/worktime',
@@ -122,6 +141,11 @@ const AuthenticatedHomeRoute = AuthenticatedHomeRouteImport.update({
 const AuthenticatedFinancesRoute = AuthenticatedFinancesRouteImport.update({
   id: '/finances',
   path: '/finances',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedDocsAdminRoute = AuthenticatedDocsAdminRouteImport.update({
+  id: '/docs-admin',
+  path: '/docs-admin',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedContactsRoute = AuthenticatedContactsRouteImport.update({
@@ -194,12 +218,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/apply': typeof ApplyRoute
   '/auth': typeof AuthRoute
+  '/docs': typeof DocsRouteWithChildren
   '/apps': typeof AuthenticatedAppsRoute
   '/basics': typeof AuthenticatedBasicsRoute
   '/calendar': typeof AuthenticatedCalendarRoute
   '/chat': typeof AuthenticatedChatRoute
   '/collective': typeof AuthenticatedCollectiveRoute
   '/contacts': typeof AuthenticatedContactsRoute
+  '/docs-admin': typeof AuthenticatedDocsAdminRoute
   '/finances': typeof AuthenticatedFinancesRoute
   '/home': typeof AuthenticatedHomeRoute
   '/mail': typeof AuthenticatedMailRoute
@@ -213,6 +239,8 @@ export interface FileRoutesByFullPath {
   '/vault': typeof AuthenticatedVaultRoute
   '/workspace': typeof AuthenticatedWorkspaceRoute
   '/worktime': typeof AuthenticatedWorktimeRoute
+  '/docs/$slug': typeof DocsSlugRoute
+  '/docs/': typeof DocsIndexRoute
   '/settings/design': typeof AuthenticatedSettingsDesignRoute
   '/settings/integrations': typeof AuthenticatedSettingsIntegrationsRoute
   '/settings/pdf': typeof AuthenticatedSettingsPdfRoute
@@ -230,6 +258,7 @@ export interface FileRoutesByTo {
   '/chat': typeof AuthenticatedChatRoute
   '/collective': typeof AuthenticatedCollectiveRoute
   '/contacts': typeof AuthenticatedContactsRoute
+  '/docs-admin': typeof AuthenticatedDocsAdminRoute
   '/finances': typeof AuthenticatedFinancesRoute
   '/home': typeof AuthenticatedHomeRoute
   '/mail': typeof AuthenticatedMailRoute
@@ -243,6 +272,8 @@ export interface FileRoutesByTo {
   '/vault': typeof AuthenticatedVaultRoute
   '/workspace': typeof AuthenticatedWorkspaceRoute
   '/worktime': typeof AuthenticatedWorktimeRoute
+  '/docs/$slug': typeof DocsSlugRoute
+  '/docs': typeof DocsIndexRoute
   '/settings/design': typeof AuthenticatedSettingsDesignRoute
   '/settings/integrations': typeof AuthenticatedSettingsIntegrationsRoute
   '/settings/pdf': typeof AuthenticatedSettingsPdfRoute
@@ -256,12 +287,14 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/apply': typeof ApplyRoute
   '/auth': typeof AuthRoute
+  '/docs': typeof DocsRouteWithChildren
   '/_authenticated/apps': typeof AuthenticatedAppsRoute
   '/_authenticated/basics': typeof AuthenticatedBasicsRoute
   '/_authenticated/calendar': typeof AuthenticatedCalendarRoute
   '/_authenticated/chat': typeof AuthenticatedChatRoute
   '/_authenticated/collective': typeof AuthenticatedCollectiveRoute
   '/_authenticated/contacts': typeof AuthenticatedContactsRoute
+  '/_authenticated/docs-admin': typeof AuthenticatedDocsAdminRoute
   '/_authenticated/finances': typeof AuthenticatedFinancesRoute
   '/_authenticated/home': typeof AuthenticatedHomeRoute
   '/_authenticated/mail': typeof AuthenticatedMailRoute
@@ -275,6 +308,8 @@ export interface FileRoutesById {
   '/_authenticated/vault': typeof AuthenticatedVaultRoute
   '/_authenticated/workspace': typeof AuthenticatedWorkspaceRoute
   '/_authenticated/worktime': typeof AuthenticatedWorktimeRoute
+  '/docs/$slug': typeof DocsSlugRoute
+  '/docs/': typeof DocsIndexRoute
   '/_authenticated/settings/design': typeof AuthenticatedSettingsDesignRoute
   '/_authenticated/settings/integrations': typeof AuthenticatedSettingsIntegrationsRoute
   '/_authenticated/settings/pdf': typeof AuthenticatedSettingsPdfRoute
@@ -288,12 +323,14 @@ export interface FileRouteTypes {
     | '/'
     | '/apply'
     | '/auth'
+    | '/docs'
     | '/apps'
     | '/basics'
     | '/calendar'
     | '/chat'
     | '/collective'
     | '/contacts'
+    | '/docs-admin'
     | '/finances'
     | '/home'
     | '/mail'
@@ -307,6 +344,8 @@ export interface FileRouteTypes {
     | '/vault'
     | '/workspace'
     | '/worktime'
+    | '/docs/$slug'
+    | '/docs/'
     | '/settings/design'
     | '/settings/integrations'
     | '/settings/pdf'
@@ -324,6 +363,7 @@ export interface FileRouteTypes {
     | '/chat'
     | '/collective'
     | '/contacts'
+    | '/docs-admin'
     | '/finances'
     | '/home'
     | '/mail'
@@ -337,6 +377,8 @@ export interface FileRouteTypes {
     | '/vault'
     | '/workspace'
     | '/worktime'
+    | '/docs/$slug'
+    | '/docs'
     | '/settings/design'
     | '/settings/integrations'
     | '/settings/pdf'
@@ -349,12 +391,14 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/apply'
     | '/auth'
+    | '/docs'
     | '/_authenticated/apps'
     | '/_authenticated/basics'
     | '/_authenticated/calendar'
     | '/_authenticated/chat'
     | '/_authenticated/collective'
     | '/_authenticated/contacts'
+    | '/_authenticated/docs-admin'
     | '/_authenticated/finances'
     | '/_authenticated/home'
     | '/_authenticated/mail'
@@ -368,6 +412,8 @@ export interface FileRouteTypes {
     | '/_authenticated/vault'
     | '/_authenticated/workspace'
     | '/_authenticated/worktime'
+    | '/docs/$slug'
+    | '/docs/'
     | '/_authenticated/settings/design'
     | '/_authenticated/settings/integrations'
     | '/_authenticated/settings/pdf'
@@ -381,11 +427,19 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   ApplyRoute: typeof ApplyRoute
   AuthRoute: typeof AuthRoute
+  DocsRoute: typeof DocsRouteWithChildren
   ApiPublicMailCfInboundRoute: typeof ApiPublicMailCfInboundRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/docs': {
+      id: '/docs'
+      path: '/docs'
+      fullPath: '/docs'
+      preLoaderRoute: typeof DocsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -413,6 +467,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/docs/': {
+      id: '/docs/'
+      path: '/'
+      fullPath: '/docs/'
+      preLoaderRoute: typeof DocsIndexRouteImport
+      parentRoute: typeof DocsRoute
+    }
+    '/docs/$slug': {
+      id: '/docs/$slug'
+      path: '/$slug'
+      fullPath: '/docs/$slug'
+      preLoaderRoute: typeof DocsSlugRouteImport
+      parentRoute: typeof DocsRoute
     }
     '/_authenticated/worktime': {
       id: '/_authenticated/worktime'
@@ -503,6 +571,13 @@ declare module '@tanstack/react-router' {
       path: '/finances'
       fullPath: '/finances'
       preLoaderRoute: typeof AuthenticatedFinancesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/docs-admin': {
+      id: '/_authenticated/docs-admin'
+      path: '/docs-admin'
+      fullPath: '/docs-admin'
+      preLoaderRoute: typeof AuthenticatedDocsAdminRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/contacts': {
@@ -599,6 +674,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedChatRoute: typeof AuthenticatedChatRoute
   AuthenticatedCollectiveRoute: typeof AuthenticatedCollectiveRoute
   AuthenticatedContactsRoute: typeof AuthenticatedContactsRoute
+  AuthenticatedDocsAdminRoute: typeof AuthenticatedDocsAdminRoute
   AuthenticatedFinancesRoute: typeof AuthenticatedFinancesRoute
   AuthenticatedHomeRoute: typeof AuthenticatedHomeRoute
   AuthenticatedMailRoute: typeof AuthenticatedMailRoute
@@ -626,6 +702,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedChatRoute: AuthenticatedChatRoute,
   AuthenticatedCollectiveRoute: AuthenticatedCollectiveRoute,
   AuthenticatedContactsRoute: AuthenticatedContactsRoute,
+  AuthenticatedDocsAdminRoute: AuthenticatedDocsAdminRoute,
   AuthenticatedFinancesRoute: AuthenticatedFinancesRoute,
   AuthenticatedHomeRoute: AuthenticatedHomeRoute,
   AuthenticatedMailRoute: AuthenticatedMailRoute,
@@ -650,11 +727,24 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface DocsRouteChildren {
+  DocsSlugRoute: typeof DocsSlugRoute
+  DocsIndexRoute: typeof DocsIndexRoute
+}
+
+const DocsRouteChildren: DocsRouteChildren = {
+  DocsSlugRoute: DocsSlugRoute,
+  DocsIndexRoute: DocsIndexRoute,
+}
+
+const DocsRouteWithChildren = DocsRoute._addFileChildren(DocsRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   ApplyRoute: ApplyRoute,
   AuthRoute: AuthRoute,
+  DocsRoute: DocsRouteWithChildren,
   ApiPublicMailCfInboundRoute: ApiPublicMailCfInboundRoute,
 }
 export const routeTree = rootRouteImport
