@@ -5,14 +5,30 @@ const creds = z.object({ slid: z.string().min(1), pik: z.string().min(8) });
 async function admin() { const m = await import("@/integrations/supabase/client.server"); return m.supabaseAdmin; }
 async function actor(slid: string, pik: string) { const m = await import("./syn-auth.server"); return m.verifyActor(slid, pik); }
 
+// ---- Public: list published versions filtered by visibility ----
+// - unauthenticated caller: only visibility='public'
+// - authenticated caller: 'public' + 'authenticated' (+ 'insider' when HL>=5 or superuser)
+export const versionsListPublic = createServerFn({ method: "GET" })
+  .handler(async () => {
+    const sb = await admin();
+    const { data, error } = await sb.from("app_versions")
+      .select("id,version,title,notes_md,kind,visibility,published_at,feature_ids,bugfix_ids")
+      .eq("published", true).eq("visibility", "public")
+      .order("published_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  });
+
 export const versionsList = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => creds.parse(d))
   .handler(async ({ data }) => {
-    await actor(data.slid, data.pik);
+    const me = await actor(data.slid, data.pik);
     const sb = await admin();
     const { data: rows, error } = await sb.from("app_versions").select("*").order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
-    return rows ?? [];
+    // Hide insider entries unless HL 5+ or superuser
+    const canInsider = me.isSuperuser || me.hl >= 5;
+    return (rows ?? []).filter((r) => r.visibility !== "insider" || canInsider);
   });
 
 export const versionsLatestPublished = createServerFn({ method: "POST" })
@@ -29,6 +45,8 @@ const upsert = creds.extend({
   version: z.string().min(1),
   title: z.string().min(1),
   notes_md: z.string().default(""),
+  kind: z.enum(["release", "leak", "insider"]).default("release"),
+  visibility: z.enum(["public", "authenticated", "insider"]).default("authenticated"),
   bugfix_ids: z.array(z.string()).default([]),
   feature_ids: z.array(z.string()).default([]),
   published: z.boolean().default(false),
@@ -38,10 +56,11 @@ export const versionsUpsert = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => upsert.parse(d))
   .handler(async ({ data }) => {
     const me = await actor(data.slid, data.pik);
-    if (!me.isSuperuser) throw new Error("Nur Superuser.");
+    if (!me.isSuperuser && me.hl < 6) throw new Error("HL 6+ oder Superuser erforderlich.");
     const sb = await admin();
     const payload = {
       version: data.version, title: data.title, notes_md: data.notes_md,
+      kind: data.kind, visibility: data.visibility,
       bugfix_ids: data.bugfix_ids, feature_ids: data.feature_ids,
       published: data.published,
       published_at: data.published ? new Date().toISOString() : null,

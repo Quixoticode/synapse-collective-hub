@@ -54,6 +54,7 @@ function WorkTimePage() {
   const [, setTick] = useState(0);
 
   const canManage = session ? (session.isSuperuser || session.hl >= 4) : false;
+  const canDeleteShift = session ? (session.isSuperuser || session.hl >= 7) : false;
 
   async function load() {
     const c = getCredentials(); if (!c) return;
@@ -191,10 +192,10 @@ function WorkTimePage() {
                     {covered ? "erledigt" : past ? "nicht gemeldet" : "geplant"}
                   </span>
                   {canManage && (
-                    <>
-                      <button onClick={() => setEdit({ ...s, target_slid: s.slid })} className="syn-btn-ghost text-[10px]">Edit</button>
-                      <button onClick={async () => { const c = getCredentials(); if (!c) return; if (!confirm("Schicht löschen?")) return; await shiftDelFn({ data: { ...c, id: s.id } }); await load(); }} className="syn-btn-ghost text-[10px]"><Trash2 className="h-3 w-3" /></button>
-                    </>
+                    <button onClick={() => setEdit({ ...s, target_slid: s.slid })} className="syn-btn-ghost text-[10px]">Edit</button>
+                  )}
+                  {canDeleteShift && (
+                    <button onClick={async () => { const c = getCredentials(); if (!c) return; if (!confirm("Schicht löschen? (Nur Admin)")) return; try { await shiftDelFn({ data: { ...c, id: s.id } }); await load(); } catch (e) { setErr(e instanceof Error ? e.message : "Fehler."); } }} className="syn-btn-ghost text-[10px]"><Trash2 className="h-3 w-3" /></button>
                   )}
                 </div>
               );

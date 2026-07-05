@@ -9,7 +9,7 @@ import {
 export type TabKey =
   | "home" | "apps" | "contacts" | "chat" | "vault" | "workspace" | "basics"
   | "calendar" | "support" | "finances" | "news" | "collective" | "tasks"
-  | "security" | "notify" | "apply" | "teams" | "worktime"
+  | "security" | "notify" | "apply" | "teams" | "worktime" | "docs-admin"
   | "permissions" | "settings" | "settings.tabs" | "settings.integrations" | "settings.design" | "settings.pdf";
 
 export type TabDef = {
@@ -44,6 +44,7 @@ export const TABS: TabDef[] = [
   { key: "collective", to: "/collective", label: "Kollektiv",  desc: "Mitglieder",        icon: Users,        accent: "from-cyan-500/30 to-emerald-500/20",category: "admin", requires: { hl: 5 } },
   { key: "security",   to: "/security",   label: "Security",   desc: "Logins & Bans",     icon: ShieldAlert,  accent: "from-rose-500/30 to-amber-500/20",  category: "admin", requires: { hl: 4 } },
   { key: "permissions",to: "/permissions",label: "Berechtigungen", desc: "Tab-Rechte",    icon: ShieldCheck,  accent: "from-fuchsia-500/30 to-blue-500/20",category: "admin", requires: { hl: 5 } },
+  { key: "docs-admin", to: "/docs-admin",  label: "Docs-Admin",     desc: "Öffentliche Dokumentation", icon: BookOpen, accent: "from-cyan-500/30 to-blue-500/20", category: "admin", requires: { hl: 5 } },
   { key: "settings",              to: "/settings",              label: "Einstellungen",    desc: "Session · Design · Reset", icon: Settings, accent: "from-blue-500/30 to-violet-500/20", category: "settings" },
   { key: "settings.tabs",         to: "/settings/tabs",         label: "Tab-Sichtbarkeit", desc: "Meine Tabs",   icon: Settings, accent: "from-blue-500/30 to-violet-500/20", category: "settings" },
   { key: "settings.design",       to: "/settings/design",       label: "Design",           desc: "Neuromorphic", icon: Palette,  accent: "from-fuchsia-500/30 to-cyan-500/20", category: "settings" },
