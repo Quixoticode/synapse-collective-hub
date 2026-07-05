@@ -1,12 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { CheckSquare, Calendar as CalIcon, Newspaper, Clock, ArrowRight, Play, StopCircle } from "lucide-react";
+import { CheckSquare, Calendar as CalIcon, Newspaper, Clock, ArrowRight, Play, StopCircle, Zap } from "lucide-react";
 import { getSession, getCredentials, type SynSession } from "@/lib/syn-session";
 import { tasksList } from "@/lib/tasks.functions";
 import { calList } from "@/lib/calendar.functions";
 import { roadmapList } from "@/lib/versions.functions";
 import { wtShiftsList, wtSessionActive, wtSessionStart, wtSessionStop } from "@/lib/worktime.functions";
+import { quickLoginIssue } from "@/lib/quick-login.functions";
 import { SynIDCard } from "@/components/SynIDCard";
 
 export const Route = createFileRoute("/_authenticated/home")({
@@ -94,6 +95,9 @@ function HomePage() {
   return (
     <div className="p-4 sm:p-6 max-w-4xl mx-auto pb-28 md:pb-8 space-y-4">
       <SynIDCard data={session} />
+
+      <QuickLoginShortcut slid={session.slid} />
+
 
       {/* WorkTime widget */}
       <section className="syn-card p-4">
@@ -193,3 +197,35 @@ function HomePage() {
     </div>
   );
 }
+
+function QuickLoginShortcut({ slid }: { slid: string }) {
+  const [code, setCode] = useState<{ code: string; expires_at: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const issueFn = useServerFn(quickLoginIssue);
+  async function issue() {
+    const c = getCredentials(); if (!c) return;
+    setBusy(true);
+    try { setCode(await issueFn({ data: { ...c, target_slid: slid } })); }
+    catch (e) { alert(e instanceof Error ? e.message : "Fehler."); }
+    finally { setBusy(false); }
+  }
+  return (
+    <section className="syn-card p-4">
+      <div className="flex items-center gap-2 mb-2">
+        <Zap className="h-4 w-4" style={{ color: "var(--synapse)" }} />
+        <h2 className="font-semibold text-sm">Mein Quick-Login</h2>
+        <span className="ml-auto text-[10px] mono text-muted-foreground">6-stelliger Einmal-Code · 15 Min</span>
+      </div>
+      {code ? (
+        <div className="text-center p-3 rounded-2xl bg-white/5">
+          <div className="text-3xl font-bold mono tracking-widest" style={{ color: "var(--synapse)" }}>{code.code}</div>
+          <div className="text-[10px] mono text-muted-foreground mt-1">gültig bis {new Date(code.expires_at).toLocaleTimeString()}</div>
+          <button onClick={() => setCode(null)} className="syn-btn-ghost text-[11px] mt-2">Verbergen</button>
+        </div>
+      ) : (
+        <button onClick={() => void issue()} disabled={busy} className="syn-btn w-full text-sm"><Zap className="h-3.5 w-3.5" /> {busy ? "Erzeuge…" : "Code auf Zweitgerät nutzen"}</button>
+      )}
+    </section>
+  );
+}
+
