@@ -1,105 +1,96 @@
 
-# Juli-Update #4 · v2026.07.04
+# Juli-Update #5 — "Neuromorphic Refresh" (v2026.07.05)
+
+Große Umstrukturierung: xSyna Central ist nicht mehr eine Login-First-App, sondern eine öffentlich zugängliche Präsenz mit News, Leaks, Stellenausschreibungen und Docs. Login rückt in den Hintergrund.
 
 ## Bugfixes
 
-**F040726001 — Teams frei definierbar**
-- `teams.kind` (service/support/labs/department) fällt weg. Ersetzt durch `parent_id` (self-reference) für frei bau­bare Hierarchie.
-- Neues Feld `min_hl` (optional) – wer diesem Team beitreten darf.
-- `leader_slid` bleibt. Ein Team ist einfach *ein Team* – kein Systembegriff "Service" oder "Administration".
-- Migration: `kind` und `department` Spalten löschen (Check-Constraint zuerst), `parent_id uuid REFERENCES teams(id) ON DELETE SET NULL`, `min_hl int` hinzufügen. In `apply_positions` bleibt `department/team` als Freitext.
-- UI `/teams`: Baum-Ansicht (parent → children, eingerückt). Editor: Name, Beschreibung (Markdown), Leiter (SLID), Parent-Team, min. HL. Mitglieder unverändert.
-- `apply_positions.team` wird zum Team-Name-Freitext (Dropdown der bestehenden Teams beim Ausschreiben).
+- **Markdown**: `# **_` etc. werden immer noch roh dargestellt. Ursache: `syn-markdown` CSS resettet Typo aggressiv (kein `list-style`, keine Heading-Größen). Fix in `src/styles.css` unter `.syn-markdown` — echte Heading-, List-, Blockquote-, Table-Styles definieren.
+- **Sync-Loader**: Neues wiederverwendbares `<SyncSpinner>` + Toast-Utility `useSync()` in `src/lib/use-sync.ts`. Alle Mutations-Handler (Apply, Teams, WorkTime, Docs, News, etc.) zeigen während des Requests einen Overlay-/Inline-Spinner.
 
 ## Neue Funktionen
 
-### 1. Startseite (`/home`)
-- Neue Route `/home` (statt Redirect nach `/apps`). Index-Route leitet auf `/home` weiter.
-- Widgets:
-  - **Meine Aufgaben** – offene Tasks, sortiert nach Fälligkeit (max. 5, Link "Alle").
-  - **Nächste Termine** – kommende Kalender-Einträge (mich betreffend/team/all), nächste 7 Tage.
-  - **Roadmap** – als „important" markierte Roadmap-Items, Kurzform.
-  - **WorkTime heute** – geplante Schicht, Live-Timer wenn aktiv, Buttons Start/Stop.
-- Kompaktes Kartendesign, ruhige Neuromorphic-Optik, Mobile-first.
-- Apps-Grid bleibt unter `/apps` als sekundärer Launcher.
+### 1. Öffentliche Startseite (`/`)
+Ersetzt die aktuelle Redirect-Only-Index. Neuromorphic-Liquid Layout:
+- Hero mit sanftem, pulsierendem neuronalen Netz-Hintergrund
+- News-Feed (Releases, Leaks, Insider — sichtbar je nach `visibility`)
+- Aktive Stellenausschreibungen (`apply_positions` where `active = true`)
+- Docs-Einstieg (Kachelgrid)
+- Diskreter „Login" Button oben rechts → `/auth`
 
-### 2. WorkTime (`/worktime`)
-Neuer Tab „WorkTime" mit Zeitkalender.
+Angemeldete User werden **nicht** automatisch weitergeleitet — sie sehen den Public-Landing plus einen Button „Zum System" → `/home`. PWA-Installationen starten weiterhin direkt auf `/auth` bzw. `/home` (Manifest `start_url` bleibt `/home`).
 
-**Tabellen (Migration):**
-- `work_shifts` (id, slid, starts_at, ends_at, note, created_by, created_at, updated_at) – geplant von Leitung (HL≥4).
-- `work_sessions` (id, slid, shift_id nullable, started_at, ended_at nullable, last_ping_at, status[active|completed|invalidated], invalidated_reason, created_at, updated_at) – tatsächliche Arbeitszeit.
-- RLS: eigene sichtbar; HL≥4 sieht alle; Leiter darf schreiben.
+### 2. Docs (`/docs`, `/docs/$slug`)
+Neue Tabelle `public_docs` (öffentlich lesbar wenn `published = true`):
+- Felder: `slug`, `title`, `summary`, `category` (feature/customer/employee/partnership/other), `body_md`, `cover_url`, `sort_order`, `published`, `created_by`, timestamps
+- Public-Server-Function `docsListPublic`, `docsGetPublic` (Publishable-Key Client, `TO anon` Policy)
+- Auth-Server-Function `docsUpsert`, `docsDelete` (HL ≥ 5 oder Superuser)
+- Route `/docs` — Grid mit Cover + Kategorie-Filter
+- Route `/docs/$slug` — Vollansicht mit `<Markdown>` und Cover
+- Verwaltungs-Route unter `/_authenticated/docs-admin` (HL ≥ 5)
 
-**Server-Funktionen** (`worktime.functions.ts`):
-- `wtShiftsList` – für Datumsbereich, mit slid-Filter.
-- `wtShiftUpsert` / `wtShiftDelete` (HL≥4).
-- `wtSessionStart` / `wtSessionPing` / `wtSessionStop` / `wtSessionInvalidate`.
-- `wtSessionsList` – für Zeitkalender.
+### 3. News-Verwaltung (Leaks / Releases / Insider)
+Erweitert `/news` (bestehende Route). Bestehende `app_versions` bekommt `kind` (`release` | `leak` | `insider`) und `visibility` (`public` | `authenticated` | `insider`). Migration:
+- Neue Spalten `kind text default 'release'`, `visibility text default 'authenticated'`
+- Öffentliche Sicht via `TO anon` Policy: `published = true AND visibility = 'public'`
+- Authenticated-Sicht: `published = true AND visibility IN ('public','authenticated')` (via has_role Check für insider)
+- Admin-UI (HL ≥ 6) mit Tabs Leaks/Releases/Insider
 
-**Client-Verhalten:**
-- Start-Button startet Session → `last_ping_at = now()`.
-- Alle 60s Client-Ping (`wtSessionPing`) mit Sichtbarkeitsprüfung (`document.visibilityState === "visible"`).
-- Zufällig alle 5–10 min *Aufmerksamkeits-Check*: Overlay „Arbeitsnachweis – 10 s" mit Blitz-Animation und Button. Ohne Klick in 10 s → `wtSessionInvalidate("timeout")`.
-- Verlässt der User die App (`visibilitychange` hidden / `beforeunload`) → `wtSessionInvalidate("app_left")`.
-- Server-seitig: Sessions mit `last_ping_at` älter als 3 min gelten beim Aufruf von `wtSessionsList` als invalidiert (Aufräum-Logik im Read).
+### 4. Startseite (angemeldet) → Standard-Route + Quick-Login-Shortcut
+- `/_authenticated/route.tsx` redirect nach Login → `/home` (statt bisher `/apps`)
+- Home-Widget „Mein Quick-Login" oben mit One-Click-Button (nutzt bereits vorhandene `quickLoginIssue`) und Code-Anzeige
 
-**UI:**
-- Tab-Übersicht:
-  - Heute + Woche (Zeitraster) mit farbigen Blöcken: geplant (blau), erledigt (grün), nicht gemeldet (rot), invalidiert (amber).
-  - Buttons: Start, Stop, „ich bin da" (manueller Ping).
-  - Leiter-Bereich (HL≥4): Schicht anlegen/bearbeiten, Person auswählen.
+### 5. WorkTime — Schicht löschen (HL ≥ 7)
+- `wtShiftDelete` bereits vorhanden — Zugriff auf HL ≥ 7 anheben (bisher HL 4)
+- In `/worktime` UI: Löschen-Button nur für HL ≥ 7 sichtbar
 
-### 3. Taskbar-Reorder ohne Drag-and-Drop
-- `/settings/tabs`: aktuell Toggle-Only. Erweitern:
-  - Reihenfolge-Modus: „Bearbeiten"-Toggle → jede Zeile bekommt ▲/▼-Buttons, tauscht `sort_order` mit Nachbarn.
-  - `tabPrefSet` unterstützt `sort_order` bereits – ergänzen nur UI-Logik + persistente sort_order Werte (basierend auf aktueller Reihenfolge beim ersten Bearbeiten).
-- Bottom-Nav und Sidebar respektieren `sort_order` (bereits über `visibleTabs`).
+## Sicherheitsfixes (alle 14 Findings)
 
-### 4. App-Icon xSyna Central
-- Hochgeladenes Bild (Neuronales-Netz-Kugel) wird zum App-Icon:
-  - Upload via `lovable-assets` → `src/assets/xsyna-icon.png.asset.json`.
-  - `public/manifest.webmanifest` `icons` aktualisieren (PNG-URL vom CDN, `any maskable`).
-  - Favicon-Link in `__root.tsx` → PNG-URL.
-  - Optional: Startanimations-Logo (`StartupAnimation.tsx`) verwendet dasselbe Bild als Abschluss-Emblem.
-  - Alte `public/favicon.ico` entfernen.
+Eine Migration ersetzt alle betroffenen Policies:
 
-## Technische Umsetzung
+| Table | Alte Policy | Neu |
+|-------|-------------|-----|
+| `team_members` | SELECT `USING (true)` | `authenticated`: eigene Zeile ODER `has_role(slid, 'admin'/'superuser')` |
+| `teams` | SELECT `USING (true)` | `authenticated` only |
+| `work_sessions` | SELECT `USING (true)` | `slid = current_slid()` ODER HL ≥ 4 |
+| `work_shifts` | SELECT `USING (true)` | `slid = current_slid()` ODER HL ≥ 4 |
+| `pdf_templates` | SELECT `USING (true)` | `authenticated` only |
+| `app_versions` | SELECT `USING (true)` | `published = true` (plus insider-Check via has_role) |
+| `roadmap_items` | SELECT `USING (true)` | `authenticated` only |
+| `apply_positions` INSERT/UPDATE/DELETE `true` | HL ≥ 5 via has_role |
+| `apply_applications` ALL `true` | HL ≥ 5 via has_role |
 
-**Migrationen:**
-```sql
--- Teams entkernen
-ALTER TABLE public.teams DROP CONSTRAINT teams_kind_check;
-ALTER TABLE public.teams DROP COLUMN kind, DROP COLUMN department;
-ALTER TABLE public.teams ADD COLUMN parent_id uuid REFERENCES public.teams(id) ON DELETE SET NULL;
-ALTER TABLE public.teams ADD COLUMN min_hl int;
+Serverseitige Reads laufen weiterhin über `supabaseAdmin` (RLS-Bypass) — die App bleibt funktional. Public-Reads (Docs, News, Positions) laufen über publishable-key Clients mit `TO anon` SELECT Policies auf explizite Spalten.
 
--- WorkTime
-CREATE TABLE public.work_shifts (...);
-CREATE TABLE public.work_sessions (...);
--- + GRANT + RLS + Trigger
-```
+### Zusätzliche Client-Härtung
+Da `pik_in_localstorage` bereits gemeldet ist: keine Restrukturierung der SynID-Session in diesem Update (würde jede Server-Funktion brechen). Wird als „acknowledged, tracked" markiert (bereits erledigt in vorheriger Iteration).
 
-**Neue Dateien:**
-- `src/lib/worktime.functions.ts`
-- `src/routes/_authenticated/worktime.tsx`
-- `src/routes/_authenticated/home.tsx`
-- `src/components/WorkTimeAttentionCheck.tsx` (Overlay + Timer, global in `_authenticated/route.tsx` gemountet, wenn Session aktiv)
-- `src/assets/xsyna-icon.png.asset.json`
+## Version & Registry
 
-**Edits:**
-- `src/routes/index.tsx` → redirect `/home` (statt `/apps`).
-- `src/lib/tabs-registry.ts` → Tab `home` (Icon Home) + Tab `worktime` (Icon Clock).
-- `src/lib/teams.functions.ts` → `kind`/`department` raus, `parent_id`/`min_hl` rein, Baum-Sortierung.
-- `src/routes/_authenticated/teams.tsx` → Baum-UI + neuer Editor.
-- `src/lib/apply.functions.ts` + `/apply` → Team-Referenz vereinfachen.
-- `src/routes/_authenticated/settings.tabs.tsx` → Reorder-Modus.
-- `src/routes/_authenticated/route.tsx` → globaler Attention-Check-Mount, WorkTime im Menü.
-- `public/manifest.webmanifest`, `src/routes/__root.tsx` → neues Icon.
-- `src/lib/app-version.ts` → `2026.07.04` + Release Notes-Insert.
+- `src/lib/app-version.ts` → `2026.07.05` "Neuromorphic Refresh"
+- `tabs-registry.ts` → neuer Tab `docs`
+- Neue Route-Dateien:
+  - `src/routes/index.tsx` — komplette Neufassung (öffentlich)
+  - `src/routes/docs.tsx` (Layout mit `<Outlet />`)
+  - `src/routes/docs.index.tsx`
+  - `src/routes/docs.$slug.tsx`
+  - `src/routes/_authenticated/docs-admin.tsx`
+- Neue Lib:
+  - `src/lib/docs.functions.ts`
+  - `src/lib/use-sync.ts`
+  - `src/components/SyncSpinner.tsx`
+  - `src/components/PublicHeader.tsx` (Login-Button + Nav)
 
-**Keine neuen Abhängigkeiten.**
+## Migration (SQL, eine Datei)
 
-**Verifikation:** Build/Typecheck automatisch. Manuell (mobile Preview): Startseite lädt, WorkTime-Timer läuft, Aufmerksamkeits-Overlay erscheint, Icon im Manifest sichtbar, Teams-Baum funktioniert.
+1. `public_docs` Tabelle + GRANTs + RLS (anon SELECT wenn published, HL ≥ 5 write)
+2. `app_versions` `kind`, `visibility` Spalten
+3. Alle SELECT/ALL-Policies mit `USING (true)` ersetzen (siehe Tabelle)
+4. `apply_positions` public SELECT für `active = true` (anon)
+5. GRANTs (`SELECT ... TO anon` für `public_docs`, `apply_positions`, `app_versions` — nur wo öffentlich)
 
-Freigabe? Dann ziehe ich alles in einem Rutsch durch.
+## Nicht-Ziele
+
+- Kein Umbau der SynID-Auth-Architektur
+- Keine Änderung an Markdown-Renderer-Komponente (nur CSS)
+- Startanimation bleibt unverändert
