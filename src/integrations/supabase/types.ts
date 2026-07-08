@@ -1376,6 +1376,92 @@ export type Database = {
           },
         ]
       }
+      webauthn_challenges: {
+        Row: {
+          challenge: string
+          consumed: boolean
+          created_at: string
+          expires_at: string
+          id: string
+          kind: string
+          meta: Json
+          slid: string | null
+        }
+        Insert: {
+          challenge: string
+          consumed?: boolean
+          created_at?: string
+          expires_at: string
+          id?: string
+          kind: string
+          meta?: Json
+          slid?: string | null
+        }
+        Update: {
+          challenge?: string
+          consumed?: boolean
+          created_at?: string
+          expires_at?: string
+          id?: string
+          kind?: string
+          meta?: Json
+          slid?: string | null
+        }
+        Relationships: []
+      }
+      webauthn_credentials: {
+        Row: {
+          aaguid: string | null
+          backup_eligible: boolean
+          backup_state: boolean
+          counter: number
+          created_at: string
+          credential_id: string
+          device_label: string | null
+          id: string
+          last_used_at: string | null
+          public_key: string
+          slid: string
+          transports: string[]
+        }
+        Insert: {
+          aaguid?: string | null
+          backup_eligible?: boolean
+          backup_state?: boolean
+          counter?: number
+          created_at?: string
+          credential_id: string
+          device_label?: string | null
+          id?: string
+          last_used_at?: string | null
+          public_key: string
+          slid: string
+          transports?: string[]
+        }
+        Update: {
+          aaguid?: string | null
+          backup_eligible?: boolean
+          backup_state?: boolean
+          counter?: number
+          created_at?: string
+          credential_id?: string
+          device_label?: string | null
+          id?: string
+          last_used_at?: string | null
+          public_key?: string
+          slid?: string
+          transports?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webauthn_credentials_slid_fkey"
+            columns: ["slid"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["slid"]
+          },
+        ]
+      }
       work_sessions: {
         Row: {
           created_at: string
@@ -1496,6 +1582,89 @@ export type Database = {
             referencedColumns: ["slid"]
           },
         ]
+      }
+      xsyna_accounts: {
+        Row: {
+          avatar_url: string | null
+          birthdate: string | null
+          company: string | null
+          contact_json: Json
+          created_at: string
+          email: string | null
+          first_name: string | null
+          last_name: string | null
+          passkey_migrated: boolean
+          passkey_required: boolean
+          slid: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          birthdate?: string | null
+          company?: string | null
+          contact_json?: Json
+          created_at?: string
+          email?: string | null
+          first_name?: string | null
+          last_name?: string | null
+          passkey_migrated?: boolean
+          passkey_required?: boolean
+          slid: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          birthdate?: string | null
+          company?: string | null
+          contact_json?: Json
+          created_at?: string
+          email?: string | null
+          first_name?: string | null
+          last_name?: string | null
+          passkey_migrated?: boolean
+          passkey_required?: boolean
+          slid?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "xsyna_accounts_slid_fkey"
+            columns: ["slid"]
+            isOneToOne: true
+            referencedRelation: "employees"
+            referencedColumns: ["slid"]
+          },
+        ]
+      }
+      xsyna_pairings: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          pairing_code: string
+          result_token: string | null
+          slid: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          pairing_code: string
+          result_token?: string | null
+          slid: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          pairing_code?: string
+          result_token?: string | null
+          slid?: string
+          status?: string
+        }
+        Relationships: []
       }
     }
     Views: {
