@@ -109,7 +109,7 @@ export const xaMe = createServerFn({ method: "POST" })
     const sb = await admin();
     const { data: emp } = await sb.from("employees").select("slid,name,hl,kind,department,position").eq("slid", slid).maybeSingle();
     const { data: prof } = await sb.from("xsyna_accounts" as never).select("*").eq("slid", slid).maybeSingle() as { data: Record<string, unknown> | null };
-    return { slid, employee: emp, profile: prof };
+    return { slid, employee: emp, profile: (prof ?? null) as unknown as Record<string, string | number | boolean | null> | null };
   });
 
 export const xaUpdateProfile = createServerFn({ method: "POST" })
