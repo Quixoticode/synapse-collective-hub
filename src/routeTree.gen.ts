@@ -36,6 +36,7 @@ import { Route as AuthenticatedChatRouteImport } from './routes/_authenticated/c
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
 import { Route as AuthenticatedBasicsRouteImport } from './routes/_authenticated/basics'
 import { Route as AuthenticatedAppsRouteImport } from './routes/_authenticated/apps'
+import { Route as AuthenticatedAccountRouteImport } from './routes/_authenticated/account'
 import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings.index'
 import { Route as AuthenticatedSettingsTabsRouteImport } from './routes/_authenticated/settings.tabs'
 import { Route as AuthenticatedSettingsPdfRouteImport } from './routes/_authenticated/settings.pdf'
@@ -178,6 +179,11 @@ const AuthenticatedAppsRoute = AuthenticatedAppsRouteImport.update({
   path: '/apps',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAccountRoute = AuthenticatedAccountRouteImport.update({
+  id: '/account',
+  path: '/account',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedSettingsIndexRoute =
   AuthenticatedSettingsIndexRouteImport.update({
     id: '/settings/',
@@ -219,6 +225,7 @@ export interface FileRoutesByFullPath {
   '/apply': typeof ApplyRoute
   '/auth': typeof AuthRoute
   '/docs': typeof DocsRouteWithChildren
+  '/account': typeof AuthenticatedAccountRoute
   '/apps': typeof AuthenticatedAppsRoute
   '/basics': typeof AuthenticatedBasicsRoute
   '/calendar': typeof AuthenticatedCalendarRoute
@@ -252,6 +259,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/apply': typeof ApplyRoute
   '/auth': typeof AuthRoute
+  '/account': typeof AuthenticatedAccountRoute
   '/apps': typeof AuthenticatedAppsRoute
   '/basics': typeof AuthenticatedBasicsRoute
   '/calendar': typeof AuthenticatedCalendarRoute
@@ -288,6 +296,7 @@ export interface FileRoutesById {
   '/apply': typeof ApplyRoute
   '/auth': typeof AuthRoute
   '/docs': typeof DocsRouteWithChildren
+  '/_authenticated/account': typeof AuthenticatedAccountRoute
   '/_authenticated/apps': typeof AuthenticatedAppsRoute
   '/_authenticated/basics': typeof AuthenticatedBasicsRoute
   '/_authenticated/calendar': typeof AuthenticatedCalendarRoute
@@ -324,6 +333,7 @@ export interface FileRouteTypes {
     | '/apply'
     | '/auth'
     | '/docs'
+    | '/account'
     | '/apps'
     | '/basics'
     | '/calendar'
@@ -357,6 +367,7 @@ export interface FileRouteTypes {
     | '/'
     | '/apply'
     | '/auth'
+    | '/account'
     | '/apps'
     | '/basics'
     | '/calendar'
@@ -392,6 +403,7 @@ export interface FileRouteTypes {
     | '/apply'
     | '/auth'
     | '/docs'
+    | '/_authenticated/account'
     | '/_authenticated/apps'
     | '/_authenticated/basics'
     | '/_authenticated/calendar'
@@ -622,6 +634,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/account': {
+      id: '/_authenticated/account'
+      path: '/account'
+      fullPath: '/account'
+      preLoaderRoute: typeof AuthenticatedAccountRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/settings/': {
       id: '/_authenticated/settings/'
       path: '/settings'
@@ -668,6 +687,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAccountRoute: typeof AuthenticatedAccountRoute
   AuthenticatedAppsRoute: typeof AuthenticatedAppsRoute
   AuthenticatedBasicsRoute: typeof AuthenticatedBasicsRoute
   AuthenticatedCalendarRoute: typeof AuthenticatedCalendarRoute
@@ -696,6 +716,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAccountRoute: AuthenticatedAccountRoute,
   AuthenticatedAppsRoute: AuthenticatedAppsRoute,
   AuthenticatedBasicsRoute: AuthenticatedBasicsRoute,
   AuthenticatedCalendarRoute: AuthenticatedCalendarRoute,

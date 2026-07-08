@@ -118,7 +118,7 @@ function AccountPage() {
           <h1 className="text-xl sm:text-2xl font-bold truncate">xSyna Account</h1>
           <p className="text-xs text-muted-foreground">Profil, Passkeys und Geräte</p>
         </div>
-        <SyncSpinner active={syncing} />
+        {syncing && <SyncSpinner inline />}
       </div>
 
       <div className="grid grid-cols-3 gap-1.5">
