@@ -9,7 +9,7 @@ import {
 export type TabKey =
   | "home" | "apps" | "contacts" | "chat" | "vault" | "workspace" | "basics"
   | "calendar" | "support" | "finances" | "news" | "collective" | "tasks"
-  | "security" | "notify" | "apply" | "teams" | "worktime" | "docs-admin"
+  | "security" | "notify" | "apply" | "teams" | "worktime" | "docs-admin" | "account"
   | "permissions" | "settings" | "settings.tabs" | "settings.integrations" | "settings.design" | "settings.pdf";
 
 export type TabDef = {
@@ -26,6 +26,7 @@ export type TabDef = {
 
 export const TABS: TabDef[] = [
   { key: "home",       to: "/home",       label: "Start",      desc: "Übersicht heute",   icon: Home,         accent: "from-cyan-500/30 to-emerald-500/20", category: "core" },
+  { key: "account",    to: "/account",    label: "Mein Account", desc: "Profil & Passkeys", icon: ShieldCheck, accent: "from-cyan-500/30 to-violet-500/20", category: "core" },
   { key: "apps",       to: "/apps",       label: "Apps",       desc: "Alle Anwendungen",  icon: LayoutGrid,   accent: "from-cyan-500/30 to-violet-500/20", category: "core" },
   { key: "worktime",   to: "/worktime",   label: "WorkTime",   desc: "Arbeitszeit",       icon: Clock,        accent: "from-amber-500/30 to-cyan-500/20",  category: "core" },
   { key: "contacts",   to: "/contacts",   label: "Kontakte",   desc: "Kunden & Leads",    icon: Contact,      accent: "from-cyan-500/30 to-blue-500/20",   category: "core" },
