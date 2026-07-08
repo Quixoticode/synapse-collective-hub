@@ -60,9 +60,49 @@ export const wtShiftDelete = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => creds.extend({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data }) => {
     const me = await actor(data.slid, data.pik);
-    if (!me.isSuperuser && me.hl < 7) throw new Error("Nur Administratoren (HL 7+) dürfen Schichten löschen.");
+    if (!me.isSuperuser && me.hl < 5) throw new Error("Nur Administratoren (HL 5+) dürfen Schichten löschen.");
     const sb = await admin();
     const { error } = await sb.from("work_shifts").delete().eq("id", data.id);
+    if (error) throw new Error(error.message); return { ok: true };
+  });
+
+// ---- Admin session CRUD (HL 5+) ----
+export const wtSessionUpsert = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => creds.extend({
+    id: z.string().uuid().optional(),
+    target_slid: z.string().min(1),
+    started_at: z.string(),
+    ended_at: z.string().nullable().optional(),
+    status: z.enum(["active","completed","invalidated"]).default("completed"),
+    invalidated_reason: z.string().nullable().optional(),
+    shift_id: z.string().uuid().nullable().optional(),
+  }).parse(d))
+  .handler(async ({ data }) => {
+    const me = await actor(data.slid, data.pik);
+    if (!me.isSuperuser && me.hl < 5) throw new Error("Nur Administratoren (HL 5+) dürfen Arbeitszeiten bearbeiten.");
+    const sb = await admin();
+    const payload = {
+      slid: data.target_slid, started_at: data.started_at,
+      ended_at: data.ended_at ?? null, status: data.status,
+      invalidated_reason: data.invalidated_reason ?? null,
+      shift_id: data.shift_id ?? null,
+      last_ping_at: new Date().toISOString(),
+    };
+    if (data.id) {
+      const { data: u, error } = await sb.from("work_sessions").update(payload).eq("id", data.id).select().single();
+      if (error) throw new Error(error.message); return u;
+    }
+    const { data: ins, error } = await sb.from("work_sessions").insert(payload).select().single();
+    if (error) throw new Error(error.message); return ins;
+  });
+
+export const wtSessionAdminDelete = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => creds.extend({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data }) => {
+    const me = await actor(data.slid, data.pik);
+    if (!me.isSuperuser && me.hl < 5) throw new Error("Nur Administratoren (HL 5+) dürfen Arbeitszeiten löschen.");
+    const sb = await admin();
+    const { error } = await sb.from("work_sessions").delete().eq("id", data.id);
     if (error) throw new Error(error.message); return { ok: true };
   });
 

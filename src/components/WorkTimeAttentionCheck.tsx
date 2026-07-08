@@ -4,7 +4,10 @@ import { Zap } from "lucide-react";
 import { wtSessionActive, wtSessionPing, wtSessionStop, wtSessionInvalidate } from "@/lib/worktime.functions";
 import { getCredentials } from "@/lib/syn-session";
 
-// Polls active session, sends pings, invalidates on background, prompts random attention check.
+// Polls active session, sends pings, and prompts random attention checks.
+// FIX (2026.07.08): The prompt timer must not run while the app is hidden -
+// otherwise the shift is invalidated silently while the user isn't looking.
+// The timer is now paused on visibilitychange and only starts after focus + interaction.
 export function WorkTimeAttentionCheck() {
   const activeFn = useServerFn(wtSessionActive);
   const pingFn = useServerFn(wtSessionPing);
@@ -15,6 +18,7 @@ export function WorkTimeAttentionCheck() {
   const [prompt, setPrompt] = useState(false);
   const [countdown, setCountdown] = useState(10);
   const nextCheckRef = useRef<number | null>(null);
+  const resumeGraceRef = useRef<number>(0);
 
   // Load current active session every 30s.
   useEffect(() => {
@@ -42,40 +46,56 @@ export function WorkTimeAttentionCheck() {
     return () => window.clearInterval(id);
   }, [sessionId, pingFn]);
 
-  // Invalidate on hide/unload.
+  // Track visibility for grace-period handling. Do NOT invalidate on hide -
+  // that's what caused sessions to die "for no reason" on tab-switch.
   useEffect(() => {
     if (!sessionId) return;
-    const onHide = () => {
-      if (document.visibilityState === "hidden") {
-        const c = getCredentials(); if (!c) return;
-        void invalidateFn({ data: { ...c, id: sessionId, reason: "app_left" } }).catch(() => {});
+    const onVis = () => {
+      if (document.visibilityState === "visible") {
+        // Grace period 3s after resume - during this time an active prompt won't time out.
+        resumeGraceRef.current = Date.now() + 3_000;
       }
     };
-    document.addEventListener("visibilitychange", onHide);
-    return () => document.removeEventListener("visibilitychange", onHide);
-  }, [sessionId, invalidateFn]);
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [sessionId]);
 
-  // Random attention check every 5–10 min while active.
+  // Schedule next random attention check. Only when visible - if the app is
+  // hidden when the timer fires, we defer showing the prompt until visible again.
   useEffect(() => {
     if (!sessionId) { nextCheckRef.current = null; return; }
     function schedule() {
-      const delay = (5 + Math.random() * 5) * 60_000; // 5–10 min
+      const delay = (5 + Math.random() * 5) * 60_000; // 5-10 min
       nextCheckRef.current = window.setTimeout(() => {
-        setPrompt(true); setCountdown(10);
+        if (document.visibilityState !== "visible") {
+          // Wait for the app to become visible again, then prompt.
+          const wait = () => {
+            if (document.visibilityState === "visible") {
+              document.removeEventListener("visibilitychange", wait);
+              setPrompt(true); setCountdown(10);
+            }
+          };
+          document.addEventListener("visibilitychange", wait);
+        } else {
+          setPrompt(true); setCountdown(10);
+        }
       }, delay);
     }
     schedule();
     return () => { if (nextCheckRef.current) window.clearTimeout(nextCheckRef.current); };
-  }, [sessionId, prompt]); // reschedule after prompt closes (prompt cleared → sessionId still set)
+  }, [sessionId, prompt]);
 
-  // Countdown when prompt is up.
+  // Countdown when prompt is up. Pauses while hidden, respects resume grace.
   useEffect(() => {
     if (!prompt) return;
     const id = window.setInterval(() => {
+      // Pause if hidden or within resume grace window.
+      if (document.visibilityState !== "visible") return;
+      if (Date.now() < resumeGraceRef.current) return;
+
       setCountdown((c) => {
         if (c <= 1) {
           window.clearInterval(id);
-          // Timeout → invalidate
           const cr = getCredentials();
           if (cr && sessionId) {
             void invalidateFn({ data: { ...cr, id: sessionId, reason: "timeout" } }).catch(() => {});

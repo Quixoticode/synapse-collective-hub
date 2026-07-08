@@ -1,3 +1,3 @@
-export const APP_VERSION = "2026.07.05";
+export const APP_VERSION = "2026.07.08";
 export const APP_VERSION_KEY = "xsyna.lastSeenVersion.v1";
 export const STARTUP_PLAYED_KEY = "xsyna.startupPlayed.v1";
