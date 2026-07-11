@@ -1,0 +1,1 @@
+- [Lovable vite-tanstack-config on Replit](lovable-vite-tanstack-config.md) — fixed port 8080 + IPv6 host breaks on Replit; fix via `options.vite.server.host` override.

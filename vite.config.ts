@@ -12,4 +12,11 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  // Replit's container network stack doesn't support IPv6 ("::") binding;
+  // use IPv4 instead. Only applies outside the Lovable sandbox (see
+  // isSandboxEnvironment in @lovable.dev/vite-tanstack-config), where this
+  // override wins over the package's own server defaults.
+  vite: {
+    server: { host: "0.0.0.0", allowedHosts: true },
+  },
 });
