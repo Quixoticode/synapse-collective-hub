@@ -1,0 +1,1110 @@
+# Neuromorphic Liquid Design System — Kopierbarer Code
+
+Diese Datei enthält alle drei Kern-Dateien des Design Systems. Ein anderer Agent kann sie direkt übernehmen und als Basis für neue Komponenten verwenden.
+
+---
+
+## Datei 1: `src/pages/DesignSystem.tsx` (Hauptkomponente, ~1100 Zeilen)
+
+```tsx
+import { useState, useEffect, useRef, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Eye, EyeOff, ArrowRight, Check, ChevronLeft, ChevronRight, ChevronDown,
+  Mail, Lock, User, Shield, Smartphone, Bell, Fingerprint,
+  LogOut, Zap, Activity, Database, Brain, Waves, Droplets,
+  Network, Cpu, Layers, Orbit, Sparkles, Star, Heart,
+  Settings, ArrowUpRight, Play, Pause, Volume2, VolumeX,
+  Send, Download,
+  Home, LayoutDashboard, Users, BarChart2, HelpCircle,
+  Maximize2, X,
+} from "lucide-react";
+
+const T = {
+  bg:"#020407", bg2:"#07101a", surface:"#0c1624",
+  border:"rgba(255,255,255,0.07)", primary:"#00E5FF",
+  secondary:"#FFB300", accent:"#7B4FFF", success:"#00FF88",
+  error:"#FF4060", text:"#E8F4FF", muted:"#4A6080",
+};
+
+const GlobalStyles = () => (
+  <style>{`
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,300..700&family=JetBrains+Mono:wght@400;700&display=swap');
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html,body,#root{height:100%;}
+    .nl-root{font-family:'DM Sans',sans-serif;background:${T.bg};color:${T.text};min-height:100dvh;overflow-y:auto;overflow-x:hidden;}
+    .font-display{font-family:'Space Grotesk',sans-serif;}
+    .font-mono{font-family:'JetBrains Mono',monospace;}
+    .nl-section{width:100%;max-width:1100px;margin:0 auto;padding:80px 24px;}
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+    .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+    .grid-auto{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;}
+    .grid-icons{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:12px;}
+    .grid-loaders{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:20px;}
+    @media(max-width:768px){
+      .nl-section{padding:52px 16px;}
+      .grid-2{grid-template-columns:1fr;}
+      .grid-3{grid-template-columns:1fr;}
+      .grid-auto{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));}
+    }
+    @media(max-width:480px){
+      .grid-loaders{grid-template-columns:1fr 1fr;}
+      .grid-icons{grid-template-columns:repeat(auto-fill,minmax(80px,1fr));}
+    }
+    @keyframes blobMorph{0%{border-radius:40% 60% 70% 30%/40% 50% 60% 50%;}25%{border-radius:70% 30% 40% 60%/60% 40% 70% 40%;}50%{border-radius:30% 70% 60% 40%/50% 70% 30% 60%;}75%{border-radius:60% 40% 30% 70%/30% 60% 40% 70%;}100%{border-radius:40% 60% 70% 30%/40% 50% 60% 50%;}}
+    @keyframes liqRipple{0%{transform:translate(-50%,-50%) scale(0);opacity:.55;}100%{transform:translate(-50%,-50%) scale(7);opacity:0;}}
+    .liq-ripple{position:absolute;width:70px;height:70px;border-radius:50%;pointer-events:none;animation:liqRipple .75s ease-out forwards;}
+    input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus{-webkit-text-fill-color:${T.text};-webkit-box-shadow:0 0 0 1000px ${T.bg2} inset;transition:background-color 5000s;}
+    ::-webkit-scrollbar{width:4px;height:4px;}
+    ::-webkit-scrollbar-track{background:transparent;}
+    ::-webkit-scrollbar-thumb{background:${T.border};border-radius:2px;}
+  `}</style>
+);
+
+const BgBlobs = () => (
+  <div style={{position:"fixed",inset:0,pointerEvents:"none",zIndex:0,overflow:"hidden"}}>
+    {[{c:`${T.primary}1e`,s:700,x:"8%",y:"10%",d:22,dl:0},{c:`${T.accent}18`,s:600,x:"90%",y:"60%",d:28,dl:6},{c:`${T.secondary}12`,s:500,x:"50%",y:"85%",d:20,dl:3}].map((b,i)=>(
+      <div key={i} style={{position:"absolute",width:b.s,height:b.s,left:b.x,top:b.y,transform:"translate(-50%,-50%)",background:b.c,filter:`blur(${Math.round(b.s*.19)}px)`,animation:`blobMorph ${b.d}s ease-in-out infinite`,animationDelay:`${b.dl}s`,mixBlendMode:"screen"}}/>
+    ))}
+  </div>
+);
+
+type BtnV="primary"|"secondary"|"accent"|"ghost"|"danger"|"success";
+const VBg:Record<BtnV,string>={primary:T.primary,secondary:T.secondary,accent:T.accent,ghost:"transparent",danger:T.error,success:T.success};
+interface LBProps{children:React.ReactNode;onClick?:()=>void;variant?:BtnV;fullWidth?:boolean;type?:"button"|"submit";disabled?:boolean;size?:"sm"|"md"|"lg"|"xs";}
+const LiquidButton=({children,onClick,variant="primary",fullWidth,type="button",disabled,size="md"}:LBProps)=>{
+  const [ripples,setRipples]=useState<{id:number;x:number;y:number}[]>([]);
+  const [down,setDown]=useState(false);
+  const fire=(e:React.PointerEvent<HTMLButtonElement>)=>{
+    if(disabled)return;
+    const r=e.currentTarget.getBoundingClientRect();
+    const id=Date.now()+Math.random();
+    setRipples(p=>[...p,{id,x:e.clientX-r.left,y:e.clientY-r.top}]);
+    setDown(true);
+    setTimeout(()=>setRipples(p=>p.filter(x=>x.id!==id)),760);
+    setTimeout(()=>setDown(false),140);
+    onClick?.();
+  };
+  const bg=VBg[variant];const isG=variant==="ghost";
+  const pad={xs:"5px 12px",sm:"8px 16px",md:"12px 24px",lg:"16px 40px"}[size];
+  const fz={xs:"11px",sm:"12px",md:"14px",lg:"16px"}[size];
+  const h={xs:"30px",sm:"36px",md:"48px",lg:"60px"}[size];
+  const textC=isG?T.muted:(variant==="primary"?T.bg:"#fff");
+  return(
+    <motion.button type={type} disabled={disabled} onPointerDown={fire}
+      animate={{scale:down?.963:1}} whileHover={!disabled?{scale:1.02}:{}}
+      transition={{type:"spring",stiffness:500,damping:28}}
+      style={{position:"relative",overflow:"hidden",borderRadius:"12px",border:isG?`1px solid ${T.border}`:"none",background:isG?"rgba(255,255,255,0.03)":`linear-gradient(130deg,${bg}ee,${bg}99)`,color:textC,fontFamily:"'Space Grotesk',sans-serif",fontWeight:600,fontSize:fz,letterSpacing:"0.02em",padding:pad,height:h,width:fullWidth?"100%":"auto",cursor:disabled?"not-allowed":"pointer",opacity:disabled?.36:1,boxShadow:isG?"none":`0 0 20px ${bg}28,0 2px 10px ${bg}18`,display:"flex",alignItems:"center",justifyContent:"center"}}>
+      {ripples.map(rp=><span key={rp.id} className="liq-ripple" style={{left:rp.x,top:rp.y,background:`radial-gradient(circle,${bg}55 0%,transparent 70%)`}}/>)}
+      <span style={{position:"relative",zIndex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:"6px"}}>{children}</span>
+    </motion.button>
+  );
+};
+
+const Spin=({color=T.bg,size=16}:{color?:string;size?:number})=>(
+  <motion.div animate={{rotate:360}} transition={{duration:1,repeat:Infinity,ease:"linear"}}
+    style={{width:size,height:size,borderRadius:"50%",border:`2px solid ${color}30`,borderTop:`2px solid ${color}`,flexShrink:0}}/>
+);
+
+interface LIProps{label?:string;type?:string;value:string;onChange:(v:string)=>void;icon?:React.ComponentType<any>;iconRight?:React.ReactNode;placeholder?:string;error?:string;autoComplete?:string;}
+const LiquidInput=({label,type="text",value,onChange,icon:Icon,iconRight,placeholder,error,autoComplete}:LIProps)=>{
+  const [focused,setFocused]=useState(false);
+  return(
+    <div>
+      {label&&<label style={{display:"block",fontSize:"11px",fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase",color:focused?T.primary:T.muted,marginBottom:"7px",fontFamily:"'Space Grotesk',sans-serif",transition:"color .3s"}}>{label}</label>}
+      <div style={{position:"relative"}}>
+        {Icon&&<div style={{position:"absolute",left:"13px",top:"50%",transform:"translateY(-50%)",color:focused?T.primary:T.muted,transition:"color .3s",pointerEvents:"none",zIndex:1,display:"flex"}}><Icon size={16} strokeWidth={1.6}/></div>}
+        <input type={type} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} autoComplete={autoComplete}
+          onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)}
+          style={{width:"100%",background:T.bg2,border:`1.5px solid ${focused?T.primary+"66":error?T.error+"50":T.border}`,borderRadius:"12px",color:T.text,fontSize:"14px",fontFamily:"'DM Sans',sans-serif",padding:Icon?"13px 42px 13px 42px":"13px 14px",paddingRight:iconRight?"42px":undefined,outline:"none",WebkitAppearance:"none",transition:"border-color .25s,box-shadow .25s",boxShadow:focused?`0 0 0 3px ${T.primary}14`:error?`0 0 0 3px ${T.error}12`:"none"}}/>
+        {iconRight&&<div style={{position:"absolute",right:"12px",top:"50%",transform:"translateY(-50%)",zIndex:1,display:"flex"}}>{iconRight}</div>}
+        <div style={{position:"absolute",bottom:0,left:0,right:0,height:"2px",pointerEvents:"none",borderRadius:"0 0 12px 12px",overflow:"hidden"}}>
+          <motion.div animate={{scaleX:focused?1:0,opacity:focused?1:0}} initial={{scaleX:0,opacity:0}} transition={{duration:.35,ease:[.4,0,.2,1]}}
+            style={{position:"absolute",inset:0,background:`linear-gradient(90deg,${T.primary},${T.accent})`,transformOrigin:"left",filter:`drop-shadow(0 0 5px ${T.primary})`}}/>
+        </div>
+      </div>
+      <AnimatePresence>{error&&<motion.p initial={{opacity:0,y:-3}} animate={{opacity:1,y:0}} exit={{opacity:0}} style={{color:T.error,fontSize:"11px",marginTop:"4px"}}>{error}</motion.p>}</AnimatePresence>
+    </div>
+  );
+};
+
+const LiquidToggle=({checked,onChange,label}:{checked:boolean;onChange:(v:boolean)=>void;label?:string})=>(
+  <button onClick={()=>onChange(!checked)} style={{display:"flex",alignItems:"center",gap:"10px",background:"none",border:"none",cursor:"pointer",padding:0}}>
+    <div style={{position:"relative",width:"44px",height:"24px",borderRadius:"12px",background:checked?`${T.primary}25`:T.bg2,border:`1px solid ${checked?T.primary+"55":T.border}`,transition:"all .3s",boxShadow:checked?`0 0 14px ${T.primary}28`:"none"}}>
+      <motion.div animate={{x:checked?21:2}} transition={{type:"spring",stiffness:600,damping:32}} style={{position:"absolute",top:"3px",width:"16px",height:"16px",borderRadius:"50%",background:checked?T.primary:T.muted,boxShadow:checked?`0 0 8px ${T.primary}`:"none"}}/>
+    </div>
+    {label&&<span style={{color:T.muted,fontSize:"13px"}}>{label}</span>}
+  </button>
+);
+
+const LiquidCheckbox=({checked,onChange,children}:{checked:boolean;onChange:(v:boolean)=>void;children?:React.ReactNode})=>(
+  <button onClick={()=>onChange(!checked)} style={{display:"flex",alignItems:"flex-start",gap:"10px",background:"none",border:"none",cursor:"pointer",padding:0,textAlign:"left"}}>
+    <div style={{flexShrink:0,width:"19px",height:"19px",borderRadius:"6px",marginTop:"1px",border:`1.5px solid ${checked?T.primary:T.muted+"55"}`,background:checked?`${T.primary}18`:"transparent",display:"flex",alignItems:"center",justifyContent:"center",transition:"all .25s",boxShadow:checked?`0 0 12px ${T.primary}28`:"none"}}>
+      <motion.div initial={{scale:0}} animate={{scale:checked?1:0}} transition={{type:"spring",stiffness:600,damping:22}}><Check size={10} color={T.primary} strokeWidth={3}/></motion.div>
+    </div>
+    {children&&<span style={{color:T.muted,fontSize:"13px",lineHeight:1.55}}>{children}</span>}
+  </button>
+);
+
+const LiquidSlider=({value,onChange,color=T.primary,label}:{value:number;onChange:(n:number)=>void;color?:string;label?:string})=>{
+  const trackRef=useRef<HTMLDivElement>(null);
+  const dragging=useRef(false);
+  const calc=(cx:number)=>{const r=trackRef.current!.getBoundingClientRect();return Math.max(0,Math.min(100,Math.round(((cx-r.left)/r.width)*100)));};
+  const onPD=(e:React.PointerEvent)=>{dragging.current=true;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);onChange(calc(e.clientX));};
+  const onPM=(e:React.PointerEvent)=>{if(dragging.current)onChange(calc(e.clientX));};
+  const onPU=()=>{dragging.current=false;};
+  return(
+    <div>
+      {label&&<div style={{display:"flex",justifyContent:"space-between",marginBottom:"10px"}}>
+        <span style={{fontSize:"12px",color:T.muted}}>{label}</span>
+        <span className="font-mono" style={{fontSize:"12px",color}}>{value}%</span>
+      </div>}
+      <div ref={trackRef} onPointerDown={onPD} onPointerMove={onPM} onPointerUp={onPU}
+        style={{position:"relative",height:"6px",borderRadius:"3px",background:T.border,cursor:"pointer",touchAction:"none"}}>
+        <motion.div animate={{width:`${value}%`}} transition={{type:"spring",stiffness:400,damping:40}} style={{position:"absolute",left:0,top:0,height:"100%",borderRadius:"3px",background:`linear-gradient(90deg,${color},${color}99)`,boxShadow:`0 0 10px ${color}60`}}/>
+        <motion.div animate={{left:`${value}%`}} transition={{type:"spring",stiffness:400,damping:40}} style={{position:"absolute",top:"50%",transform:"translate(-50%,-50%)",width:"20px",height:"20px",borderRadius:"50%",background:color,boxShadow:`0 0 0 4px ${color}30,0 0 14px ${color}80`,zIndex:2,display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <div style={{width:"6px",height:"6px",borderRadius:"50%",background:T.bg}}/>
+        </motion.div>
+      </div>
+    </div>
+  );
+};
+
+const OTPInput=({value,onChange}:{value:string;onChange:(v:string)=>void})=>{
+  const inputRef=useRef<HTMLInputElement>(null);
+  const LEN=6;
+  return(
+    <div style={{position:"relative"}}>
+      <div style={{display:"flex",gap:"8px",justifyContent:"center"}} onClick={()=>inputRef.current?.focus()}>
+        {Array.from({length:LEN}).map((_,i)=>{
+          const digit=value[i]??"";const isActive=value.length===i;
+          return(
+            <motion.div key={i} animate={{scale:isActive?1.07:1}}
+              style={{width:"46px",height:"54px",borderRadius:"11px",border:`1.5px solid ${digit?T.primary+"99":isActive?T.primary+"44":T.border}`,background:digit?`${T.primary}0d`:T.bg2,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"20px",fontFamily:"'JetBrains Mono',monospace",fontWeight:700,color:T.text,cursor:"text",position:"relative",overflow:"hidden",boxShadow:digit?`0 0 18px ${T.primary}1a`:"none",transition:"border-color .2s,background .2s"}}>
+              {digit?<motion.span key={i+digit} initial={{y:-14,opacity:0}} animate={{y:0,opacity:1}} style={{position:"absolute"}}>{digit}</motion.span>
+                :isActive?<motion.div animate={{opacity:[1,0]}} transition={{repeat:Infinity,duration:.85}} style={{width:"2px",height:"20px",background:T.primary,borderRadius:"2px"}}/>:null}
+            </motion.div>
+          );
+        })}
+      </div>
+      <input ref={inputRef} type="tel" inputMode="numeric" maxLength={LEN} value={value}
+        onChange={e=>onChange(e.target.value.replace(/\D/g,"").slice(0,LEN))}
+        style={{position:"absolute",opacity:0,pointerEvents:"none",width:0,height:0,top:0,left:0}}/>
+    </div>
+  );
+};
+
+const StrengthBar=({password}:{password:string})=>{
+  const s=password.length===0?0:password.length<6?1:password.length<10?2:/[^a-zA-Z0-9]/.test(password)?4:3;
+  const cols=["",T.error,T.secondary,T.secondary,T.success];
+  const labs=["","Weak","Fair","Good","Strong"];
+  if(!password)return null;
+  return(
+    <div style={{marginTop:"8px"}}>
+      <div style={{display:"flex",gap:"4px",marginBottom:"4px"}}>{[1,2,3,4].map(i=><motion.div key={i} animate={{scaleX:s>=i?1:0,backgroundColor:cols[s]}} initial={{scaleX:0}} transition={{duration:.3,delay:i*.05}} style={{flex:1,height:"3px",borderRadius:"2px",transformOrigin:"left",background:T.border}}/>)}</div>
+      <p style={{fontSize:"11px",color:cols[s]}}>{labs[s]}</p>
+    </div>
+  );
+};
+
+const XSynaLogo=({size=40}:{size?:number})=>(
+  <svg viewBox="0 0 100 100" style={{width:size,height:size,display:"block"}}>
+    <defs><linearGradient id="xlg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor={T.primary}/><stop offset="100%" stopColor={T.secondary}/></linearGradient></defs>
+    <path d="M18,18 Q50,50 82,82 M18,82 Q50,50 82,18" stroke="url(#xlg)" strokeWidth="7" strokeLinecap="round" fill="none"/>
+    <circle cx="50" cy="50" r="9" fill={T.bg} stroke="url(#xlg)" strokeWidth="4.5"/>
+  </svg>
+);
+
+const Section=({children,id,alt}:{children:React.ReactNode;id?:string;alt?:boolean})=>(
+  <section id={id} style={{position:"relative",zIndex:1,background:alt?"rgba(255,255,255,0.018)":"transparent",borderTop:alt?`1px solid ${T.border}`:"none",borderBottom:alt?`1px solid ${T.border}`:"none"}}>
+    <div className="nl-section">{children}</div>
+  </section>
+);
+
+const SectionLabel=({n,title,sub}:{n:string;title:string;sub:string})=>(
+  <div style={{marginBottom:"48px"}}>
+    <div style={{display:"flex",alignItems:"center",gap:"14px",marginBottom:"12px"}}>
+      <span className="font-mono" style={{fontSize:"11px",color:T.primary,letterSpacing:"0.15em"}}>{n}</span>
+      <div style={{flex:1,height:"1px",background:`linear-gradient(90deg,${T.primary}40,transparent)`}}/>
+    </div>
+    <h2 className="font-display" style={{fontSize:"clamp(26px,4vw,42px)",fontWeight:700,marginBottom:"10px",lineHeight:1.15}}>{title}</h2>
+    <p style={{color:T.muted,fontSize:"16px",maxWidth:"520px"}}>{sub}</p>
+  </div>
+);
+
+const IconCell=({icon:Icon,name,color}:{icon:React.ComponentType<any>;name:string;color:string})=>{
+  const [hov,setHov]=useState(false);
+  return(
+    <motion.div onHoverStart={()=>setHov(true)} onHoverEnd={()=>setHov(false)}
+      animate={{borderColor:hov?color+"66":T.border,background:hov?`${color}0d`:T.bg2}}
+      style={{borderRadius:"13px",border:`1px solid ${T.border}`,padding:"16px 8px",display:"flex",flexDirection:"column",alignItems:"center",gap:"9px",cursor:"default",background:T.bg2,boxShadow:hov?`0 0 16px ${color}28`:"none",transition:"box-shadow .2s"}}>
+      <motion.div animate={{color:hov?color:T.muted,scale:hov?1.18:1}} transition={{type:"spring",stiffness:400,damping:14}}><Icon size={26} strokeWidth={1.5}/></motion.div>
+      <span style={{fontSize:"9px",letterSpacing:"0.06em",color:T.muted,fontFamily:"'Space Grotesk',sans-serif",fontWeight:600,textTransform:"uppercase"}}>{name}</span>
+    </motion.div>
+  );
+};
+
+type LoaderType="think"|"sync"|"send"|"load"|"bootup"|"process"|"download"|"connect";
+
+const LoaderCard=({type,label}:{type:LoaderType;label:string})=>{
+  const [pct,setPct]=useState(0);
+  const [bootLines,setBootLines]=useState<string[]>([]);
+  const [connectPulse,setConnectPulse]=useState(false);
+  const BOOT=["INIT NEURAL CORE v3.2","LOADING LIQUID SHADERS","SYNC CORTEX LAYERS","BINDING AXON MESH","READY \u2713"];
+  useEffect(()=>{
+    if(type==="load"||type==="download"){const iv=setInterval(()=>setPct(p=>p>=100?0:p+1),60);return()=>clearInterval(iv);}
+    if(type==="bootup"){
+      let i=0;
+      const next=()=>{if(i<BOOT.length){setBootLines(p=>[...p,BOOT[i]]);i++;setTimeout(next,600);}else{setTimeout(()=>{setBootLines([]);i=0;next();},2000);}};
+      const t=setTimeout(next,300);return()=>clearTimeout(t);
+    }
+    if(type==="connect"){const iv=setInterval(()=>setConnectPulse(v=>!v),1000);return()=>clearInterval(iv);}
+  },[type]);
+
+  const Vis=()=>{
+    switch(type){
+      case"think":return(<div style={{display:"flex",gap:"7px",alignItems:"center"}}>{[0,1,2].map(i=>(<motion.div key={i} animate={{y:[0,-10,0],opacity:[0.4,1,0.4]}} transition={{duration:1.2,delay:i*0.2,repeat:Infinity,ease:"easeInOut"}} style={{width:"10px",height:"10px",borderRadius:"50%",background:T.primary,boxShadow:`0 0 10px ${T.primary}`}}/>))}</div>);
+      case"sync":return(<div style={{position:"relative",width:"48px",height:"48px"}}><motion.div animate={{rotate:360}} transition={{duration:2,repeat:Infinity,ease:"linear"}} style={{position:"absolute",inset:0,border:`2.5px solid transparent`,borderTop:`2.5px solid ${T.primary}`,borderRight:`2.5px solid ${T.primary}`,borderRadius:"50%"}}/><motion.div animate={{rotate:-360}} transition={{duration:2.5,repeat:Infinity,ease:"linear"}} style={{position:"absolute",inset:"8px",border:`2.5px solid transparent`,borderBottom:`2.5px solid ${T.secondary}`,borderLeft:`2.5px solid ${T.secondary}`,borderRadius:"50%"}}/><div style={{position:"absolute",inset:"18px",borderRadius:"50%",background:T.primary,boxShadow:`0 0 10px ${T.primary}`}}/></div>);
+      case"send":return(<div style={{position:"relative",width:"60px",height:"40px",overflow:"hidden"}}><motion.div animate={{x:[-30,70],opacity:[0,1,1,0],y:[10,0,-10]}} transition={{duration:1.8,repeat:Infinity,ease:[.4,0,.2,1]}} style={{position:"absolute",top:"50%",transform:"translateY(-50%)"}}><Send size={22} color={T.primary} style={{filter:`drop-shadow(0 0 6px ${T.primary})`}}/></motion.div><motion.div animate={{scaleX:[0,1,0],opacity:[0,0.4,0]}} transition={{duration:1.8,repeat:Infinity,ease:[.4,0,.2,1]}} style={{position:"absolute",top:"50%",left:0,width:"50px",height:"1px",background:`linear-gradient(90deg,transparent,${T.primary})`,transformOrigin:"left"}}/></div>);
+      case"load":return(<div style={{width:"100%",maxWidth:"120px"}}><div style={{height:"6px",borderRadius:"3px",background:T.border,overflow:"hidden",marginBottom:"6px"}}><motion.div animate={{width:`${pct}%`}} transition={{ease:"linear"}} style={{height:"100%",borderRadius:"3px",background:`linear-gradient(90deg,${T.primary},${T.accent})`,boxShadow:`0 0 10px ${T.primary}80`}}/></div><span className="font-mono" style={{fontSize:"11px",color:T.primary}}>{pct}%</span></div>);
+      case"bootup":return(<div style={{width:"100%",maxWidth:"180px",fontFamily:"'JetBrains Mono',monospace",fontSize:"9px",color:T.success,lineHeight:1.8}}><AnimatePresence>{bootLines.map((line,i)=>(<motion.div key={line+i} initial={{opacity:0,x:-6}} animate={{opacity:1,x:0}} style={{color:i===bootLines.length-1&&line.includes("READY")?T.success:T.primary}}>{i===bootLines.length-1&&line.includes("READY")?"":"> "}{line}</motion.div>))}</AnimatePresence></div>);
+      case"process":return(<div style={{position:"relative",width:"50px",height:"50px"}}>{Array.from({length:8}).map((_,i)=>(<motion.div key={i} animate={{opacity:[0.15,1,0.15]}} transition={{duration:1,delay:i*0.125,repeat:Infinity,ease:"linear"}} style={{position:"absolute",width:"6px",height:"6px",borderRadius:"50%",background:T.accent,left:`${50+36*Math.cos((i*Math.PI)/4)-3}%`,top:`${50+36*Math.sin((i*Math.PI)/4)-3}%`}}/>))}<motion.div animate={{rotate:360}} transition={{duration:3,repeat:Infinity,ease:"linear"}} style={{position:"absolute",inset:"14px",border:`1.5px solid ${T.accent}40`,borderTop:`1.5px solid ${T.accent}`,borderRadius:"50%"}}/></div>);
+      case"download":return(<div style={{position:"relative",width:"40px",height:"50px",display:"flex",flexDirection:"column",alignItems:"center",gap:"6px"}}><motion.div animate={{y:[0,12,0],opacity:[1,0.3,1]}} transition={{duration:1.5,repeat:Infinity,ease:"easeInOut"}} style={{color:T.secondary}}><Download size={22}/></motion.div><div style={{width:"100%",height:"4px",borderRadius:"2px",background:T.border,overflow:"hidden"}}><motion.div animate={{width:`${pct}%`}} transition={{ease:"linear"}} style={{height:"100%",background:T.secondary,borderRadius:"2px"}}/></div></div>);
+      case"connect":return(<div style={{display:"flex",alignItems:"center",gap:"8px"}}><motion.div animate={{scale:connectPulse?[1,1.4,1]:1,opacity:connectPulse?[1,0.5,1]:1}} transition={{duration:.8}} style={{width:"10px",height:"10px",borderRadius:"50%",background:T.success,boxShadow:`0 0 12px ${T.success}`}}/><div style={{display:"flex",gap:"3px"}}>{[4,8,12,8,4].map((h,i)=>(<motion.div key={i} animate={{height:[h,h*1.8,h]}} transition={{duration:1,delay:i*.1,repeat:Infinity,ease:"easeInOut"}} style={{width:"3px",height:h,borderRadius:"2px",background:`${T.success}${connectPulse?"ff":"66"}`}}/>))}</div></div>);
+      default:return null;
+    }
+  };
+  return(
+    <motion.div whileHover={{borderColor:`${T.primary}40`}} transition={{duration:.2}}
+      style={{background:T.bg2,borderRadius:"16px",border:`1px solid ${T.border}`,padding:"24px 20px",display:"flex",flexDirection:"column",alignItems:"center",gap:"16px",minHeight:"130px",justifyContent:"center"}}>
+      <Vis/>
+      <span style={{fontSize:"12px",fontWeight:600,letterSpacing:"0.06em",textTransform:"uppercase",color:T.muted,fontFamily:"'Space Grotesk',sans-serif"}}>{label}</span>
+    </motion.div>
+  );
+};
+
+const TabBar=()=>{
+  const [active,setActive]=useState(0);
+  const tabs=["Overview","Analytics","Agents","Settings"];
+  const refs=useRef<(HTMLButtonElement|null)[]>([]);
+  const [indicator,setIndicator]=useState({left:0,width:0});
+  useEffect(()=>{
+    const el=refs.current[active];
+    if(el){const r=el.getBoundingClientRect();const pr=el.parentElement!.getBoundingClientRect();setIndicator({left:r.left-pr.left,width:r.width});}
+  },[active]);
+  return(
+    <div style={{position:"relative",display:"inline-flex",gap:"0",background:T.bg2,borderRadius:"14px",border:`1px solid ${T.border}`,padding:"4px",overflow:"hidden"}}>
+      <motion.div animate={{left:indicator.left+4,width:indicator.width-8}} transition={{type:"spring",stiffness:400,damping:30}}
+        style={{position:"absolute",top:"4px",bottom:"4px",borderRadius:"10px",background:`${T.primary}18`,border:`1px solid ${T.primary}40`,zIndex:0,pointerEvents:"none"}}/>
+      {tabs.map((t,i)=>(
+        <button key={t} ref={el=>refs.current[i]=el} onClick={()=>setActive(i)}
+          style={{position:"relative",zIndex:1,padding:"9px 18px",background:"none",border:"none",cursor:"pointer",borderRadius:"10px",fontFamily:"'Space Grotesk',sans-serif",fontWeight:600,fontSize:"13px",color:active===i?T.primary:T.muted,whiteSpace:"nowrap",transition:"color .2s"}}>
+          {t}
+        </button>
+      ))}
+    </div>
+  );
+};
+
+const SideNav=()=>{
+  const [active,setActive]=useState(0);
+  const [collapsed,setCollapsed]=useState(false);
+  const navItems=[{icon:Home,label:"Home"},{icon:LayoutDashboard,label:"Dashboard"},{icon:Brain,label:"Agents"},{icon:BarChart2,label:"Analytics"},{icon:Users,label:"Team"},{icon:Settings,label:"Settings"},{icon:HelpCircle,label:"Support"}];
+  return(
+    <motion.div animate={{width:collapsed?60:200}} transition={{type:"spring",stiffness:400,damping:36}}
+      style={{background:T.bg2,borderRadius:"16px",border:`1px solid ${T.border}`,overflow:"hidden",display:"flex",flexDirection:"column",padding:"12px 8px",gap:"4px",minHeight:"300px"}}>
+      <div style={{display:"flex",justifyContent:collapsed?"center":"flex-end",marginBottom:"8px",padding:"0 4px"}}>
+        <button onClick={()=>setCollapsed(v=>!v)} style={{background:"none",border:"none",cursor:"pointer",color:T.muted,display:"flex",padding:"4px",borderRadius:"8px"}}>
+          {collapsed?<ChevronRight size={16}/>:<ChevronLeft size={16}/>}
+        </button>
+      </div>
+      {navItems.map(({icon:Icon,label},i)=>(
+        <motion.button key={label} onClick={()=>setActive(i)}
+          animate={{background:active===i?`${T.primary}12`:"transparent",borderColor:active===i?`${T.primary}40`:T.border}}
+          style={{display:"flex",alignItems:"center",gap:"12px",padding:"10px 12px",borderRadius:"10px",border:`1px solid transparent`,background:"transparent",cursor:"pointer",width:"100%",overflow:"hidden"}}>
+          <motion.div animate={{color:active===i?T.primary:T.muted}} style={{flexShrink:0,display:"flex"}}><Icon size={18} strokeWidth={1.6}/></motion.div>
+          <AnimatePresence>{!collapsed&&(<motion.span initial={{opacity:0,x:-8}} animate={{opacity:1,x:0}} exit={{opacity:0,x:-8}} transition={{duration:.2}}
+            style={{fontSize:"13px",fontFamily:"'Space Grotesk',sans-serif",fontWeight:600,color:active===i?T.text:T.muted,whiteSpace:"nowrap",overflow:"hidden"}}>{label}</motion.span>)}</AnimatePresence>
+          {active===i&&!collapsed&&(<motion.div initial={{scale:0}} animate={{scale:1}} style={{marginLeft:"auto",width:"6px",height:"6px",borderRadius:"50%",background:T.primary,boxShadow:`0 0 8px ${T.primary}`,flexShrink:0}}/>)}
+        </motion.button>
+      ))}
+    </motion.div>
+  );
+};
+
+const DropdownDemo=()=>{
+  const [open,setOpen]=useState(false);
+  const [selected,setSelected]=useState("Dark Cortex");
+  const options=["Dark Cortex","Midnight Bio","Bioluminescent","Neural Void"];
+  return(
+    <div style={{position:"relative",width:"220px"}}>
+      <motion.button onClick={()=>setOpen(v=>!v)} whileHover={{borderColor:`${T.primary}44`}}
+        style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"11px 16px",background:T.bg2,border:`1px solid ${T.border}`,borderRadius:"12px",cursor:"pointer",color:T.text,fontFamily:"'Space Grotesk',sans-serif",fontWeight:600,fontSize:"14px"}}>
+        <span>{selected}</span>
+        <motion.div animate={{rotate:open?180:0}} transition={{type:"spring",stiffness:400,damping:28}}><ChevronDown size={16} color={T.muted}/></motion.div>
+      </motion.button>
+      <AnimatePresence>
+        {open&&(<motion.div initial={{opacity:0,y:-8,scaleY:0.9}} animate={{opacity:1,y:0,scaleY:1}} exit={{opacity:0,y:-8,scaleY:0.9}}
+          transition={{type:"spring",stiffness:400,damping:28}} style={{transformOrigin:"top",position:"absolute",top:"calc(100% + 8px)",left:0,right:0,background:T.surface,border:`1px solid ${T.border}`,borderRadius:"12px",overflow:"hidden",zIndex:20,boxShadow:`0 16px 40px rgba(0,0,0,.6)`}}>
+          {options.map((opt,i)=>(<motion.button key={opt} initial={{opacity:0,x:-8}} animate={{opacity:1,x:0}} transition={{delay:i*.05}}
+            onClick={()=>{setSelected(opt);setOpen(false);}}
+            style={{width:"100%",padding:"11px 16px",background:selected===opt?`${T.primary}10`:"transparent",border:"none",cursor:"pointer",textAlign:"left",color:selected===opt?T.primary:T.text,fontFamily:"'Space Grotesk',sans-serif",fontWeight:selected===opt?600:400,fontSize:"14px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            {opt}{selected===opt&&<Check size={14} color={T.primary}/>}</motion.button>))}
+        </motion.div>)}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+const AccordionItem=({title,sub,children,color=T.primary}:{title:string;sub:string;children:React.ReactNode;color?:string})=>{
+  const [open,setOpen]=useState(false);
+  return(
+    <div style={{borderRadius:"12px",border:`1px solid ${open?color+"44":T.border}`,overflow:"hidden",background:open?`${color}05`:T.bg2,transition:"border-color .3s,background .3s"}}>
+      <button onClick={()=>setOpen(v=>!v)} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 18px",background:"none",border:"none",cursor:"pointer",textAlign:"left"}}>
+        <div><div style={{fontFamily:"'Space Grotesk',sans-serif",fontWeight:600,fontSize:"14px",color:open?color:T.text}}>{title}</div><div style={{fontSize:"12px",color:T.muted,marginTop:"2px"}}>{sub}</div></div>
+        <motion.div animate={{rotate:open?180:0}} transition={{type:"spring",stiffness:400,damping:28}}><ChevronDown size={16} color={open?color:T.muted}/></motion.div>
+      </button>
+      <AnimatePresence>
+        {open&&(<motion.div initial={{height:0,opacity:0}} animate={{height:"auto",opacity:1}} exit={{height:0,opacity:0}}
+          transition={{type:"spring",stiffness:300,damping:30,opacity:{duration:.2}}} style={{overflow:"hidden"}}>
+          <div style={{padding:"0 18px 18px"}}>{children}</div>
+        </motion.div>)}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+type ChatMsg={id:number;role:"user"|"ai";text:string;state:"complete"|"thinking"|"streaming"};
+type ThinkLabel="Analyzing neural patterns\u2026"|"Processing your request\u2026"|"Searching knowledge base\u2026"|"Generating response\u2026";
+const THINK_LABELS:ThinkLabel[]=["Analyzing neural patterns\u2026","Processing your request\u2026","Searching knowledge base\u2026","Generating response\u2026"];
+const AI_RESPONSES=["I've analyzed 847 active sessions across your cortex layer. Three anomalies detected:\n\n\u2192 **Sync drift** at 14:23 UTC \u2014 40ms latency spike\n\u2192 **Memory fragmentation** in agents #4 and #7\n\u2192 **Neural bandwidth** at 94% during peak load\n\nInitiating auto-repair protocol. Estimated completion: 2 minutes.","Understood. I'll schedule a defrag cycle for tonight at 02:00 UTC when traffic is at its lowest \u2014 roughly 12% of peak load. This should resolve the fragmentation in agents #4 and #7 with zero downtime.","Your neural network is operating at 99.7% efficiency. The remaining 0.3% variance is within acceptable tolerances. No action required \u2014 I'll continue monitoring.","I can help with that. To optimize agent performance, I recommend increasing cortex bandwidth allocation by 15% during peak hours. This should reduce response latency from 40ms to approximately 12ms."];
+let aiResponseIdx=0;
+
+const SynAIAvatar=({thinking=false}:{thinking?:boolean})=>(
+  <div style={{position:"relative",width:"38px",height:"38px",flexShrink:0}}>
+    <motion.div animate={thinking?{boxShadow:[`0 0 0px ${T.primary}00`,`0 0 20px ${T.primary}80`,`0 0 0px ${T.primary}00`]}:{boxShadow:`0 0 8px ${T.primary}40`}}
+      transition={{duration:1.5,repeat:thinking?Infinity:0,ease:"easeInOut"}}
+      style={{width:"38px",height:"38px",borderRadius:"12px",background:`linear-gradient(135deg,${T.primary}20,${T.accent}20)`,border:`1px solid ${T.primary}50`,display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <XSynaLogo size={22}/>
+    </motion.div>
+    {thinking&&(<motion.div animate={{scale:[1,1.5,1],opacity:[0.6,0,0.6]}} transition={{duration:1.5,repeat:Infinity}}
+      style={{position:"absolute",inset:"-4px",borderRadius:"16px",border:`1px solid ${T.primary}40`,pointerEvents:"none"}}/>)}
+  </div>
+);
+
+const ThinkingBubble=()=>{
+  const [label,setLabel]=useState<ThinkLabel>(THINK_LABELS[0]);
+  useEffect(()=>{
+    let idx=0;
+    const iv=setInterval(()=>{idx=(idx+1)%THINK_LABELS.length;setLabel(THINK_LABELS[idx]);},1200);
+    return()=>clearInterval(iv);
+  },[]);
+  return(
+    <div style={{display:"flex",gap:"10px",alignItems:"flex-end"}}>
+      <SynAIAvatar thinking/>
+      <motion.div initial={{opacity:0,y:6}} animate={{opacity:1,y:0}}
+        style={{background:T.surface,border:`1px solid ${T.primary}30`,borderRadius:"16px 16px 16px 4px",padding:"14px 18px",maxWidth:"300px"}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"5px",marginBottom:"12px"}}>
+          {Array.from({length:8}).map((_,i)=>(
+            <motion.div key={i} animate={{opacity:[0.2,1,0.2],scaleY:[0.3,1,0.3]}} transition={{duration:.9,delay:i*0.1,repeat:Infinity,ease:"easeInOut"}}
+              style={{height:"18px",borderRadius:"3px",background:`linear-gradient(180deg,${T.primary}60,${T.accent}60)`}}/>
+          ))}
+        </div>
+        <AnimatePresence mode="wait">
+          <motion.p key={label} initial={{opacity:0,y:4}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-4}} transition={{duration:.25}}
+            style={{fontSize:"12px",color:T.muted,fontFamily:"'JetBrains Mono',monospace"}}>{label}</motion.p>
+        </AnimatePresence>
+      </motion.div>
+    </div>
+  );
+};
+
+const StreamingText=({text,onDone}:{text:string;onDone:()=>void})=>{
+  const [displayed,setDisplayed]=useState("");
+  const [done,setDone]=useState(false);
+  useEffect(()=>{
+    let i=0;
+    const iv=setInterval(()=>{if(i<text.length){setDisplayed(text.slice(0,i+1));i++;}else{clearInterval(iv);setDone(true);onDone();}},18);
+    return()=>clearInterval(iv);
+  },[text]);
+  const parts=displayed.split(/(\*\*[^*]+\*\*)/g);
+  return(<span>{parts.map((p,i)=>p.startsWith("**")&&p.endsWith("**")?<strong key={i} style={{color:T.primary,fontWeight:700}}>{p.slice(2,-2)}</strong>:<span key={i} style={{whiteSpace:"pre-wrap"}}>{p}</span>)}{!done&&<motion.span animate={{opacity:[1,0]}} transition={{repeat:Infinity,duration:.7}} style={{display:"inline-block",width:"2px",height:"14px",background:T.primary,marginLeft:"2px",verticalAlign:"middle"}}/>}</span>);
+};
+
+const SynAIChat=()=>{
+  const [messages,setMessages]=useState<ChatMsg[]>([{id:0,role:"ai",text:"Hey! I'm SynAI \u2014 your neural intelligence layer. I monitor your agents, analyze patterns, and optimize performance in real time. What would you like to explore today?",state:"complete"}]);
+  const [input,setInput]=useState("");
+  const [isThinking,setIsThinking]=useState(false);
+  const [streamingId,setStreamingId]=useState<number|null>(null);
+  const scrollRef=useRef<HTMLDivElement>(null);
+  const inputRef=useRef<HTMLInputElement>(null);
+  useEffect(()=>{if(scrollRef.current)scrollRef.current.scrollTop=scrollRef.current.scrollHeight;},[messages,isThinking]);
+  const sendMessage=useCallback(()=>{
+    const text=input.trim();if(!text||isThinking)return;
+    const userId=Date.now();
+    setMessages(p=>[...p,{id:userId,role:"user",text,state:"complete"}]);
+    setInput("");setIsThinking(true);
+    const thinkTime=1800+Math.random()*1200;
+    setTimeout(()=>{
+      setIsThinking(false);const aiId=Date.now();
+      const response=AI_RESPONSES[aiResponseIdx%AI_RESPONSES.length];aiResponseIdx++;
+      setMessages(p=>[...p,{id:aiId,role:"ai",text:response,state:"streaming"}]);
+      setStreamingId(aiId);
+    },thinkTime);
+  },[input,isThinking]);
+  const finishStream=(id:number)=>{setMessages(p=>p.map(m=>m.id===id?{...m,state:"complete"}:m));setStreamingId(null);};
+  const SUGGESTIONS=["Analyze system performance","Show agent status","Optimize bandwidth","Run diagnostics"];
+  return(
+    <div style={{background:T.bg2,borderRadius:"20px",border:`1px solid ${T.border}`,overflow:"hidden",display:"flex",flexDirection:"column",height:"520px"}}>
+      <div style={{display:"flex",alignItems:"center",gap:"12px",padding:"16px 20px",borderBottom:`1px solid ${T.border}`,background:T.surface}}>
+        <SynAIAvatar/>
+        <div style={{flex:1}}>
+          <div className="font-display" style={{fontWeight:700,fontSize:"15px"}}>SynAI</div>
+          <div style={{fontSize:"11px",color:T.success,display:"flex",alignItems:"center",gap:"5px"}}>
+            <motion.div animate={{opacity:[1,0.3,1]}} transition={{duration:2,repeat:Infinity}} style={{width:"6px",height:"6px",borderRadius:"50%",background:T.success}}/>
+            Neural core active \u00b7 99.9% uptime
+          </div>
+        </div>
+        <div style={{display:"flex",gap:"8px"}}>
+          <button style={{background:"none",border:"none",cursor:"pointer",color:T.muted,display:"flex",padding:"4px",borderRadius:"8px"}}><Maximize2 size={15}/></button>
+          <button style={{background:"none",border:"none",cursor:"pointer",color:T.muted,display:"flex",padding:"4px",borderRadius:"8px"}}><X size={15}/></button>
+        </div>
+      </div>
+      <div ref={scrollRef} style={{flex:1,overflowY:"auto",padding:"20px",display:"flex",flexDirection:"column",gap:"16px"}}>
+        {messages.map(msg=>(
+          <motion.div key={msg.id} initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} transition={{type:"spring",stiffness:400,damping:30}}
+            style={{display:"flex",gap:"10px",alignItems:"flex-end",flexDirection:msg.role==="user"?"row-reverse":"row"}}>
+            {msg.role==="ai"&&<SynAIAvatar/>}
+            {msg.role==="user"&&(<div style={{width:"32px",height:"32px",borderRadius:"10px",background:`${T.accent}20`,border:`1px solid ${T.accent}40`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:"14px",fontWeight:700,color:T.accent}}>U</div>)}
+            <div style={{maxWidth:"75%",padding:"12px 16px",borderRadius:msg.role==="ai"?"16px 16px 16px 4px":"16px 16px 4px 16px",background:msg.role==="ai"?T.surface:`${T.accent}18`,border:`1px solid ${msg.role==="ai"?T.border:T.accent+"40"}`,fontSize:"14px",lineHeight:1.65,color:T.text}}>
+              {msg.state==="streaming"&&streamingId===msg.id
+                ?<StreamingText text={msg.text} onDone={()=>finishStream(msg.id)}/>
+                :<span style={{whiteSpace:"pre-wrap"}}>{msg.text.split(/(\*\*[^*]+\*\*)/g).map((p,i)=>p.startsWith("**")&&p.endsWith("**")?<strong key={i} style={{color:T.primary}}>{p.slice(2,-2)}</strong>:<span key={i}>{p}</span>)}</span>
+              }
+            </div>
+          </motion.div>
+        ))}
+        {isThinking&&(<motion.div initial={{opacity:0,y:10}} animate={{opacity:1,y:0}}><ThinkingBubble/></motion.div>)}
+      </div>
+      {!isThinking&&messages.length<3&&(
+        <div style={{padding:"0 20px 12px",display:"flex",gap:"8px",flexWrap:"wrap"}}>
+          {SUGGESTIONS.map(s=>(<button key={s} onClick={()=>{setInput(s);setTimeout(()=>inputRef.current?.focus(),50);}}
+            style={{padding:"6px 12px",borderRadius:"20px",background:`${T.primary}0a`,border:`1px solid ${T.primary}30`,color:T.primary,fontSize:"12px",cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>{s}</button>))}
+        </div>
+      )}
+      <div style={{padding:"12px 16px",borderTop:`1px solid ${T.border}`,display:"flex",gap:"10px",alignItems:"center"}}>
+        <div style={{flex:1}}>
+          <input ref={inputRef} type="text" value={input} onChange={e=>setInput(e.target.value)}
+            onKeyDown={e=>{if(e.key==="Enter")sendMessage();}} placeholder="Message SynAI\u2026"
+            style={{width:"100%",background:T.surface,border:`1.5px solid ${T.border}`,borderRadius:"12px",color:T.text,fontSize:"14px",fontFamily:"'DM Sans',sans-serif",padding:"11px 16px",outline:"none",WebkitAppearance:"none",transition:"border-color .2s"}}
+            onFocus={e=>{e.currentTarget.style.borderColor=`${T.primary}66`;}}
+            onBlur={e=>{e.currentTarget.style.borderColor=T.border;}}/>
+        </div>
+        <LiquidButton size="sm" onClick={sendMessage} disabled={!input.trim()||isThinking}>
+          {isThinking?<Spin size={14}/>:<Send size={14}/>}
+        </LiquidButton>
+      </div>
+    </div>
+  );
+};
+
+type Screen="login"|"signup"|"verify"|"profile";
+const pv={initial:{opacity:0,y:12,filter:"blur(4px)"},animate:{opacity:1,y:0,filter:"blur(0px)"},exit:{opacity:0,y:-12,filter:"blur(4px)"}};
+const pt={duration:.32,ease:[.4,0,.2,1] as any};
+
+const SSOLogin=({go}:{go:(s:Screen)=>void})=>{
+  const [email,setEmail]=useState("");const [pw,setPw]=useState("");
+  const [showPw,setShowPw]=useState(false);const [remember,setRemember]=useState(false);const [loading,setLoading]=useState(false);
+  return(
+    <motion.div variants={pv} initial="initial" animate="animate" exit="exit" transition={pt}>
+      <div style={{marginBottom:"26px"}}><h3 className="font-display" style={{fontSize:"22px",fontWeight:700,marginBottom:"5px"}}>Welcome back</h3><p style={{color:T.muted,fontSize:"13px"}}>Sign in to your xSyna account</p></div>
+      <div style={{display:"flex",flexDirection:"column",gap:"15px"}}>
+        <LiquidInput label="Email" type="email" value={email} onChange={setEmail} icon={Mail} placeholder="you@xsyna.ai" autoComplete="email"/>
+        <LiquidInput label="Password" type={showPw?"text":"password"} value={pw} onChange={setPw} icon={Lock} placeholder="\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" autoComplete="current-password"
+          iconRight={<button onClick={()=>setShowPw(v=>!v)} style={{background:"none",border:"none",cursor:"pointer",color:T.muted,padding:0,display:"flex"}}>{showPw?<EyeOff size={15} strokeWidth={1.6}/>:<Eye size={15} strokeWidth={1.6}/>}</button>}/>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <LiquidToggle checked={remember} onChange={setRemember} label="Remember me"/>
+          <button style={{background:"none",border:"none",cursor:"pointer",color:T.primary,fontSize:"12px",fontFamily:"'DM Sans',sans-serif"}}>Forgot password?</button>
+        </div>
+        <LiquidButton fullWidth onClick={()=>{setLoading(true);setTimeout(()=>{setLoading(false);go("profile");},1700);}} disabled={loading}>
+          {loading?<><Spin/>Signing in\u2026</>:<><span>Sign In</span><ArrowRight size={15}/></>}
+        </LiquidButton>
+        <div style={{display:"flex",alignItems:"center",gap:"12px"}}><div style={{flex:1,height:"1px",background:T.border}}/><span style={{fontSize:"11px",color:T.muted}}>or</span><div style={{flex:1,height:"1px",background:T.border}}/></div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px"}}>
+          {["Google","GitHub"].map(n=><LiquidButton key={n} variant="ghost" fullWidth onClick={()=>{}} size="sm">{n}</LiquidButton>)}
+        </div>
+      </div>
+      <p style={{textAlign:"center",marginTop:"20px",color:T.muted,fontSize:"13px"}}>No account? <button onClick={()=>go("signup")} style={{background:"none",border:"none",cursor:"pointer",color:T.primary,fontFamily:"'DM Sans',sans-serif",fontSize:"13px",fontWeight:600}}>Sign up free</button></p>
+    </motion.div>
+  );
+};
+
+const SSOSignup=({go}:{go:(s:Screen)=>void})=>{
+  const [name,setName]=useState("");const [email,setEmail]=useState("");const [pw,setPw]=useState("");
+  const [showPw,setShowPw]=useState(false);const [agreed,setAgreed]=useState(false);const [loading,setLoading]=useState(false);
+  return(
+    <motion.div variants={pv} initial="initial" animate="animate" exit="exit" transition={pt}>
+      <div style={{marginBottom:"26px"}}><h3 className="font-display" style={{fontSize:"22px",fontWeight:700,marginBottom:"5px"}}>Create account</h3><p style={{color:T.muted,fontSize:"13px"}}>Join the neural network</p></div>
+      <div style={{display:"flex",flexDirection:"column",gap:"14px"}}>
+        <LiquidInput label="Full name" type="text" value={name} onChange={setName} icon={User} placeholder="Ada Lovelace" autoComplete="name"/>
+        <LiquidInput label="Email" type="email" value={email} onChange={setEmail} icon={Mail} placeholder="you@xsyna.ai" autoComplete="email"/>
+        <div><LiquidInput label="Password" type={showPw?"text":"password"} value={pw} onChange={setPw} icon={Lock} placeholder="Min. 8 characters" autoComplete="new-password"
+          iconRight={<button onClick={()=>setShowPw(v=>!v)} style={{background:"none",border:"none",cursor:"pointer",color:T.muted,padding:0,display:"flex"}}>{showPw?<EyeOff size={15} strokeWidth={1.6}/>:<Eye size={15} strokeWidth={1.6}/>}</button>}/>
+          <StrengthBar password={pw}/></div>
+        <LiquidCheckbox checked={agreed} onChange={setAgreed}>I agree to <span style={{color:T.primary}}>Terms</span> & <span style={{color:T.primary}}>Privacy</span></LiquidCheckbox>
+        <LiquidButton fullWidth onClick={()=>{if(!agreed)return;setLoading(true);setTimeout(()=>{setLoading(false);go("verify");},1700);}} disabled={loading||!agreed}>
+          {loading?<><Spin/>Creating\u2026</>:"Create Account"}
+        </LiquidButton>
+      </div>
+      <p style={{textAlign:"center",marginTop:"20px",color:T.muted,fontSize:"13px"}}>Have an account? <button onClick={()=>go("login")} style={{background:"none",border:"none",cursor:"pointer",color:T.primary,fontFamily:"'DM Sans',sans-serif",fontSize:"13px",fontWeight:600}}>Sign in</button></p>
+    </motion.div>
+  );
+};
+
+const SSOVerify=({go}:{go:(s:Screen)=>void})=>{
+  const [otp,setOtp]=useState("");const [loading,setLoading]=useState(false);const [cd,setCd]=useState(30);
+  useEffect(()=>{if(cd<=0)return;const t=setTimeout(()=>setCd(v=>v-1),1000);return()=>clearTimeout(t);},[cd]);
+  return(
+    <motion.div variants={pv} initial="initial" animate="animate" exit="exit" transition={pt} style={{textAlign:"center"}}>
+      <div style={{width:"56px",height:"56px",borderRadius:"18px",background:`${T.primary}12`,border:`1px solid ${T.primary}40`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 18px"}}><Smartphone size={26} color={T.primary} strokeWidth={1.5}/></div>
+      <h3 className="font-display" style={{fontSize:"22px",fontWeight:700,marginBottom:"6px"}}>Verify email</h3>
+      <p style={{color:T.muted,fontSize:"13px",marginBottom:"24px"}}>Enter the 6-digit code we sent</p>
+      <div style={{marginBottom:"20px"}}><OTPInput value={otp} onChange={setOtp}/></div>
+      <LiquidButton fullWidth onClick={()=>{if(otp.length<6)return;setLoading(true);setTimeout(()=>{setLoading(false);go("profile");},1500);}} disabled={loading||otp.length<6}>
+        {loading?<><Spin/>Verifying\u2026</>:"Verify Code"}
+      </LiquidButton>
+      <p style={{marginTop:"16px",color:T.muted,fontSize:"12px"}}>{cd>0?<>Resend in <span className="font-mono" style={{color:T.primary}}>{cd}s</span></>:<button onClick={()=>setCd(30)} style={{background:"none",border:"none",cursor:"pointer",color:T.primary,fontSize:"12px",fontFamily:"'DM Sans',sans-serif"}}>Resend code</button>}</p>
+      <button onClick={()=>go("login")} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:"4px",background:"none",border:"none",cursor:"pointer",color:T.muted,fontSize:"12px",fontFamily:"'DM Sans',sans-serif",margin:"12px auto 0"}}><ChevronLeft size={13}/>Back</button>
+    </motion.div>
+  );
+};
+
+const SSOProfile=({go}:{go:(s:Screen)=>void})=>{
+  const [notifs,setNotifs]=useState(true);const [twoFA,setTwoFA]=useState(false);const [bio,setBio]=useState(true);
+  return(
+    <motion.div variants={pv} initial="initial" animate="animate" exit="exit" transition={pt}>
+      <div style={{display:"flex",alignItems:"center",gap:"14px",marginBottom:"22px"}}>
+        <div style={{position:"relative"}}>
+          <div style={{width:"54px",height:"54px",borderRadius:"18px",background:`linear-gradient(135deg,${T.primary}28,${T.accent}28)`,border:`1px solid ${T.primary}40`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"22px",fontWeight:700,fontFamily:"'Space Grotesk',sans-serif",color:T.primary}}>A</div>
+          <div style={{position:"absolute",bottom:"-3px",right:"-3px",width:"16px",height:"16px",borderRadius:"5px",background:T.success,display:"flex",alignItems:"center",justifyContent:"center",border:`2px solid ${T.bg}`}}><Check size={8} strokeWidth={3.5} color={T.bg}/></div>
+        </div>
+        <div style={{flex:1}}><div className="font-display" style={{fontSize:"17px",fontWeight:700}}>Ada Lovelace</div><div style={{color:T.muted,fontSize:"12px"}}>ada@xsyna.ai</div></div>
+        <div style={{padding:"4px 10px",borderRadius:"20px",background:`${T.primary}15`,border:`1px solid ${T.primary}30`,fontSize:"10px",fontFamily:"'Space Grotesk',sans-serif",fontWeight:700,color:T.primary,letterSpacing:"0.06em"}}>PRO</div>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"8px",marginBottom:"18px"}}>
+        {[{l:"Agents",v:"12",icon:Zap},{l:"Sessions",v:"847",icon:Activity},{l:"Uptime",v:"99.9%",icon:Database}].map(({l,v,icon:Icon})=>(
+          <div key={l} style={{background:T.bg,borderRadius:"10px",border:`1px solid ${T.border}`,padding:"10px 6px",textAlign:"center"}}>
+            <Icon size={13} color={T.muted} strokeWidth={1.5} style={{margin:"0 auto 4px"}}/>
+            <div className="font-display" style={{fontSize:"15px",fontWeight:700,color:T.primary}}>{v}</div>
+            <div style={{fontSize:"9px",color:T.muted}}>{l}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{background:T.bg,borderRadius:"12px",border:`1px solid ${T.border}`,overflow:"hidden",marginBottom:"14px"}}>
+        {[{icon:Bell,label:"Notifications",checked:notifs,set:setNotifs},{icon:Shield,label:"Two-Factor Auth",checked:twoFA,set:setTwoFA},{icon:Fingerprint,label:"Biometric",checked:bio,set:setBio}].map(({icon:Icon,label,checked,set},i,arr)=>(
+          <div key={label} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 14px",borderBottom:i<arr.length-1?`1px solid ${T.border}`:"none"}}>
+            <div style={{display:"flex",alignItems:"center",gap:"10px"}}><Icon size={15} color={T.muted} strokeWidth={1.6}/><span style={{fontSize:"13px"}}>{label}</span></div>
+            <LiquidToggle checked={checked} onChange={set}/>
+          </div>
+        ))}
+      </div>
+      <LiquidButton fullWidth variant="ghost" onClick={()=>go("login")} size="sm"><LogOut size={13} color={T.error}/><span style={{color:T.error}}>Sign Out</span></LiquidButton>
+    </motion.div>
+  );
+};
+
+export default function DesignSystem() {
+  const [ssoScreen,setSsoScreen]=useState<Screen>("login");
+  const [toggle1,setToggle1]=useState(true);const [toggle2,setToggle2]=useState(false);const [toggle3,setToggle3]=useState(true);
+  const [check1,setCheck1]=useState(true);const [check2,setCheck2]=useState(false);const [check3,setCheck3]=useState(true);
+  const [slider1,setSlider1]=useState(65);const [slider2,setSlider2]=useState(30);const [slider3,setSlider3]=useState(80);
+  const [demoInput,setDemoInput]=useState("");const [demoOTP,setDemoOTP]=useState("");
+  const [btnClicks,setBtnClicks]=useState<Record<string,number>>({});
+  const [playing,setPlaying]=useState(false);const [muted,setMuted]=useState(false);
+  const click=(k:string)=>setBtnClicks(p=>({...p,[k]:(p[k]||0)+1}));
+  const AXONS=8;
+  return(
+    <div className="nl-root" style={{position:"relative"}}>
+      <GlobalStyles/>
+      <BgBlobs/>
+
+      {/* HERO */}
+      <Section>
+        <div style={{minHeight:"85vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center"}}>
+          <motion.div initial={{opacity:0,scale:0.7}} animate={{opacity:1,scale:1}} transition={{duration:.7,ease:[.4,0,.2,1]}}
+            style={{position:"relative",width:"110px",height:"110px",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:"28px"}}>
+            <XSynaLogo size={66}/>
+            <svg viewBox="0 0 200 200" style={{position:"absolute",inset:"-30%",width:"160%",height:"160%",opacity:.4}}>
+              {Array.from({length:AXONS}).map((_,i)=>(
+                <motion.line key={i} x1="100" y1="100"
+                  x2={100+Math.cos((i*Math.PI)/4)*80} y2={100+Math.sin((i*Math.PI)/4)*80}
+                  stroke={T.primary} strokeWidth="1.5" strokeLinecap="round" strokeDasharray="200"
+                  animate={{strokeDashoffset:[200,0,200]}}
+                  transition={{duration:3.5,delay:i*.22,repeat:Infinity,ease:"easeInOut"}}/>
+              ))}
+            </svg>
+          </motion.div>
+          <motion.div initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} transition={{duration:.7,delay:.15}}>
+            <p className="font-mono" style={{fontSize:"11px",letterSpacing:"0.2em",color:T.muted,marginBottom:"16px",textTransform:"uppercase"}}>Neuromorphic Liquid \u00b7 Design System</p>
+            <h1 className="font-display" style={{fontSize:"clamp(38px,7vw,78px)",fontWeight:700,lineHeight:1.05,letterSpacing:"-0.02em",marginBottom:"18px"}}>
+              <span style={{background:`linear-gradient(135deg,${T.primary},${T.secondary})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text"}}>Liquid</span> by nature.
+            </h1>
+            <p style={{color:T.muted,fontSize:"clamp(14px,2vw,17px)",maxWidth:"500px",margin:"0 auto 40px",lineHeight:1.65}}>Every interaction breathes. Every component flows. A design language built for intelligence that moves.</p>
+          </motion.div>
+          <motion.div initial={{opacity:0,y:16}} animate={{opacity:1,y:0}} transition={{duration:.6,delay:.3}}
+            style={{display:"flex",gap:"12px",flexWrap:"wrap",justifyContent:"center"}}>
+            <LiquidButton size="lg" onClick={()=>document.getElementById("interactions")?.scrollIntoView({behavior:"smooth"})}>Explore System <ArrowRight size={17}/></LiquidButton>
+            <LiquidButton size="lg" variant="ghost" onClick={()=>document.getElementById("synai")?.scrollIntoView({behavior:"smooth"})}>SynAI Chat <ArrowUpRight size={17}/></LiquidButton>
+          </motion.div>
+          <motion.div initial={{opacity:0}} animate={{opacity:1}} transition={{delay:.55}}
+            style={{display:"flex",gap:"clamp(20px,5vw,50px)",marginTop:"64px",flexWrap:"wrap",justifyContent:"center"}}>
+            {[{v:"8",l:"Sections"},{v:"\u221e",l:"Ripple states"},{v:"SynAI",l:"Neural chat"},{v:"60fps",l:"Animations"}].map(({v,l})=>(
+              <div key={l} style={{textAlign:"center"}}>
+                <div className="font-display" style={{fontSize:"26px",fontWeight:700,color:T.primary}}>{v}</div>
+                <div style={{fontSize:"12px",color:T.muted,marginTop:"2px"}}>{l}</div>
+              </div>
+            ))}
+          </motion.div>
+        </div>
+      </Section>
+
+      {/* 01 BUTTONS */}
+      <Section alt id="interactions">
+        <SectionLabel n="01 / INTERACTIONS" title="Liquid Buttons" sub="Every press spawns a ripple from the exact contact point. 6 variants, 4 sizes, infinite feel."/>
+        <div className="grid-auto" style={{marginBottom:"32px"}}>
+          {([{v:"primary",label:"Primary",desc:"Main CTA"},{v:"secondary",label:"Secondary",desc:"Highlights"},{v:"accent",label:"Accent",desc:"Features"},{v:"success",label:"Success",desc:"Confirmations"},{v:"danger",label:"Danger",desc:"Destructive"},{v:"ghost",label:"Ghost",desc:"Neutral"}] as {v:BtnV;label:string;desc:string}[]).map(({v,label,desc})=>(
+            <div key={v} style={{display:"flex",flexDirection:"column",gap:"8px"}}>
+              <LiquidButton variant={v} fullWidth onClick={()=>click(v)}>{label} {btnClicks[v]?<span style={{opacity:.7,fontSize:"10px"}}>\u00d7{btnClicks[v]}</span>:null}</LiquidButton>
+              <p style={{fontSize:"10px",color:T.muted,textAlign:"center"}}>{desc}</p>
+            </div>
+          ))}
+        </div>
+        <div style={{background:T.bg2,borderRadius:"14px",border:`1px solid ${T.border}`,padding:"22px",marginBottom:"20px"}}>
+          <p style={{fontSize:"11px",color:T.muted,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:"16px",fontFamily:"'Space Grotesk',sans-serif",fontWeight:600}}>Sizes & States</p>
+          <div style={{display:"flex",flexWrap:"wrap",alignItems:"center",gap:"12px"}}>
+            <LiquidButton size="xs" onClick={()=>{}}>X-Small</LiquidButton>
+            <LiquidButton size="sm" onClick={()=>{}}>Small</LiquidButton>
+            <LiquidButton size="md" onClick={()=>{}}>Medium</LiquidButton>
+            <LiquidButton size="lg" onClick={()=>{}}>Large</LiquidButton>
+            <LiquidButton size="md" disabled onClick={()=>{}}>Disabled</LiquidButton>
+            <LiquidButton size="md" onClick={()=>{}}><Spin color={T.bg} size={14}/>Loading</LiquidButton>
+          </div>
+        </div>
+        <div style={{background:T.bg2,borderRadius:"14px",border:`1px solid ${T.border}`,padding:"22px"}}>
+          <p style={{fontSize:"11px",color:T.muted,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:"16px",fontFamily:"'Space Grotesk',sans-serif",fontWeight:600}}>Icon Buttons</p>
+          <div style={{display:"flex",flexWrap:"wrap",gap:"10px"}}>
+            <LiquidButton variant={playing?"primary":"ghost"} onClick={()=>setPlaying(v=>!v)}>{playing?<><Pause size={15}/>Pause</>:<><Play size={15}/>Play</>}</LiquidButton>
+            <LiquidButton variant={muted?"danger":"ghost"} onClick={()=>setMuted(v=>!v)}>{muted?<><VolumeX size={15}/>Muted</>:<><Volume2 size={15}/>Sound</>}</LiquidButton>
+            <LiquidButton variant="accent" onClick={()=>{}}><Settings size={15}/>Configure</LiquidButton>
+            <LiquidButton variant="secondary" onClick={()=>{}}><Star size={15}/>Favourite</LiquidButton>
+            <LiquidButton variant="ghost" onClick={()=>{}}><Heart size={15}/>Like</LiquidButton>
+          </div>
+        </div>
+      </Section>
+
+      {/* 02 CONTROLS */}
+      <Section id="controls">
+        <SectionLabel n="02 / CONTROLS" title="Toggles, Sliders & Checks" sub="Spring physics on every state change. Liquid fill slides like water across the track."/>
+        <div className="grid-2">
+          <div style={{display:"flex",flexDirection:"column",gap:"20px"}}>
+            <div style={{background:T.bg2,borderRadius:"14px",border:`1px solid ${T.border}`,padding:"22px"}}>
+              <p style={{fontSize:"11px",color:T.muted,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:"18px",fontFamily:"'Space Grotesk',sans-serif",fontWeight:600}}>Toggle Switches</p>
+              {[{label:"Neural sync",checked:toggle1,set:setToggle1},{label:"Dark protocol",checked:toggle2,set:setToggle2},{label:"Auto-learn",checked:toggle3,set:setToggle3}].map(({label,checked,set})=>(
+                <div key={label} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:`1px solid ${T.border}`}}>
+                  <span style={{fontSize:"13px"}}>{label}</span><LiquidToggle checked={checked} onChange={set}/>
+                </div>
+              ))}
+            </div>
+            <div style={{background:T.bg2,borderRadius:"14px",border:`1px solid ${T.border}`,padding:"22px"}}>
+              <p style={{fontSize:"11px",color:T.muted,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:"18px",fontFamily:"'Space Grotesk',sans-serif",fontWeight:600}}>Checkboxes</p>
+              <div style={{display:"flex",flexDirection:"column",gap:"14px"}}>
+                <LiquidCheckbox checked={check1} onChange={setCheck1}>Enable telemetry layer</LiquidCheckbox>
+                <LiquidCheckbox checked={check2} onChange={setCheck2}>Cross-agent memory sharing</LiquidCheckbox>
+                <LiquidCheckbox checked={check3} onChange={setCheck3}>Real-time inference mode</LiquidCheckbox>
+              </div>
+            </div>
+          </div>
+          <div style={{background:T.bg2,borderRadius:"14px",border:`1px solid ${T.border}`,padding:"22px"}}>
+            <p style={{fontSize:"11px",color:T.muted,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:"24px",fontFamily:"'Space Grotesk',sans-serif",fontWeight:600}}>Liquid Sliders</p>
+            <div style={{display:"flex",flexDirection:"column",gap:"30px"}}>
+              <LiquidSlider value={slider1} onChange={setSlider1} color={T.primary} label="Cortex sensitivity"/>
+              <LiquidSlider value={slider2} onChange={setSlider2} color={T.secondary} label="Response latency"/>
+              <LiquidSlider value={slider3} onChange={setSlider3} color={T.accent} label="Neural bandwidth"/>
+            </div>
+          </div>
+        </div>
+      </Section>
+
+      {/* 03 LOADERS */}
+      <Section alt id="loaders">
+        <SectionLabel n="03 / LOADER SYSTEM" title="State Animations" sub="Eight distinct loading states, each designed for a specific moment in the neural lifecycle."/>
+        <div className="grid-loaders">
+          {([{type:"think",label:"Think"},{type:"sync",label:"Sync"},{type:"send",label:"Send"},{type:"load",label:"Load"},{type:"bootup",label:"Bootup"},{type:"process",label:"Process"},{type:"download",label:"Download"},{type:"connect",label:"Connect"}] as {type:LoaderType;label:string}[]).map(p=>(
+            <LoaderCard key={p.type} type={p.type} label={p.label}/>
+          ))}
+        </div>
+      </Section>
+
+      {/* 04 NAVIGATION */}
+      <Section id="navigation">
+        <SectionLabel n="04 / NAVIGATION" title="Menus & Navigation" sub="Animated tab indicators, collapsible side nav with spring physics, dropdown with staggered items."/>
+        <div className="grid-2" style={{marginBottom:"24px"}}>
+          <div style={{background:T.bg2,borderRadius:"14px",border:`1px solid ${T.border}`,padding:"22px"}}>
+            <p style={{fontSize:"11px",color:T.muted,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:"18px",fontFamily:"'Space Grotesk',sans-serif",fontWeight:600}}>Tab Bar \u2014 Liquid Indicator</p>
+            <TabBar/>
+            <div style={{height:"50px",display:"flex",alignItems:"center",justifyContent:"center",marginTop:"16px"}}>
+              <p style={{color:T.muted,fontSize:"12px"}}>Tab content animates in with blur + fade</p>
+            </div>
+          </div>
+          <div style={{background:T.bg2,borderRadius:"14px",border:`1px solid ${T.border}`,padding:"22px"}}>
+            <p style={{fontSize:"11px",color:T.muted,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:"18px",fontFamily:"'Space Grotesk',sans-serif",fontWeight:600}}>Dropdown \u2014 Staggered Open</p>
+            <DropdownDemo/>
+          </div>
+        </div>
+        <div className="grid-2">
+          <div style={{background:T.bg2,borderRadius:"14px",border:`1px solid ${T.border}`,padding:"22px"}}>
+            <p style={{fontSize:"11px",color:T.muted,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:"18px",fontFamily:"'Space Grotesk',sans-serif",fontWeight:600}}>Side Nav \u2014 Collapsible</p>
+            <SideNav/>
+          </div>
+          <div style={{background:T.bg2,borderRadius:"14px",border:`1px solid ${T.border}`,padding:"22px"}}>
+            <p style={{fontSize:"11px",color:T.muted,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:"18px",fontFamily:"'Space Grotesk',sans-serif",fontWeight:600}}>Accordion \u2014 Spring Physics</p>
+            <div style={{display:"flex",flexDirection:"column",gap:"8px"}}>
+              <AccordionItem title="Neural Core" sub="System configuration" color={T.primary}>
+                <div style={{display:"flex",flexDirection:"column",gap:"10px",paddingTop:"4px"}}>
+                  <LiquidToggle checked={true} onChange={()=>{}} label="Autonomous repair"/>
+                  <LiquidToggle checked={false} onChange={()=>{}} label="Memory compression"/>
+                </div>
+              </AccordionItem>
+              <AccordionItem title="Agent Mesh" sub="Multi-agent coordination" color={T.secondary}>
+                <div style={{paddingTop:"4px"}}><LiquidSlider value={70} onChange={()=>{}} color={T.secondary} label="Sync frequency"/></div>
+              </AccordionItem>
+              <AccordionItem title="Security" sub="Auth & access control" color={T.accent}>
+                <div style={{display:"flex",flexDirection:"column",gap:"10px",paddingTop:"4px"}}>
+                  <LiquidCheckbox checked={true} onChange={()=>{}}>Zero-trust networking</LiquidCheckbox>
+                  <LiquidCheckbox checked={false} onChange={()=>{}}>Audit all agent actions</LiquidCheckbox>
+                </div>
+              </AccordionItem>
+            </div>
+          </div>
+        </div>
+      </Section>
+
+      {/* 05 FORMS */}
+      <Section alt id="forms">
+        <SectionLabel n="05 / FORM SYSTEM" title="Inputs & Verification" sub="Focus triggers a liquid gradient line. OTP cells animate per-digit with fall-in physics."/>
+        <div className="grid-2">
+          <div style={{background:T.bg2,borderRadius:"14px",border:`1px solid ${T.border}`,padding:"22px"}}>
+            <p style={{fontSize:"11px",color:T.muted,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:"18px",fontFamily:"'Space Grotesk',sans-serif",fontWeight:600}}>Text Inputs</p>
+            <div style={{display:"flex",flexDirection:"column",gap:"16px"}}>
+              <LiquidInput label="Email" type="email" value={demoInput} onChange={setDemoInput} icon={Mail} placeholder="Focus to see the liquid line" autoComplete="off"/>
+              <LiquidInput label="Password" type="password" value="" onChange={()=>{}} icon={Lock} placeholder="\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" autoComplete="off"/>
+              <LiquidInput label="Error state" type="text" value="" onChange={()=>{}} icon={User} placeholder="Invalid field" error="This field is required" autoComplete="off"/>
+            </div>
+          </div>
+          <div style={{background:T.bg2,borderRadius:"14px",border:`1px solid ${T.border}`,padding:"22px"}}>
+            <p style={{fontSize:"11px",color:T.muted,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:"18px",fontFamily:"'Space Grotesk',sans-serif",fontWeight:600}}>OTP Verification</p>
+            <p style={{color:T.muted,fontSize:"13px",marginBottom:"18px",lineHeight:1.6}}>Tap the cells and type digits \u2014 each falls in individually.</p>
+            <OTPInput value={demoOTP} onChange={setDemoOTP}/>
+            <StrengthBar password={demoOTP.padEnd(1," ")}/>
+            {demoOTP.length===6&&<motion.div initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} style={{marginTop:"14px"}}><LiquidButton fullWidth onClick={()=>setDemoOTP("")} size="sm"><Check size={14}/>Clear</LiquidButton></motion.div>}
+          </div>
+        </div>
+      </Section>
+
+      {/* 06 TYPOGRAPHY & ICONS */}
+      <Section id="type">
+        <SectionLabel n="06 / TYPOGRAPHY & ICONS" title="Type System & Glyphs" sub="Space Grotesk headlines. DM Sans body. JetBrains Mono for data. Hover icons to illuminate."/>
+        <div className="grid-2" style={{marginBottom:"24px"}}>
+          <div>
+            {[{tag:"Display",size:"clamp(30px,4vw,48px)",weight:700,font:"'Space Grotesk'"},{tag:"Heading 1",size:"clamp(22px,3vw,34px)",weight:700,font:"'Space Grotesk'"},{tag:"Heading 2",size:"clamp(18px,2.5vw,26px)",weight:600,font:"'Space Grotesk'"},{tag:"Body",size:"16px",weight:400,font:"'DM Sans'"},{tag:"Caption",size:"13px",weight:400,font:"'DM Sans'"},{tag:"Mono",size:"13px",weight:400,font:"'JetBrains Mono'"}].map(({tag,size,weight,font})=>(
+              <div key={tag} style={{display:"flex",alignItems:"baseline",gap:"16px",padding:"11px 0",borderBottom:`1px solid ${T.border}`}}>
+                <span style={{width:"80px",fontSize:"10px",color:T.muted,fontFamily:"'Space Grotesk',sans-serif",fontWeight:600,letterSpacing:"0.06em",flexShrink:0}}>{tag}</span>
+                <span style={{fontFamily:font,fontSize:size,fontWeight:weight,color:T.text,lineHeight:1.2}}>Neuromorphic</span>
+              </div>
+            ))}
+          </div>
+          <div style={{background:T.bg2,borderRadius:"14px",border:`1px solid ${T.border}`,padding:"22px"}}>
+            <p style={{fontSize:"11px",color:T.muted,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:"16px",fontFamily:"'Space Grotesk',sans-serif",fontWeight:600}}>Weight scale</p>
+            {[300,400,500,600,700].map(w=>(
+              <div key={w} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${T.border}`}}>
+                <span className="font-mono" style={{fontSize:"11px",color:T.muted}}>{w}</span>
+                <span className="font-display" style={{fontSize:"17px",fontWeight:w,background:`linear-gradient(90deg,${T.primary},${T.secondary})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text"}}>Liquid State</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="grid-icons">
+          {[{icon:Brain,name:"Cortex",color:T.primary},{icon:Waves,name:"Pulse",color:T.secondary},{icon:Droplets,name:"Liquid",color:T.primary},{icon:Zap,name:"Energy",color:T.secondary},{icon:Network,name:"Synapse",color:T.accent},{icon:Cpu,name:"Process",color:T.primary},{icon:Shield,name:"Secure",color:T.success},{icon:Layers,name:"Depth",color:T.accent},{icon:Orbit,name:"Orbit",color:T.secondary},{icon:Activity,name:"Vitals",color:T.error},{icon:Database,name:"Memory",color:T.primary},{icon:Sparkles,name:"Magic",color:T.secondary},{icon:Mail,name:"Comms",color:T.accent},{icon:Bell,name:"Alerts",color:T.secondary},{icon:Lock,name:"Auth",color:T.primary},{icon:Settings,name:"Config",color:T.muted},{icon:Star,name:"Rank",color:T.secondary},{icon:Heart,name:"Social",color:T.error}].map(p=><IconCell key={p.name} {...p}/>)}
+        </div>
+      </Section>
+
+      {/* 07 SYNAI */}
+      <Section alt id="synai">
+        <SectionLabel n="07 / SYNAI" title="Neural Intelligence Chat" sub="SynAI thinks in real time \u2014 neural processing grid before each response streams in character by character."/>
+        <div className="grid-2">
+          <div>
+            <div style={{display:"flex",flexDirection:"column",gap:"14px",marginBottom:"28px"}}>
+              {[{icon:Brain,c:T.primary,title:"Neural Thinking",desc:"SynAI processes your request through its cortex layer, shown as an animated data grid."},{icon:Waves,c:T.secondary,title:"Streaming Response",desc:"Text streams in at 18ms per character with a live cursor \u2014 real-time, not pre-loaded."},{icon:Zap,c:T.accent,title:"Instant Interaction",desc:"Press Enter or the send button. SynAI responds with contextual intelligence."}].map(({icon:Icon,c,title,desc})=>(
+                <div key={title} style={{display:"flex",gap:"14px",alignItems:"flex-start",padding:"16px",background:T.bg2,borderRadius:"12px",border:`1px solid ${T.border}`}}>
+                  <div style={{width:"36px",height:"36px",borderRadius:"10px",background:`${c}15`,border:`1px solid ${c}40`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><Icon size={18} color={c} strokeWidth={1.5}/></div>
+                  <div><div className="font-display" style={{fontSize:"13px",fontWeight:700,marginBottom:"3px"}}>{title}</div><div style={{fontSize:"12px",color:T.muted,lineHeight:1.5}}>{desc}</div></div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <SynAIChat/>
+        </div>
+      </Section>
+
+      {/* 08 SSO */}
+      <Section id="sso">
+        <SectionLabel n="08 / IN ACTION" title="SSO \u2014 Live Demo" sub="The complete auth flow built with Neuromorphic Liquid components. Login \u2192 Signup \u2192 Verify \u2192 Profile."/>
+        <div className="grid-2">
+          <div style={{display:"flex",flexDirection:"column",gap:"10px"}}>
+            {([{s:"login",label:"01 Login",sub:"Email + password + OAuth"},{s:"signup",label:"02 Sign Up",sub:"Registration with strength bar"},{s:"verify",label:"03 Verify",sub:"Animated OTP cells"},{s:"profile",label:"04 Profile",sub:"Stats + settings + toggles"}] as {s:Screen;label:string;sub:string}[]).map(({s,label,sub})=>(
+              <motion.button key={s} onClick={()=>setSsoScreen(s)}
+                animate={{borderColor:ssoScreen===s?T.primary+"55":T.border,background:ssoScreen===s?`${T.primary}0a`:"transparent"}}
+                style={{display:"flex",alignItems:"center",gap:"12px",background:"transparent",border:`1px solid ${T.border}`,borderRadius:"12px",padding:"13px 16px",cursor:"pointer",textAlign:"left",width:"100%"}}>
+                <motion.div animate={{background:ssoScreen===s?T.primary:T.muted}} style={{width:"7px",height:"7px",borderRadius:"50%",flexShrink:0}}/>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:"13px",fontWeight:600,fontFamily:"'Space Grotesk',sans-serif",color:ssoScreen===s?T.text:T.muted}}>{label}</div>
+                  <div style={{fontSize:"11px",color:T.muted,marginTop:"1px"}}>{sub}</div>
+                </div>
+                {ssoScreen===s&&<ChevronRight size={13} color={T.primary}/>}
+              </motion.button>
+            ))}
+          </div>
+          <div style={{background:T.bg2,borderRadius:"18px",border:`1px solid ${T.border}`,padding:"28px",boxShadow:`0 0 60px ${T.primary}08`}}>
+            <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:"5px",marginBottom:"24px"}}><XSynaLogo size={34}/><span className="font-display" style={{fontSize:"10px",fontWeight:700,letterSpacing:"0.2em",color:T.muted,textTransform:"uppercase"}}>xSyna SSO</span></div>
+            <AnimatePresence mode="wait">
+              {ssoScreen==="login"   &&<SSOLogin    key="login"   go={setSsoScreen}/>}
+              {ssoScreen==="signup"  &&<SSOSignup   key="signup"  go={setSsoScreen}/>}
+              {ssoScreen==="verify"  &&<SSOVerify   key="verify"  go={setSsoScreen}/>}
+              {ssoScreen==="profile" &&<SSOProfile  key="profile" go={setSsoScreen}/>}
+            </AnimatePresence>
+          </div>
+        </div>
+      </Section>
+
+      {/* FOOTER */}
+      <div style={{position:"relative",zIndex:1,textAlign:"center",padding:"44px 24px 56px",borderTop:`1px solid ${T.border}`}}>
+        <XSynaLogo size={30}/>
+        <p className="font-mono" style={{fontSize:"10px",color:T.muted,marginTop:"12px",letterSpacing:"0.12em"}}>NEUROMORPHIC LIQUID \u00b7 DESIGN SYSTEM \u00b7 xSyna 2026</p>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## Datei 2: `src/App.tsx`
+
+```tsx
+import DesignSystem from "@/pages/DesignSystem";
+
+export default function App() {
+  return <DesignSystem />;
+}
+```
+
+---
+
+## Datei 3: `src/index.css`
+
+```css
+@import "tailwindcss";
+@import "tw-animate-css";
+@plugin "@tailwindcss/typography";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-card-border: hsl(var(--card-border));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-popover-border: hsl(var(--popover-border));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-primary-border: var(--primary-border);
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-secondary-border: var(--secondary-border);
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-muted-border: var(--muted-border);
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-accent-border: var(--accent-border);
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-destructive-border: var(--destructive-border);
+  --color-chart-1: hsl(var(--chart-1));
+  --color-chart-2: hsl(var(--chart-2));
+  --color-chart-3: hsl(var(--chart-3));
+  --color-chart-4: hsl(var(--chart-4));
+  --color-chart-5: hsl(var(--chart-5));
+  --color-sidebar: hsl(var(--sidebar));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --color-sidebar-primary: hsl(var(--sidebar-primary));
+  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
+  --color-sidebar-primary-border: var(--sidebar-primary-border);
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+  --color-sidebar-accent-border: var(--sidebar-accent-border);
+  --color-sidebar-ring: hsl(var(--sidebar-ring));
+  --font-sans: var(--app-font-sans);
+  --font-serif: var(--app-font-serif);
+  --font-mono: var(--app-font-mono);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+/* NEUROMORPHIC DARK THEME */
+:root {
+  --button-outline: rgba(0,225,255, .12);
+  --badge-outline: rgba(0,225,255, .06);
+  --opaque-button-border-intensity: -8;
+  --elevate-1: rgba(255,255,255, .03);
+  --elevate-2: rgba(255,255,255, .07);
+  --background: 216 71% 2%;        /* #020407 */
+  --foreground: 210 100% 96%;      /* #E8F4FF */
+  --border: 216 20% 14%;          /* ~rgba(255,255,255,0.07) */
+  --card: 214 58% 9%;             /* #0c1624 */
+  --card-foreground: 210 100% 96%;
+  --card-border: 216 20% 14%;
+  --sidebar: 214 58% 9%;
+  --sidebar-foreground: 210 100% 96%;
+  --sidebar-border: 216 20% 14%;
+  --sidebar-primary: 187 100% 50%; /* #00E5FF */
+  --sidebar-primary-foreground: 216 71% 2%;
+  --sidebar-accent: 261 100% 65%;  /* #7B4FFF */
+  --sidebar-accent-foreground: 210 100% 96%;
+  --sidebar-ring: 187 100% 50%;
+  --popover: 214 58% 9%;
+  --popover-foreground: 210 100% 96%;
+  --popover-border: 216 20% 14%;
+  --primary: 187 100% 50%;         /* #00E5FF */
+  --primary-foreground: 216 71% 2%;
+  --secondary: 42 100% 50%;        /* #FFB300 */
+  --secondary-foreground: 216 71% 2%;
+  --muted: 214 26% 39%;           /* #4A6080 */
+  --muted-foreground: 210 60% 80%;
+  --accent: 261 100% 65%;          /* #7B4FFF */
+  --accent-foreground: 210 100% 96%;
+  --destructive: 349 100% 62%;     /* #FF4060 */
+  --destructive-foreground: 210 100% 96%;
+  --input: 216 20% 18%;
+  --ring: 187 100% 50%;
+  --chart-1: 187 100% 50%;
+  --chart-2: 42 100% 50%;
+  --chart-3: 261 100% 65%;
+  --chart-4: 148 100% 50%;
+  --chart-5: 349 100% 62%;
+  --app-font-sans: 'Inter', sans-serif;
+  --app-font-serif: Georgia, serif;
+  --app-font-mono: Menlo, monospace;
+  --radius: .5rem;
+}
+
+.dark {
+  --button-outline: rgba(0,225,255, .12);
+  --badge-outline: rgba(0,225,255, .06);
+  --opaque-button-border-intensity: 9;
+  --elevate-1: rgba(255,255,255, .04);
+  --elevate-2: rgba(255,255,255, .09);
+  --background: 216 71% 2%;
+  --foreground: 210 100% 96%;
+  --border: 216 20% 14%;
+  --card: 214 58% 9%;
+  --card-foreground: 210 100% 96%;
+  --card-border: 216 20% 14%;
+  --sidebar: 214 58% 9%;
+  --sidebar-foreground: 210 100% 96%;
+  --sidebar-border: 216 20% 14%;
+  --sidebar-primary: 187 100% 50%;
+  --sidebar-primary-foreground: 216 71% 2%;
+  --sidebar-accent: 261 100% 65%;
+  --sidebar-accent-foreground: 210 100% 96%;
+  --sidebar-ring: 187 100% 50%;
+  --popover: 214 58% 9%;
+  --popover-foreground: 210 100% 96%;
+  --popover-border: 216 20% 14%;
+  --primary: 187 100% 50%;
+  --primary-foreground: 216 71% 2%;
+  --secondary: 42 100% 50%;
+  --secondary-foreground: 216 71% 2%;
+  --muted: 214 26% 39%;
+  --muted-foreground: 210 60% 80%;
+  --accent: 261 100% 65%;
+  --accent-foreground: 210 100% 96%;
+  --destructive: 349 100% 62%;
+  --destructive-foreground: 210 100% 96%;
+  --input: 216 20% 18%;
+  --ring: 187 100% 50%;
+  --chart-1: 187 100% 50%;
+  --chart-2: 42 100% 50%;
+  --chart-3: 261 100% 65%;
+  --chart-4: 148 100% 50%;
+  --chart-5: 349 100% 62%;
+}
+
+@layer base {
+  * { @apply border-border; }
+  body { @apply font-sans antialiased bg-background text-foreground; }
+}
+```
+
+---
+
+## Abhängigkeiten (package.json)
+
+```json
+{
+  "dependencies": {
+    "framer-motion": "^11.x",
+    "lucide-react": "^0.x",
+    "react": "^19.x",
+    "react-dom": "^19.x"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.x",
+    "@vitejs/plugin-react": "^4.x",
+    "tailwindcss": "^4.x",
+    "typescript": "^5.x",
+    "vite": "^6.x"
+  }
+}
+```
+
+---
+
+## Design-Token-Referenz (schnelles Nachschlagen)
+
+| Name | Hex | Nutzung |
+|------|-----|---------|
+| `T.bg` | `#020407` | Page background |
+| `T.bg2` | `#07101a` | Card / input background |
+| `T.surface` | `#0c1624` | Elevated surfaces |
+| `T.border` | `rgba(255,255,255,0.07)` | All borders |
+| `T.primary` | `#00E5FF` | Cyan — CTA, focus, active states |
+| `T.secondary` | `#FFB300` | Amber — highlights, warnings |
+| `T.accent` | `#7B4FFF` | Purple — features, labels |
+| `T.success` | `#00FF88` | Green — positive states |
+| `T.error` | `#FF4060` | Red — errors, destructive |
+| `T.text` | `#E8F4FF` | Primary text |
+| `T.muted` | `#4A6080` | Secondary / disabled text |
+
+**Schriften**: Space Grotesk (Display), DM Sans (Body), JetBrains Mono (Code/Data). Geladen via Google Fonts CDN in `GlobalStyles`.
+
+**Wiederverwendbare Komponenten** (einzeln exportierbar): `LiquidButton`, `LiquidInput`, `LiquidToggle`, `LiquidCheckbox`, `LiquidSlider`, `OTPInput`, `StrengthBar`, `XSynaLogo`, `IconCell`, `LoaderCard`, `TabBar`, `SideNav`, `DropdownDemo`, `AccordionItem`, `SynAIChat`, `SSOLogin`, `SSOSignup`, `SSOVerify`, `SSOProfile`.
