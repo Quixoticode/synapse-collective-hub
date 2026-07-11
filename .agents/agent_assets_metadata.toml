@@ -1,0 +1,14 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "DWDXtft_4dibom7KSuRxz"
+uri = "file://screenshots/auth_current.jpg"
+type = "image"
+title = "Current /auth page"
+
+[[outputs]]
+id = "Hc2p99Xod-qXHTljnD9DO"
+uri = "file://attached_assets/auth_current.jpg"
+type = "image"
+title = "Current /auth design"
