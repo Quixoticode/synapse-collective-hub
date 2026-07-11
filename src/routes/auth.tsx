@@ -1,12 +1,15 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { Sparkles, KeyRound, ShieldCheck, QrCode, Camera, Image as ImageIcon, X, BadgeCheck, ArrowLeft, LogIn, LifeBuoy, Send, Plus, Zap, Phone, MessageCircle, UserPlus } from "lucide-react";
+import { Sparkles, KeyRound, ShieldCheck, QrCode, Camera, Image as ImageIcon, X, BadgeCheck, ArrowLeft, LogIn, LifeBuoy, Send, Plus, Zap, Phone, MessageCircle, UserPlus, Fingerprint, ChevronRight } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
+import { startAuthentication, startRegistration } from "@simplewebauthn/browser";
 import { synLoginByPik, synVerifyByPik } from "@/lib/syn.functions";
 import { registerTrustedDevice, loginByTrustedDevice } from "@/lib/devices.functions";
 import { supportAccountCreate, supportAccountLogin, supportAccountPost } from "@/lib/support-accounts.functions";
 import { quickLoginConsume } from "@/lib/quick-login.functions";
-import { setSession, getSession } from "@/lib/syn-session";
+import { xaBeginAuth, xaFinishAuth, xaSessionForToken, xaFinishRegistration, xaBeginRegistration } from "@/lib/xsyna-account.functions";
+import { xaSignup, xaMigrationStatus } from "@/lib/xsyna-signup.functions";
+import { setSession, getSession, type SynSession } from "@/lib/syn-session";
 import { SynIDCard, type SynIDCardData } from "@/components/SynIDCard";
 
 export const Route = createFileRoute("/auth")({
@@ -21,7 +24,7 @@ export const Route = createFileRoute("/auth")({
 });
 
 type Mode = "input" | "scan" | "photo";
-type Stage = "login" | "verify" | "quick" | "support";
+type Stage = "passkey" | "login" | "verify" | "quick" | "support";
 
 const FP_KEY = "xsyna.deviceFp.v1";
 const LAST_SLID_KEY = "xsyna.lastSlid.v1";
@@ -62,7 +65,16 @@ function AuthPage() {
   const trustFn = useServerFn(registerTrustedDevice);
   const trustedLoginFn = useServerFn(loginByTrustedDevice);
 
-  const [stage, setStage] = useState<Stage>("login");
+  const beginPasskeyAuth = useServerFn(xaBeginAuth);
+  const finishPasskeyAuth = useServerFn(xaFinishAuth);
+  const signupFn = useServerFn(xaSignup);
+  const finishSignupReg = useServerFn(xaFinishRegistration);
+  const sessionForToken = useServerFn(xaSessionForToken);
+  const migrationStatus = useServerFn(xaMigrationStatus);
+  const beginMigrationReg = useServerFn(xaBeginRegistration);
+  const finishMigrationReg = useServerFn(xaFinishRegistration);
+
+  const [stage, setStage] = useState<Stage>("passkey");
   const [mode, setMode] = useState<Mode>("input");
   const [pik, setPik] = useState("");
   const [loading, setLoading] = useState(false);
@@ -70,6 +82,10 @@ function AuthPage() {
   const [verified, setVerified] = useState<SynIDCardData | null>(null);
   const [verifyState, setVerifyState] = useState<"idle" | "ok" | "fail">("idle");
   const [trustPrompt, setTrustPrompt] = useState<{ slid: string; pik: string } | null>(null);
+  const [showSignup, setShowSignup] = useState(false);
+  const [passkeyBusy, setPasskeyBusy] = useState(false);
+  const [passkeyError, setPasskeyError] = useState<string | null>(null);
+  const [forceMigration, setForceMigration] = useState<{ slid: string; pik: string } | null>(null);
 
   useEffect(() => {
     if (getSession()) { navigate({ to: "/apps" }); return; }
@@ -100,8 +116,18 @@ function AuthPage() {
         const me = await login({ data: { pik: candidate } });
         setSession(me);
         localStorage.setItem(LAST_SLID_KEY, me.slid);
-        // Ask about trusting this device
-        setTrustPrompt({ slid: me.slid, pik: candidate });
+        // Passkey-only accounts have no usable PIK anymore — old-style PIK
+        // logins are nudged (and eventually forced) to set one up.
+        let migrated = true;
+        try {
+          const status = await migrationStatus({ data: { slid: me.slid, pik: candidate } });
+          migrated = status.passkey_migrated;
+        } catch { /* xsyna_accounts row may not exist yet for legacy staff — skip nudge */ }
+        if (!migrated && typeof window !== "undefined" && window.PublicKeyCredential) {
+          setForceMigration({ slid: me.slid, pik: candidate });
+        } else {
+          setTrustPrompt({ slid: me.slid, pik: candidate });
+        }
       } else {
         const res = await verify({ data: { pik: candidate } });
         if (res.valid) { setVerified(res.card as SynIDCardData); setVerifyState("ok"); }
@@ -130,6 +156,45 @@ function AuthPage() {
     navigate({ to: "/apps" });
   }
 
+  async function setUpForcedPasskey() {
+    if (!forceMigration) return;
+    setPasskeyBusy(true); setPasskeyError(null);
+    try {
+      const options = await beginMigrationReg({ data: {
+        slid: forceMigration.slid, pik: forceMigration.pik, origin: window.location.origin,
+      }});
+      const response = await startRegistration({ optionsJSON: options as never });
+      await finishMigrationReg({ data: {
+        slid: forceMigration.slid, pik: forceMigration.pik,
+        device_label: navigator.userAgent.slice(0, 60),
+        origin: window.location.origin, response,
+      }});
+      const trustSlid = forceMigration.slid, trustPik = forceMigration.pik;
+      setForceMigration(null);
+      setTrustPrompt({ slid: trustSlid, pik: trustPik });
+    } catch (e) {
+      setPasskeyError(e instanceof Error ? e.message : "Passkey konnte nicht angelegt werden.");
+    } finally {
+      setPasskeyBusy(false);
+    }
+  }
+
+  async function passkeyLogin() {
+    setPasskeyBusy(true); setPasskeyError(null);
+    try {
+      const options = await beginPasskeyAuth({ data: { slid: null, origin: window.location.origin } });
+      const response = await startAuthentication({ optionsJSON: options as never });
+      const session = await finishPasskeyAuth({ data: { response, origin: window.location.origin } });
+      setSession(session as SynSession);
+      localStorage.setItem(LAST_SLID_KEY, session.slid);
+      navigate({ to: "/apps" });
+    } catch (e) {
+      setPasskeyError(e instanceof Error ? e.message : "Passkey-Anmeldung fehlgeschlagen.");
+    } finally {
+      setPasskeyBusy(false);
+    }
+  }
+
   const accent = stage === "verify" ? "var(--neural-mint)" : stage === "support" ? "var(--neural-magenta)" : "var(--synapse)";
 
   return (
@@ -148,8 +213,9 @@ function AuthPage() {
         </div>
 
         {/* Stage switch */}
-        <div className="grid grid-cols-4 gap-1.5 mb-4">
-          <StageBtn active={stage === "login"} onClick={() => { setStage("login"); setVerified(null); setError(null); }} icon={<LogIn className="h-4 w-4" />} label="Login" />
+        <div className="grid grid-cols-5 gap-1.5 mb-4">
+          <StageBtn active={stage === "passkey"} onClick={() => { setStage("passkey"); setError(null); setPasskeyError(null); }} icon={<Fingerprint className="h-4 w-4" />} label="Passkey" />
+          <StageBtn active={stage === "login"} onClick={() => { setStage("login"); setVerified(null); setError(null); }} icon={<LogIn className="h-4 w-4" />} label="SynID" />
           <StageBtn active={stage === "verify"} onClick={() => { setStage("verify"); setError(null); }} icon={<BadgeCheck className="h-4 w-4" />} label="Verify" />
           <StageBtn active={stage === "quick"} onClick={() => { setStage("quick"); setError(null); }} icon={<Zap className="h-4 w-4" />} label="Quick" />
           <StageBtn active={stage === "support"} onClick={() => { setStage("support"); setError(null); }} icon={<LifeBuoy className="h-4 w-4" />} label="Support" />
@@ -168,6 +234,26 @@ function AuthPage() {
           <SupportSection />
         ) : stage === "quick" ? (
           <QuickLoginSection onDone={(s) => { setSession(s); navigate({ to: "/apps" }); }} />
+        ) : stage === "passkey" ? (
+          <div className="syn-card p-4 sm:p-6 space-y-4 syn-gradient-border" style={{ borderColor: "var(--synapse)" }}>
+            <div className="text-center space-y-2">
+              <div className="mx-auto h-14 w-14 rounded-2xl grid place-items-center" style={{ background: "var(--gradient-neural-soft)" }}>
+                <Fingerprint className="h-7 w-7" style={{ color: "var(--synapse)" }} />
+              </div>
+              <p className="text-xs text-muted-foreground">FaceID, TouchID, Windows Hello oder Sicherheitsschlüssel — ohne PIK, ohne Passwort.</p>
+            </div>
+            <button onClick={() => void passkeyLogin()} disabled={passkeyBusy} className="syn-btn w-full">
+              <Fingerprint className="h-4 w-4" /> {passkeyBusy ? "Prüfe…" : "Mit Passkey anmelden"}
+            </button>
+            {passkeyError && <div className="text-xs text-destructive mono p-2 rounded-lg bg-destructive/10 border border-destructive/30">{passkeyError}</div>}
+            <button onClick={() => { setShowSignup(true); setPasskeyError(null); }} className="syn-btn-ghost w-full text-xs justify-between">
+              Noch kein Konto? Jetzt registrieren <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+            <div className="flex items-start gap-2 text-[11px] text-muted-foreground">
+              <ShieldCheck className="h-3 w-3 mt-0.5 shrink-0" style={{ color: "var(--neural-mint)" }} />
+              <span>Passkeys sind an dieses Gerät und diese Domain gebunden – niemand außer dir kann sie nutzen.</span>
+            </div>
+          </div>
         ) : (
           <div className="syn-card p-4 sm:p-6 space-y-4 syn-gradient-border" style={{ borderColor: accent }}>
             <div className="grid grid-cols-3 gap-2">
@@ -210,6 +296,34 @@ function AuthPage() {
         </div>
       </div>
 
+      {showSignup && (
+        <SignupModal
+          onClose={() => setShowSignup(false)}
+          onDone={(session) => { setSession(session); localStorage.setItem(LAST_SLID_KEY, session.slid); navigate({ to: "/apps" }); }}
+          signupFn={signupFn}
+          finishRegFn={finishSignupReg}
+          sessionForTokenFn={sessionForToken}
+        />
+      )}
+
+      {forceMigration && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="syn-card syn-gradient-border max-w-sm w-full p-5 space-y-3 text-center" style={{ borderColor: "var(--synapse)" }}>
+            <div className="mx-auto h-12 w-12 rounded-2xl grid place-items-center" style={{ background: "var(--gradient-neural-soft)" }}>
+              <Fingerprint className="h-6 w-6" style={{ color: "var(--synapse)" }} />
+            </div>
+            <h3 className="font-semibold">Passkey jetzt einrichten</h3>
+            <p className="text-xs text-muted-foreground">
+              xSyna Central wechselt auf Passkey-Anmeldung. Richte jetzt einen Passkey für dieses Gerät ein — dein PIK wird danach deaktiviert.
+            </p>
+            {passkeyError && <div className="text-xs text-destructive mono p-2 rounded-lg bg-destructive/10 border border-destructive/30">{passkeyError}</div>}
+            <button onClick={() => void setUpForcedPasskey()} disabled={passkeyBusy} className="syn-btn w-full">
+              <Fingerprint className="h-4 w-4" /> {passkeyBusy ? "Richte ein…" : "Passkey jetzt anlegen"}
+            </button>
+          </div>
+        </div>
+      )}
+
       {trustPrompt && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="syn-card syn-gradient-border max-w-sm w-full p-5 space-y-3 text-center">
@@ -228,6 +342,62 @@ function AuthPage() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function SignupModal({
+  onClose, onDone, signupFn, finishRegFn, sessionForTokenFn,
+}: {
+  onClose: () => void;
+  onDone: (session: SynSession) => void;
+  signupFn: ReturnType<typeof useServerFn<typeof xaSignup>>;
+  finishRegFn: ReturnType<typeof useServerFn<typeof xaFinishRegistration>>;
+  sessionForTokenFn: ReturnType<typeof useServerFn<typeof xaSessionForToken>>;
+}) {
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function submit() {
+    if (!firstName.trim() || !lastName.trim()) return;
+    setBusy(true); setErr(null);
+    try {
+      const { slid, token, options } = await signupFn({ data: {
+        first_name: firstName.trim(), last_name: lastName.trim(),
+        email: email.trim() || undefined, origin: window.location.origin,
+      }});
+      const response = await startRegistration({ optionsJSON: options as never });
+      await finishRegFn({ data: { slid, token, device_label: navigator.userAgent.slice(0, 60), origin: window.location.origin, response } });
+      const session = await sessionForTokenFn({ data: { token } });
+      onDone(session as SynSession);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Registrierung fehlgeschlagen.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="syn-card syn-gradient-border max-w-sm w-full p-5 space-y-3" style={{ borderColor: "var(--synapse)" }}>
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold">xSyna Account erstellen</h3>
+          <button onClick={onClose} className="syn-btn-ghost p-1.5"><X className="h-4 w-4" /></button>
+        </div>
+        <p className="text-xs text-muted-foreground">Für Kunden &amp; Partner. Anmeldung erfolgt danach ausschließlich per Passkey.</p>
+        <div className="grid grid-cols-2 gap-2">
+          <input className="syn-input" placeholder="Vorname" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+          <input className="syn-input" placeholder="Nachname" value={lastName} onChange={(e) => setLastName(e.target.value)} />
+        </div>
+        <input className="syn-input" type="email" placeholder="E-Mail (optional)" value={email} onChange={(e) => setEmail(e.target.value)} />
+        {err && <div className="text-xs text-destructive mono p-2 rounded-lg bg-destructive/10 border border-destructive/30">{err}</div>}
+        <button onClick={() => void submit()} disabled={busy || !firstName.trim() || !lastName.trim()} className="syn-btn w-full">
+          <Fingerprint className="h-4 w-4" /> {busy ? "Erstelle Konto…" : "Konto erstellen & Passkey einrichten"}
+        </button>
+      </div>
     </div>
   );
 }

@@ -76,23 +76,42 @@ export const xaBeginAuth = createServerFn({ method: "POST" })
     return beginAuthentication(data.slid ?? null, originFromInput(data.origin));
   });
 
+// Builds the full legacy-compatible session (same shape as SynID/PIK login)
+// plus the xSyna passkey token/profile, from a verified SLID. Reused by
+// passkey-authentication, and by fresh signups right after registration.
+async function buildFullSession(slid: string) {
+  const { mintSessionToken } = await wa();
+  const session = await mintSessionToken(slid);
+  const sb = await admin();
+  const { data: emp } = await sb.from("employees").select("slid,name,hl,pik,regid,cip,department,position,kind").eq("slid", slid).maybeSingle();
+  const { data: prof } = await sb.from("xsyna_accounts" as never).select("first_name,last_name,email,avatar_url").eq("slid", slid).maybeSingle() as { data: { first_name?: string; last_name?: string; email?: string; avatar_url?: string } | null };
+  const { data: su } = await sb.rpc("has_role", { _slid: slid, _role: "superuser" });
+  return {
+    ...session,
+    slid, name: emp?.name ?? slid, hl: emp?.hl ?? 0, pik: emp?.pik ?? "", regid: emp?.regid ?? "", cip: emp?.cip ?? "",
+    department: emp?.department ?? null, position: emp?.position ?? null, kind: emp?.kind ?? null,
+    isSuperuser: !!su,
+    profile: prof ? { first_name: prof.first_name ?? null, last_name: prof.last_name ?? null, email: prof.email ?? null, avatar_url: prof.avatar_url ?? null } : undefined,
+  };
+}
+
 export const xaFinishAuth = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object({ response: z.unknown(), origin: z.string().optional() }).parse(d))
   .handler(async ({ data }) => {
-    const { finishAuthentication, mintSessionToken } = await wa();
+    const { finishAuthentication } = await wa();
     const { slid } = await finishAuthentication(data.response as never, originFromInput(data.origin));
-    const session = await mintSessionToken(slid);
-    const sb = await admin();
-    const { data: emp } = await sb.from("employees").select("slid,name,hl,regid,cip,department,position,kind").eq("slid", slid).maybeSingle();
-    const { data: prof } = await sb.from("xsyna_accounts" as never).select("first_name,last_name,email,avatar_url").eq("slid", slid).maybeSingle() as { data: { first_name?: string; last_name?: string; email?: string; avatar_url?: string } | null };
-    const { data: su } = await sb.rpc("has_role", { _slid: slid, _role: "superuser" });
-    return {
-      ...session,
-      slid, name: emp?.name ?? slid, hl: emp?.hl ?? 0, regid: emp?.regid ?? "", cip: emp?.cip ?? "",
-      department: emp?.department ?? null, position: emp?.position ?? null, kind: emp?.kind ?? null,
-      isSuperuser: !!su,
-      profile: prof ? { first_name: prof.first_name ?? null, last_name: prof.last_name ?? null, email: prof.email ?? null, avatar_url: prof.avatar_url ?? null } : undefined,
-    };
+    return buildFullSession(slid);
+  });
+
+// After a token-authenticated action (e.g. finishing a fresh passkey
+// registration), fetch the same full legacy-compatible session shape so the
+// client can call setSession() and get full app access immediately.
+export const xaSessionForToken = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => z.object({ token: z.string() }).parse(d))
+  .handler(async ({ data }) => {
+    const { verifySessionToken } = await wa();
+    const { slid } = await verifySessionToken(data.token);
+    return buildFullSession(slid);
   });
 
 // -------- Account profile + credentials mgmt (token-authenticated) --------

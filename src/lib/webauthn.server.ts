@@ -26,8 +26,10 @@ function rpFromOrigin(origin: string): { rpID: string; rpName: string; origin: s
 }
 
 function sessionSecret(): Uint8Array {
-  const s = process.env.XSYNA_SESSION_SECRET;
-  if (!s) throw new Error("XSYNA_SESSION_SECRET not configured.");
+  // XSYNA_SESSION_SECRET is the preferred dedicated key; falls back to the
+  // shared SESSION_SECRET so passkey login works without extra setup.
+  const s = process.env.XSYNA_SESSION_SECRET || process.env.SESSION_SECRET;
+  if (!s) throw new Error("SESSION_SECRET not configured.");
   return new TextEncoder().encode(s);
 }
 

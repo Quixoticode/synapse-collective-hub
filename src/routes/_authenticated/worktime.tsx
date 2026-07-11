@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Clock, ArrowLeft, Plus, Play, StopCircle, Zap, X, Trash2 } from "lucide-react";
 import { getSession, getCredentials } from "@/lib/syn-session";
-import { wtShiftsList, wtShiftUpsert, wtShiftDelete, wtSessionsList, wtSessionActive, wtSessionStart, wtSessionStop, wtSessionPing } from "@/lib/worktime.functions";
+import { wtShiftsList, wtShiftUpsert, wtShiftDelete, wtSessionsList, wtSessionActive, wtSessionStart, wtSessionStop, wtSessionPing, wtSessionUpsert, wtSessionAdminDelete } from "@/lib/worktime.functions";
 import { employeesList } from "@/lib/syn.functions";
 
 export const Route = createFileRoute("/_authenticated/worktime")({
@@ -43,12 +43,15 @@ function WorkTimePage() {
   const stopFn = useServerFn(wtSessionStop);
   const pingFn = useServerFn(wtSessionPing);
   const empsFn = useServerFn(employeesList);
+  const sessionUpsertFn = useServerFn(wtSessionUpsert);
+  const sessionAdminDelFn = useServerFn(wtSessionAdminDelete);
 
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [active, setActive] = useState<Session | null>(null);
   const [emps, setEmps] = useState<Emp[]>([]);
   const [edit, setEdit] = useState<Partial<Shift> & { target_slid?: string } | null>(null);
+  const [editSession, setEditSession] = useState<Partial<Session> & { target_slid?: string } | null>(null);
   const [showAllUsers, setShowAllUsers] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [, setTick] = useState(0);
@@ -121,6 +124,29 @@ function WorkTimePage() {
     } catch (e) { setErr(e instanceof Error ? e.message : "Fehler."); }
   }
 
+  async function saveSession() {
+    if (!editSession?.started_at || !editSession.target_slid) return;
+    const c = getCredentials(); if (!c) return;
+    try {
+      await sessionUpsertFn({ data: {
+        ...c, id: editSession.id, target_slid: editSession.target_slid,
+        started_at: editSession.started_at, ended_at: editSession.ended_at ?? null,
+        status: (editSession.status as "active" | "completed" | "invalidated") || "completed",
+        invalidated_reason: editSession.invalidated_reason ?? null,
+      } });
+      setEditSession(null); await load();
+    } catch (e) { setErr(e instanceof Error ? e.message : "Fehler."); }
+  }
+
+  async function deleteSession(id: string) {
+    if (!confirm("Session löschen? (Nur Admin)")) return;
+    const c = getCredentials(); if (!c) return;
+    try {
+      await sessionAdminDelFn({ data: { ...c, id } });
+      await load();
+    } catch (e) { setErr(e instanceof Error ? e.message : "Fehler."); }
+  }
+
   return (
     <div className="p-4 sm:p-6 max-w-5xl mx-auto pb-28 md:pb-8 space-y-4">
       <header className="flex items-center gap-3">
@@ -154,9 +180,12 @@ function WorkTimePage() {
       </section>
 
       {canManage && (
-        <section className="syn-card p-3 flex items-center gap-2">
+        <section className="syn-card p-3 flex flex-wrap items-center gap-2">
           <button onClick={() => setEdit({ target_slid: session?.slid, starts_at: new Date().toISOString(), ends_at: new Date(Date.now()+4*3600_000).toISOString() })} className="syn-btn text-xs">
             <Plus className="h-3.5 w-3.5" /> Schicht planen
+          </button>
+          <button onClick={() => setEditSession({ target_slid: session?.slid, started_at: new Date().toISOString(), ended_at: new Date().toISOString(), status: "completed" })} className="syn-btn-ghost text-xs">
+            <Plus className="h-3.5 w-3.5" /> Session erfassen
           </button>
           <label className="ml-auto flex items-center gap-2 text-xs">
             <input type="checkbox" checked={showAllUsers} onChange={(e) => setShowAllUsers(e.target.checked)} />
@@ -210,6 +239,12 @@ function WorkTimePage() {
                   {se.invalidated_reason && <span className="text-amber-400"> · {se.invalidated_reason}</span>}
                 </span>
                 <span className="text-[10px] shrink-0">{se.status}</span>
+                {canManage && (
+                  <>
+                    <button onClick={() => setEditSession({ ...se, target_slid: se.slid })} className="syn-btn-ghost text-[10px]">Edit</button>
+                    <button onClick={() => void deleteSession(se.id)} className="syn-btn-ghost text-[10px]"><Trash2 className="h-3 w-3" /></button>
+                  </>
+                )}
               </div>
             ))}
           </div>
@@ -236,6 +271,40 @@ function WorkTimePage() {
             </label>
             <input className="syn-input" placeholder="Notiz (optional)" value={edit.note || ""} onChange={(e) => setEdit({ ...edit, note: e.target.value })} />
             <button className="syn-btn w-full" onClick={() => void saveShift()}>Speichern</button>
+          </div>
+        </div>
+      )}
+
+      {editSession && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm grid place-items-center p-4">
+          <div className="syn-card w-full max-w-md p-5 space-y-3 max-h-[85dvh] overflow-y-auto">
+            <div className="flex items-center justify-between"><h3 className="font-semibold">{editSession.id ? "Session bearbeiten" : "Session manuell erfassen"}</h3><button onClick={() => setEditSession(null)} className="syn-btn-ghost"><X className="h-4 w-4" /></button></div>
+            <select className="syn-input" value={editSession.target_slid || ""} onChange={(e) => setEditSession({ ...editSession, target_slid: e.target.value })}>
+              <option value="">— Mitarbeiter wählen —</option>
+              {emps.map((e) => <option key={e.slid} value={e.slid}>{e.name} ({e.slid})</option>)}
+            </select>
+            <label className="text-xs">Start
+              <input type="datetime-local" className="syn-input"
+                value={editSession.started_at ? toLocalInput(editSession.started_at) : ""}
+                onChange={(e) => setEditSession({ ...editSession, started_at: fromLocalInput(e.target.value) })} />
+            </label>
+            <label className="text-xs">Ende (leer = noch aktiv)
+              <input type="datetime-local" className="syn-input"
+                value={editSession.ended_at ? toLocalInput(editSession.ended_at) : ""}
+                onChange={(e) => setEditSession({ ...editSession, ended_at: e.target.value ? fromLocalInput(e.target.value) : null })} />
+            </label>
+            <label className="text-xs">Status
+              <select className="syn-input" value={editSession.status || "completed"}
+                onChange={(e) => setEditSession({ ...editSession, status: e.target.value })}>
+                <option value="active">Aktiv</option>
+                <option value="completed">Abgeschlossen</option>
+                <option value="invalidated">Ungültig</option>
+              </select>
+            </label>
+            {editSession.status === "invalidated" && (
+              <input className="syn-input" placeholder="Grund" value={editSession.invalidated_reason || ""} onChange={(e) => setEditSession({ ...editSession, invalidated_reason: e.target.value })} />
+            )}
+            <button className="syn-btn w-full" onClick={() => void saveSession()}>Speichern</button>
           </div>
         </div>
       )}

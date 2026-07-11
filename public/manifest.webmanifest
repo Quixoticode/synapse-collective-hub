@@ -6,10 +6,11 @@
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#05050D",
-  "theme_color": "#05050D",
+  "background_color": "#030508",
+  "theme_color": "#030508",
   "icons": [
-    { "src": "/__l5e/assets-v1/1052599c-eda3-4689-aa9c-7fbc0e7f665a/xsyna-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/__l5e/assets-v1/1052599c-eda3-4689-aa9c-7fbc0e7f665a/xsyna-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }

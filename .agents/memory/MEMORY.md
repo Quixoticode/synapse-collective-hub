@@ -1,1 +1,2 @@
 - [Lovable vite-tanstack-config on Replit](lovable-vite-tanstack-config.md) — fixed port 8080 + IPv6 host breaks on Replit; fix via `options.vite.server.host` override.
+- [xSyna SynID PIK-as-bearer-secret](synid-pik-bearer-secret.md) — the `employees.pik` column is a rotatable session secret, not just a memorized password; rotating it has real blast radius.

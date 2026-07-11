@@ -5,7 +5,7 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-sans: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
   --radius-sm: calc(var(--radius) - 4px);
@@ -43,42 +43,42 @@
 :root {
   --radius: 1rem;
 
-  /* SynDLS – Neuromorphic Liquid (Dark base) */
-  --background: oklch(0.08 0.02 270);
+  /* xSyna – Neuromorphic Liquid (Deep Cortex base) */
+  --background: oklch(0.05 0.012 260);
   --foreground: oklch(0.96 0.01 240);
 
-  --card: oklch(0.11 0.025 270);
+  --card: oklch(0.085 0.018 265);
   --card-foreground: oklch(0.96 0.01 240);
-  --popover: oklch(0.11 0.025 270);
+  --popover: oklch(0.085 0.018 265);
   --popover-foreground: oklch(0.96 0.01 240);
 
-  --primary: oklch(0.72 0.18 220);            /* Synapse Blue */
+  --primary: oklch(0.85 0.14 195);            /* Synaptic Cyan */
   --primary-foreground: oklch(0.08 0.02 270);
-  --secondary: oklch(0.16 0.03 265);
+  --secondary: oklch(0.14 0.02 265);
   --secondary-foreground: oklch(0.96 0.01 240);
 
-  --muted: oklch(0.14 0.025 265);
-  --muted-foreground: oklch(0.68 0.03 250);
-  --accent: oklch(0.18 0.04 270);
+  --muted: oklch(0.12 0.018 265);
+  --muted-foreground: oklch(0.66 0.03 250);
+  --accent: oklch(0.16 0.03 270);
   --accent-foreground: oklch(0.96 0.01 240);
 
   --destructive: oklch(0.65 0.24 22);
   --destructive-foreground: oklch(0.98 0 0);
 
-  --border: oklch(0.72 0.18 220 / 0.18);
-  --input: oklch(0.18 0.03 270);
-  --ring: oklch(0.72 0.18 220 / 0.6);
+  --border: oklch(0.85 0.14 195 / 0.16);
+  --input: oklch(0.15 0.02 270);
+  --ring: oklch(0.85 0.14 195 / 0.6);
 
-  /* Neural Discharge palette */
-  --neural-mint: #00FFD1;
-  --synapse: #00A3FF;
-  --neural-violet: #7B61FF;
-  --neural-magenta: #FF3CAC;
+  /* Neuromorphic Liquid palette: Synaptic Cyan + Neural Amber */
+  --neural-mint: #00E68A;
+  --synapse: #00F0FF;
+  --neural-violet: #FFB300;
+  --neural-magenta: #FF8A00;
 
-  --gradient-neural: linear-gradient(135deg, #00FFD1, #00A3FF, #7B61FF, #FF3CAC);
-  --gradient-neural-soft: linear-gradient(135deg, rgba(0,255,209,0.18), rgba(0,163,255,0.18), rgba(123,97,255,0.18), rgba(255,60,172,0.18));
-  --shadow-neuro: 0 8px 32px -8px rgba(0,163,255,0.35), inset 0 1px 0 rgba(255,255,255,0.04);
-  --shadow-neuro-lg: 0 20px 60px -20px rgba(123,97,255,0.45), inset 0 1px 0 rgba(255,255,255,0.06);
+  --gradient-neural: linear-gradient(135deg, #00F0FF, #00C2FF, #FFB300);
+  --gradient-neural-soft: linear-gradient(135deg, rgba(0,240,255,0.18), rgba(0,194,255,0.16), rgba(255,179,0,0.16));
+  --shadow-neuro: 0 8px 32px -8px rgba(0,240,255,0.30), inset 0 1px 0 rgba(255,255,255,0.04);
+  --shadow-neuro-lg: 0 20px 60px -20px rgba(255,179,0,0.30), inset 0 1px 0 rgba(255,255,255,0.06);
 }
 
 /* Light-Mode override (opt-in via html.light) */
@@ -95,7 +95,7 @@ html.light {
   --muted-foreground: oklch(0.42 0.02 260);
   --accent: oklch(0.94 0.02 245);
   --accent-foreground: oklch(0.16 0.02 260);
-  --border: oklch(0.72 0.18 220 / 0.28);
+  --border: oklch(0.72 0.18 195 / 0.28);
   --input: oklch(0.94 0.01 250);
 }
 
@@ -106,9 +106,9 @@ html.light {
     color: var(--color-foreground);
     background-color: transparent;
     background-image:
-      radial-gradient(1200px 600px at 10% -10%, rgba(0,163,255,0.10), transparent 60%),
-      radial-gradient(800px 500px at 110% 10%, rgba(123,97,255,0.10), transparent 60%),
-      radial-gradient(900px 500px at 50% 120%, rgba(255,60,172,0.08), transparent 60%);
+      radial-gradient(1200px 600px at 10% -10%, rgba(0,240,255,0.10), transparent 60%),
+      radial-gradient(800px 500px at 110% 10%, rgba(255,179,0,0.10), transparent 60%),
+      radial-gradient(900px 500px at 50% 120%, rgba(255,138,0,0.08), transparent 60%);
     background-attachment: fixed;
     font-family: var(--font-sans);
     position: relative;
@@ -149,11 +149,11 @@ html.light {
     padding: .65rem 1.1rem; border-radius: 9999px;
     font-weight: 600; letter-spacing: .01em;
     background: var(--gradient-neural);
-    color: #05050D;
-    box-shadow: 0 8px 24px -10px rgba(0,163,255,0.6);
+    color: #030508;
+    box-shadow: 0 8px 24px -10px rgba(0,240,255,0.6);
     transition: transform .15s ease, box-shadow .2s ease, filter .2s ease;
   }
-  .syn-btn:hover { transform: translateY(-1px); filter: brightness(1.08); box-shadow: 0 12px 32px -10px rgba(123,97,255,0.7); }
+  .syn-btn:hover { transform: translateY(-1px); filter: brightness(1.08); box-shadow: 0 12px 32px -10px rgba(255,179,0,0.7); }
   .syn-btn:disabled { opacity: .5; cursor: not-allowed; }
   .syn-btn-ghost {
     display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
@@ -163,7 +163,7 @@ html.light {
     color: var(--color-foreground);
     transition: all .15s ease;
   }
-  .syn-btn-ghost:hover { border-color: var(--synapse); background: rgba(0,163,255,0.08); }
+  .syn-btn-ghost:hover { border-color: var(--synapse); background: rgba(0,240,255,0.08); }
   .syn-input {
     width: 100%;
     background: rgba(255,255,255,0.02);
@@ -175,40 +175,40 @@ html.light {
     font-size: .9rem;
     transition: border-color .15s ease, box-shadow .15s ease;
   }
-  .syn-input:focus { outline: none; border-color: var(--synapse); box-shadow: 0 0 0 3px rgba(0,163,255,0.18); }
+  .syn-input:focus { outline: none; border-color: var(--synapse); box-shadow: 0 0 0 3px rgba(0,240,255,0.18); }
   .syn-chip {
     display: inline-flex; align-items: center; gap: .35rem;
     padding: .15rem .55rem; border-radius: 9999px;
     font-size: .7rem; font-family: var(--font-mono);
-    background: rgba(0,163,255,0.10); color: #9ad8ff;
-    border: 1px solid rgba(0,163,255,0.25);
+    background: rgba(0,240,255,0.10); color: #9ad8ff;
+    border: 1px solid rgba(0,240,255,0.25);
   }
   .syn-tab-active {
     background: var(--gradient-neural);
-    color: #05050D !important;
+    color: #030508 !important;
   }
 }
 
 /* ---- xSynID Card ---- */
 .syn-id-card {
   background: radial-gradient(120% 80% at 0% 0%, rgba(0,200,255,0.10), transparent 60%),
-              radial-gradient(120% 80% at 100% 100%, rgba(123,97,255,0.12), transparent 60%),
+              radial-gradient(120% 80% at 100% 100%, rgba(255,179,0,0.12), transparent 60%),
               #050810;
 }
 .syn-id-card__glow {
   position: absolute; inset: -40%;
-  background: conic-gradient(from 120deg, rgba(0,255,209,0.10), rgba(0,163,255,0.08), rgba(123,97,255,0.10), transparent 60%);
+  background: conic-gradient(from 120deg, rgba(0,255,209,0.10), rgba(0,240,255,0.08), rgba(255,179,0,0.10), transparent 60%);
   filter: blur(30px); animation: synSpin 18s linear infinite; pointer-events: none;
 }
 .syn-id-card__sigil {
   background:
-    linear-gradient(135deg, rgba(0,255,209,0.6), rgba(0,163,255,0.6)) padding-box,
-    linear-gradient(135deg, rgba(0,255,209,0.9), rgba(123,97,255,0.9)) border-box;
+    linear-gradient(135deg, rgba(0,255,209,0.6), rgba(0,240,255,0.6)) padding-box,
+    linear-gradient(135deg, rgba(0,255,209,0.9), rgba(255,179,0,0.9)) border-box;
   border: 1px solid transparent;
   box-shadow: 0 0 24px rgba(0,200,255,0.35) inset;
 }
 .syn-id-card__photo {
-  background: linear-gradient(180deg, rgba(0,200,255,0.35), rgba(123,97,255,0.35)), url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><rect width='120' height='120' fill='%23001a2e'/></svg>");
+  background: linear-gradient(180deg, rgba(0,200,255,0.35), rgba(255,179,0,0.35)), url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><rect width='120' height='120' fill='%23001a2e'/></svg>");
   background-size: cover; border: 1px solid rgba(255,255,255,0.10);
   box-shadow: 0 0 20px rgba(0,180,255,0.25) inset;
 }
@@ -252,7 +252,7 @@ html.light {
 .syn-startup-ring--on { animation: synRingPulse 1.6s ease-out forwards; }
 @keyframes synRingPulse {
   0% { opacity: 0.9; transform: scale(0.3); }
-  100% { opacity: 0; transform: scale(14); border-color: rgba(123,97,255,0.0); }
+  100% { opacity: 0; transform: scale(14); border-color: rgba(255,179,0,0.0); }
 }
 
 .syn-startup-synapse {
@@ -309,7 +309,7 @@ html.light {
 .syn-markdown blockquote {
   border-left: 3px solid var(--synapse);
   padding: 0.4rem 0.9rem;
-  background: rgba(0,163,255,0.06);
+  background: rgba(0,240,255,0.06);
   border-radius: 0 var(--radius-md) var(--radius-md) 0;
   color: var(--color-muted-foreground);
 }
@@ -318,12 +318,12 @@ html.light {
 .syn-markdown img { max-width: 100%; border-radius: var(--radius-lg); border: 1px solid var(--border); }
 .syn-markdown table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
 .syn-markdown th, .syn-markdown td { padding: 0.5rem 0.7rem; border: 1px solid var(--border); text-align: left; }
-.syn-markdown th { background: rgba(0,163,255,0.08); font-weight: 600; }
+.syn-markdown th { background: rgba(0,240,255,0.08); font-weight: 600; }
 .syn-markdown .syn-md-code {
   padding: 0.15em 0.4em;
   border-radius: var(--radius-sm);
-  background: rgba(0,163,255,0.10);
-  border: 1px solid rgba(0,163,255,0.20);
+  background: rgba(0,240,255,0.10);
+  border: 1px solid rgba(0,240,255,0.20);
   font-size: 0.85em;
 }
 .syn-markdown .syn-md-pre {
