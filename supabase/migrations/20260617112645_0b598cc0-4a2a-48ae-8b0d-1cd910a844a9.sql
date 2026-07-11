@@ -23,8 +23,12 @@ RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS
   SELECT EXISTS (SELECT 1 FROM public.employee_roles WHERE slid = _slid AND role = _role);
 $$;
 
--- Seed Jake as superuser
-INSERT INTO public.employee_roles (slid, role) VALUES ('20090626','superuser')
+-- Seed Jake as superuser (only if that legacy employee row already exists;
+-- on a fresh project this is a no-op and superuser bootstrap happens via
+-- the one-time signup gate instead)
+INSERT INTO public.employee_roles (slid, role)
+SELECT '20090626', 'superuser'
+WHERE EXISTS (SELECT 1 FROM public.employees WHERE slid = '20090626')
 ON CONFLICT (slid, role) DO NOTHING;
 
 -- =========================================================================
