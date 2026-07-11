@@ -12,6 +12,13 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  // This app runs as a Node server (not a static site or Cloudflare Worker) —
+  // it has real server functions (webauthn, supabase admin, sessions), so
+  // Nitro must target Node instead of the package's Cloudflare default.
+  nitro: {
+    preset: "node-server",
+    output: { dir: "dist", serverDir: "dist/server", publicDir: "dist/client" },
+  },
   // Replit's container network stack doesn't support IPv6 ("::") binding;
   // use IPv4 instead. Only applies outside the Lovable sandbox (see
   // isSandboxEnvironment in @lovable.dev/vite-tanstack-config), where this
