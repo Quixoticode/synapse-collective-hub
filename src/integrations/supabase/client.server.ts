@@ -3,6 +3,14 @@
 // Use this for admin operations in server functions and server routes only.
 // For user-authenticated queries (with RLS), use the auth middleware instead.
 import { createClient } from '@supabase/supabase-js';
+// Node.js < 22 has no native WebSocket global, which the supabase-js
+// Realtime client requires even if realtime features are never used (it's
+// constructed eagerly inside createClient). This repl runs Node 20, so we
+// hand it the `ws` package explicitly to silence the warning and keep
+// Realtime usable if ever needed. This file is server-only (never bundled
+// for the browser, which always has a native WebSocket), so a static
+// Node-only import here is safe.
+import ws from 'ws';
 import type { Database } from './types';
 
 function createSupabaseAdminClient() {
@@ -24,7 +32,11 @@ function createSupabaseAdminClient() {
       storage: undefined,
       persistSession: false,
       autoRefreshToken: false,
-    }
+    },
+    realtime: {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      transport: ws as any,
+    },
   });
 }
 
