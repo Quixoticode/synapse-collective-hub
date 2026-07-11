@@ -48,10 +48,12 @@ export function applyDesignVars(p: DesignPrefs) {
 
 export function NeuromorphicBackground() {
   const [prefs, setPrefs] = useState<DesignPrefs>(DEFAULTS);
+  const [mounted, setMounted] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
+    setMounted(true);
     const p = readDesignPrefs(); setPrefs(p); applyDesignVars(p);
     const sync = () => { const q = readDesignPrefs(); setPrefs(q); applyDesignVars(q); };
     window.addEventListener("xsyna-design-change", sync);
@@ -135,7 +137,7 @@ export function NeuromorphicBackground() {
     };
   }, [prefs]);
 
-  if (prefs.bg === "off") return null;
+  if (!mounted || prefs.bg === "off") return null;
   const opacity = prefs.bg === "calm" ? 0.35 : 0.6;
   return (
     <div

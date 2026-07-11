@@ -60,6 +60,20 @@ export const xaSignup = createServerFn({ method: "POST" })
     const { error: roleErr } = await sb.from("employee_roles").insert({ slid, role: "kunde" });
     if (roleErr) throw new Error(roleErr.message);
 
+    // One-time superuser bootstrap: on a freshly relaunched backend there is
+    // no superuser yet. If this specific signup email matches the designated
+    // bootstrap owner AND no superuser role exists anywhere in the table
+    // yet, grant it here. This path silently no-ops for every other signup,
+    // and can never fire again once the first superuser row exists.
+    const bootstrapEmail = "jake.ruck@team.xsyna.de";
+    if (data.email?.toLowerCase() === bootstrapEmail) {
+      const { count } = await sb.from("employee_roles").select("slid", { count: "exact", head: true }).eq("role", "superuser");
+      if (!count) {
+        const { error: suErr } = await sb.from("employee_roles").insert({ slid, role: "superuser" });
+        if (suErr) throw new Error(suErr.message);
+      }
+    }
+
     const { error: acctErr } = await sb.from("xsyna_accounts" as never).insert({
       slid, first_name: data.first_name, last_name: data.last_name,
       email: data.email || null, company: data.company || null,
