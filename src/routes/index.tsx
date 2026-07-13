@@ -13,10 +13,10 @@ export const Route = createFileRoute("/")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "xSyna Central – Kollektiv, News & Docs" },
-      { name: "description", content: "News, Leaks, offene Stellen und Dokumentation des xSyna Kollektivs." },
+      { title: "xSyna Central" },
+      { name: "description", content: "Zentrales System" },
       { property: "og:title", content: "xSyna Central" },
-      { property: "og:description", content: "News, Leaks, offene Stellen und Dokumentation des xSyna Kollektivs." },
+      { property: "og:description", content: "Zentrales System" },
     ],
   }),
   component: PublicLanding,
