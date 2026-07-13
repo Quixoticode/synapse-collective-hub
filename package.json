@@ -1,5 +1,5 @@
 {
-  "name": "tanstack_start_ts",
+  "name": "xsyna-central",
   "private": true,
   "sideEffects": false,
   "type": "module",
@@ -9,7 +9,12 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "deploy": "wrangler deploy",
+    "deploy:staging": "wrangler deploy --env staging",
+    "cf:dev": "wrangler dev",
+    "cf:tail": "wrangler tail",
+    "cf:secrets:list": "wrangler secret list"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
