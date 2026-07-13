@@ -2,13 +2,13 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-// Hardcoded defaults (these are public values, not secrets)
 const DEFAULT_SUPABASE_URL = 'https://evwfeauffghrvllxizja.supabase.co';
 const DEFAULT_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_Gq4dJmteaLoEm00Ddb56tQ_9S3-AzPy';
 
 function getCloudflareEnv(name: string): string | undefined {
   const g = globalThis as any;
-  return process.env?.[name] ?? g.__env?.[name] ?? g[name] ?? g.env?.[name];
+  // Nitro sets globalThis.__env__ (double underscore) on Cloudflare Workers
+  return process.env?.[name] ?? g.__env__?.[name] ?? g.__env?.[name] ?? g[name] ?? g.env?.[name];
 }
 
 function createSupabaseClient() {
