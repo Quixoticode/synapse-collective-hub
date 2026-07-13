@@ -36,6 +36,7 @@ import { Route as AuthenticatedChatRouteImport } from './routes/_authenticated/c
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
 import { Route as AuthenticatedBasicsRouteImport } from './routes/_authenticated/basics'
 import { Route as AuthenticatedAppsRouteImport } from './routes/_authenticated/apps'
+import { Route as AuthenticatedApplyanceRouteImport } from './routes/_authenticated/applyance'
 import { Route as AuthenticatedAccountRouteImport } from './routes/_authenticated/account'
 import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings.index'
 import { Route as AuthenticatedSettingsTabsRouteImport } from './routes/_authenticated/settings.tabs'
@@ -179,6 +180,11 @@ const AuthenticatedAppsRoute = AuthenticatedAppsRouteImport.update({
   path: '/apps',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedApplyanceRoute = AuthenticatedApplyanceRouteImport.update({
+  id: '/applyance',
+  path: '/applyance',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedAccountRoute = AuthenticatedAccountRouteImport.update({
   id: '/account',
   path: '/account',
@@ -226,6 +232,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/docs': typeof DocsRouteWithChildren
   '/account': typeof AuthenticatedAccountRoute
+  '/applyance': typeof AuthenticatedApplyanceRoute
   '/apps': typeof AuthenticatedAppsRoute
   '/basics': typeof AuthenticatedBasicsRoute
   '/calendar': typeof AuthenticatedCalendarRoute
@@ -260,6 +267,7 @@ export interface FileRoutesByTo {
   '/apply': typeof ApplyRoute
   '/auth': typeof AuthRoute
   '/account': typeof AuthenticatedAccountRoute
+  '/applyance': typeof AuthenticatedApplyanceRoute
   '/apps': typeof AuthenticatedAppsRoute
   '/basics': typeof AuthenticatedBasicsRoute
   '/calendar': typeof AuthenticatedCalendarRoute
@@ -297,6 +305,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/docs': typeof DocsRouteWithChildren
   '/_authenticated/account': typeof AuthenticatedAccountRoute
+  '/_authenticated/applyance': typeof AuthenticatedApplyanceRoute
   '/_authenticated/apps': typeof AuthenticatedAppsRoute
   '/_authenticated/basics': typeof AuthenticatedBasicsRoute
   '/_authenticated/calendar': typeof AuthenticatedCalendarRoute
@@ -334,6 +343,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/docs'
     | '/account'
+    | '/applyance'
     | '/apps'
     | '/basics'
     | '/calendar'
@@ -368,6 +378,7 @@ export interface FileRouteTypes {
     | '/apply'
     | '/auth'
     | '/account'
+    | '/applyance'
     | '/apps'
     | '/basics'
     | '/calendar'
@@ -404,6 +415,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/docs'
     | '/_authenticated/account'
+    | '/_authenticated/applyance'
     | '/_authenticated/apps'
     | '/_authenticated/basics'
     | '/_authenticated/calendar'
@@ -634,6 +646,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/applyance': {
+      id: '/_authenticated/applyance'
+      path: '/applyance'
+      fullPath: '/applyance'
+      preLoaderRoute: typeof AuthenticatedApplyanceRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/account': {
       id: '/_authenticated/account'
       path: '/account'
@@ -688,6 +707,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAccountRoute: typeof AuthenticatedAccountRoute
+  AuthenticatedApplyanceRoute: typeof AuthenticatedApplyanceRoute
   AuthenticatedAppsRoute: typeof AuthenticatedAppsRoute
   AuthenticatedBasicsRoute: typeof AuthenticatedBasicsRoute
   AuthenticatedCalendarRoute: typeof AuthenticatedCalendarRoute
@@ -717,6 +737,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAccountRoute: AuthenticatedAccountRoute,
+  AuthenticatedApplyanceRoute: AuthenticatedApplyanceRoute,
   AuthenticatedAppsRoute: AuthenticatedAppsRoute,
   AuthenticatedBasicsRoute: AuthenticatedBasicsRoute,
   AuthenticatedCalendarRoute: AuthenticatedCalendarRoute,

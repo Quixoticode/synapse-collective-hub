@@ -2,6 +2,7 @@
 // Kept in a .server.ts file so it can be imported from *.functions.ts handlers
 // without leaking into the client bundle.
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { DEFAULT_ALLOWED, ALL_FEATURES, type Feature } from "./features";
 
 export type SynActor = {
   slid: string;
@@ -35,11 +36,30 @@ export async function verifyActor(slid: string, pik: string): Promise<SynActor> 
   };
 }
 
-export function requireHl(actor: SynActor, hl: number) {
-  if (actor.isSuperuser) return;
-  if (actor.hl < hl) throw new Error(`Hierarchie-Level ${hl}+ erforderlich.`);
-}
-
 export function requireSuperuser(actor: SynActor) {
   if (!actor.isSuperuser) throw new Error("Superuser-Rechte erforderlich.");
+}
+
+// Resolve the full set of feature keys this account may use. The superuser
+// gets everything; everyone else gets DEFAULT_ALLOWED plus explicit grants
+// minus explicit revokes stored in user_tab_permissions.
+export async function getEffectivePermissions(actor: SynActor): Promise<Set<string>> {
+  if (actor.isSuperuser) return new Set<string>(ALL_FEATURES as string[]);
+  const set = new Set<string>(DEFAULT_ALLOWED as string[]);
+  const { data } = await supabaseAdmin
+    .from("user_tab_permissions")
+    .select("tab_key,allowed")
+    .eq("slid", actor.slid);
+  for (const row of data ?? []) {
+    if (row.allowed) set.add(row.tab_key);
+    else set.delete(row.tab_key);
+  }
+  return set;
+}
+
+// Throw unless the account may use a given feature. Superuser always passes.
+export async function requirePermission(actor: SynActor, key: Feature | string) {
+  if (actor.isSuperuser) return;
+  const perms = await getEffectivePermissions(actor);
+  if (!perms.has(key)) throw new Error("Keine Berechtigung für diese Aktion.");
 }

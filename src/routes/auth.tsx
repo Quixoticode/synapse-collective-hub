@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { Sparkles, KeyRound, ShieldCheck, QrCode, Camera, Image as ImageIcon, X, BadgeCheck, ArrowLeft, LogIn, LifeBuoy, Send, Plus, Zap, Phone, MessageCircle, UserPlus, Fingerprint, ChevronRight } from "lucide-react";
+import { XSynaLogo, LiquidButton } from "@/components/nl";
 import { useServerFn } from "@tanstack/react-start";
 import { startAuthentication, startRegistration } from "@simplewebauthn/browser";
 import { synLoginByPik, synVerifyByPik } from "@/lib/syn.functions";
@@ -88,13 +89,13 @@ function AuthPage() {
   const [forceMigration, setForceMigration] = useState<{ slid: string; pik: string } | null>(null);
 
   useEffect(() => {
-    if (getSession()) { navigate({ to: "/apps" }); return; }
+    if (getSession()) { navigate({ to: "/home" }); return; }
     // Trusted-device auto-login
     const lastSlid = localStorage.getItem(LAST_SLID_KEY);
     const fp = localStorage.getItem(FP_KEY);
     if (lastSlid && fp) {
       void trustedLoginFn({ data: { slid: lastSlid, device_fingerprint: fp } })
-        .then((s) => { setSession(s); navigate({ to: "/apps" }); })
+        .then((s) => { setSession(s); navigate({ to: "/home" }); })
         .catch(() => { /* ignore, fall back to manual login */ });
     }
   }, [navigate, trustedLoginFn]);
@@ -153,7 +154,7 @@ function AuthPage() {
       }});
     } catch { /* ignore */ }
     setTrustPrompt(null);
-    navigate({ to: "/apps" });
+    navigate({ to: "/home" });
   }
 
   async function setUpForcedPasskey() {
@@ -187,7 +188,7 @@ function AuthPage() {
       const session = await finishPasskeyAuth({ data: { response, origin: window.location.origin } });
       setSession(session as SynSession);
       localStorage.setItem(LAST_SLID_KEY, session.slid);
-      navigate({ to: "/apps" });
+      navigate({ to: "/home" });
     } catch (e) {
       setPasskeyError(e instanceof Error ? e.message : "Passkey-Anmeldung fehlgeschlagen.");
     } finally {
@@ -201,10 +202,11 @@ function AuthPage() {
     <div className="min-h-[100dvh] flex items-center justify-center px-4 py-6 sm:py-12">
       <div className="w-full max-w-md">
         <div className="text-center mb-5 sm:mb-7">
+          <div className="flex justify-center mb-3"><XSynaLogo size={48} /></div>
           <div className="inline-flex items-center gap-2 syn-chip mb-3">
             <Sparkles className="h-3 w-3" /> xSyna Kollektiv
           </div>
-          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
+          <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight">
             <span className="syn-gradient-text">xSyna Central</span>
           </h1>
           <p className="mt-2 text-xs sm:text-sm text-muted-foreground">
@@ -233,7 +235,7 @@ function AuthPage() {
         {stage === "support" ? (
           <SupportSection />
         ) : stage === "quick" ? (
-          <QuickLoginSection onDone={(s) => { setSession(s); navigate({ to: "/apps" }); }} />
+          <QuickLoginSection onDone={(s) => { setSession(s); navigate({ to: "/home" }); }} />
         ) : stage === "passkey" ? (
           <div className="syn-card p-4 sm:p-6 space-y-4 syn-gradient-border" style={{ borderColor: "var(--synapse)" }}>
             <div className="text-center space-y-2">
@@ -242,9 +244,9 @@ function AuthPage() {
               </div>
               <p className="text-xs text-muted-foreground">FaceID, TouchID, Windows Hello oder Sicherheitsschlüssel — ohne PIK, ohne Passwort.</p>
             </div>
-            <button onClick={() => void passkeyLogin()} disabled={passkeyBusy} className="syn-btn w-full">
+            <LiquidButton fullWidth onClick={() => void passkeyLogin()} disabled={passkeyBusy}>
               <Fingerprint className="h-4 w-4" /> {passkeyBusy ? "Prüfe…" : "Mit Passkey anmelden"}
-            </button>
+            </LiquidButton>
             {passkeyError && <div className="text-xs text-destructive mono p-2 rounded-lg bg-destructive/10 border border-destructive/30">{passkeyError}</div>}
             <button onClick={() => { setShowSignup(true); setPasskeyError(null); }} className="syn-btn-ghost w-full text-xs justify-between">
               Noch kein Konto? Jetzt registrieren <ChevronRight className="h-3.5 w-3.5" />
@@ -299,7 +301,7 @@ function AuthPage() {
       {showSignup && (
         <SignupModal
           onClose={() => setShowSignup(false)}
-          onDone={(session) => { setSession(session); localStorage.setItem(LAST_SLID_KEY, session.slid); navigate({ to: "/apps" }); }}
+          onDone={(session) => { setSession(session); localStorage.setItem(LAST_SLID_KEY, session.slid); navigate({ to: "/home" }); }}
           signupFn={signupFn}
           finishRegFn={finishSignupReg}
           sessionForTokenFn={sessionForToken}
@@ -336,7 +338,7 @@ function AuthPage() {
               Übertragen werden: Gerätemodell, OS-Version, IP.
             </p>
             <div className="grid grid-cols-2 gap-2">
-              <button onClick={() => { setTrustPrompt(null); navigate({ to: "/apps" }); }} className="syn-btn-ghost">Nein</button>
+              <button onClick={() => { setTrustPrompt(null); navigate({ to: "/home" }); }} className="syn-btn-ghost">Nein</button>
               <button onClick={() => void trustThisDevice()} className="syn-btn">Ja, vertrauen</button>
             </div>
           </div>

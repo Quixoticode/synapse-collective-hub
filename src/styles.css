@@ -5,8 +5,9 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "Menlo", ui-monospace, monospace;
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -43,6 +44,22 @@
 :root {
   --radius: 1rem;
 
+  /* Neuromorphic Liquid palette tokens (source `T` object). */
+  --nl-bg: #020407;
+  --nl-bg2: #07101a;
+  --nl-surface: #0c1624;
+  --nl-border: rgba(255,255,255,0.07);
+  --nl-primary: #00E5FF;
+  --nl-secondary: #FFB300;
+  --nl-accent: #7B4FFF;
+  --nl-success: #00FF88;
+  --nl-error: #FF4060;
+  --nl-text: #E8F4FF;
+  --nl-muted: #4A6080;
+  --nl-font-display: "Space Grotesk", sans-serif;
+  --nl-font-body: "DM Sans", sans-serif;
+  --nl-font-mono: "JetBrains Mono", monospace;
+
   /* xSyna – Neuromorphic Liquid, matching the reference design system at
      neuromorphic-liquid.replit.app: deep near-black base, cyan primary,
      amber secondary, violet accent, mint success, red danger. */
@@ -67,7 +84,7 @@
   --destructive: #FF4060;
   --destructive-foreground: #E8F4FF;
 
-  --border: rgba(0,229,255,0.16);
+  --border: rgba(255,255,255,0.07);
   --input: #07101a;
   --ring: rgba(0,229,255,0.6);
 
@@ -117,6 +134,53 @@ html.light {
     z-index: 0;
   }
   code, pre, .mono { font-family: var(--font-mono); }
+}
+
+/* ---- Neuromorphic Liquid design system helpers ---- */
+.nl-root {
+  font-family: var(--nl-font-body);
+  background: var(--nl-bg);
+  color: var(--nl-text);
+  min-height: 100dvh;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.font-display { font-family: var(--nl-font-display); }
+.font-mono { font-family: var(--nl-font-mono); }
+.nl-section { width: 100%; max-width: 1100px; margin: 0 auto; padding: 80px 24px; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.grid-auto { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; }
+.grid-icons { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 12px; }
+.grid-loaders { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }
+@media (max-width: 768px) {
+  .nl-section { padding: 52px 16px; }
+  .grid-2 { grid-template-columns: 1fr; }
+  .grid-3 { grid-template-columns: 1fr; }
+  .grid-auto { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+}
+@media (max-width: 480px) {
+  .grid-loaders { grid-template-columns: 1fr 1fr; }
+  .grid-icons { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); }
+}
+@keyframes blobMorph {
+  0% { border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%; }
+  25% { border-radius: 70% 30% 40% 60% / 60% 40% 70% 40%; }
+  50% { border-radius: 30% 70% 60% 40% / 50% 70% 30% 60%; }
+  75% { border-radius: 60% 40% 30% 70% / 30% 60% 40% 70%; }
+  100% { border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%; }
+}
+@keyframes liqRipple {
+  0% { transform: translate(-50%, -50%) scale(0); opacity: .55; }
+  100% { transform: translate(-50%, -50%) scale(7); opacity: 0; }
+}
+.liq-ripple {
+  position: absolute;
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: liqRipple .75s ease-out forwards;
 }
 
 @layer components {

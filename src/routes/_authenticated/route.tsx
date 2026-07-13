@@ -1,11 +1,12 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { LogOut, Sparkles, MoreHorizontal, X } from "lucide-react";
+import { LogOut, MoreHorizontal, X } from "lucide-react";
+import { XSynaLogo, LiquidButton } from "@/components/nl";
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { getSession, clearSession, getCredentials, type SynSession } from "@/lib/syn-session";
 import { visibleTabs } from "@/lib/tabs-registry";
-import { tabPermsForMe, tabPrefsForMe } from "@/lib/permissions.functions";
+import { myPermissions, tabPrefsForMe } from "@/lib/permissions.functions";
 import { banStatus } from "@/lib/security.functions";
 import { listMyDevices } from "@/lib/devices.functions";
 import { StartupAnimation } from "@/components/StartupAnimation";
@@ -28,14 +29,14 @@ export const Route = createFileRoute("/_authenticated")({
 
 function AuthedLayout() {
   const [session, setSessionState] = useState<SynSession | null>(null);
-  const [perms, setPerms] = useState<Record<string, boolean>>({});
+  const [perms, setPerms] = useState<Set<string>>(new Set());
   const [prefs, setPrefs] = useState<Record<string, { visible: boolean; sort_order?: number }>>({});
   const [showStartup, setShowStartup] = useState(false);
   const [mobileMore, setMobileMore] = useState(false);
   const [ban, setBan] = useState<{ message: string; expires_at: string | null } | null>(null);
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const fetchPerms = useServerFn(tabPermsForMe);
+  const fetchPerms = useServerFn(myPermissions);
   const fetchPrefs = useServerFn(tabPrefsForMe);
   const checkBan = useServerFn(banStatus);
 
@@ -65,10 +66,10 @@ function AuthedLayout() {
         if (b.banned) { setBan({ message: b.message || "Zugriff gesperrt.", expires_at: b.expires_at ?? null }); return; }
         setBan(null);
         const [p, q] = await Promise.all([
-          fetchPerms({ data: c }) as Promise<{ tab_key: string; allowed: boolean }[]>,
+          fetchPerms({ data: c }) as Promise<{ features: string[]; isSuperuser: boolean; kind: string }>,
           fetchPrefs({ data: c }) as Promise<{ tab_key: string; visible: boolean; sort_order: number }[]>,
         ]);
-        setPerms(Object.fromEntries(p.map((x) => [x.tab_key, x.allowed])));
+        setPerms(new Set(p.features));
         setPrefs(Object.fromEntries(q.map((x) => [x.tab_key, { visible: x.visible, sort_order: x.sort_order }])));
       } catch { /* tolerate */ }
     })();
@@ -102,9 +103,13 @@ function AuthedLayout() {
   function handleLogout() { clearSession(); navigate({ to: "/auth" }); }
   if (ban) return <BanScreen message={ban.message} expiresAt={ban.expires_at} onLogout={handleLogout} />;
 
-  const ctx = { hl: session.hl, isSuperuser: session.isSuperuser };
-  const tabs = visibleTabs(ctx, { permissions: perms, prefs });
+  const tabs = visibleTabs(perms, prefs);
   const bottomPrimary = tabs.slice(0, 5);
+  const grouped: { label: string; items: typeof tabs }[] = [
+    { label: "Arbeiten", items: tabs.filter((t) => t.category === "core") },
+    { label: "Verwaltung", items: tabs.filter((t) => t.category === "admin") },
+    { label: "Persönlich", items: tabs.filter((t) => t.category === "personal") },
+  ].filter((g) => g.items.length > 0);
 
   return (
     <>
@@ -122,37 +127,42 @@ function AuthedLayout() {
         {/* Desktop sidebar */}
         <aside className="hidden md:flex w-64 shrink-0 flex-col border-r border-border bg-card/40 backdrop-blur-sm sticky top-0 h-screen">
           <div className="px-5 py-6 border-b border-border">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-xl syn-gradient-border" style={{ background: "var(--gradient-neural-soft)" }} />
+            <div className="flex items-center gap-2.5">
+              <XSynaLogo size={32} />
               <div>
-                <div className="text-sm font-semibold tracking-wide">xSyna Central</div>
+                <div className="font-display text-sm font-semibold tracking-wide">xSyna Central</div>
                 <div className="text-[10px] mono text-muted-foreground">SynID · Kollektiv</div>
               </div>
             </div>
           </div>
-          <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-            {tabs.map((t) => {
-              const active = pathname === t.to || pathname.startsWith(t.to + "/");
-              const Icon = t.icon;
-              return (
-                <Link key={t.key} to={t.to}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-2xl text-sm transition-all ${active ? "syn-tab-active font-semibold" : "text-muted-foreground hover:text-foreground hover:bg-accent"}`}>
-                  <Icon className="h-4 w-4" /> {t.label}
-                </Link>
-              );
-            })}
+          <nav className="flex-1 p-3 space-y-4 overflow-y-auto">
+            {grouped.map((g) => (
+              <div key={g.label} className="space-y-1">
+                <div className="px-3 text-[10px] mono uppercase tracking-widest text-muted-foreground">{g.label}</div>
+                {g.items.map((t) => {
+                  const active = pathname === t.to || pathname.startsWith(t.to + "/");
+                  const Icon = t.icon;
+                  return (
+                    <Link key={t.key} to={t.to}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-2xl text-sm transition-all ${active ? "syn-tab-active font-semibold" : "text-muted-foreground hover:text-foreground hover:bg-accent"}`}>
+                      <Icon className="h-4 w-4" /> {t.label}
+                    </Link>
+                  );
+                })}
+              </div>
+            ))}
           </nav>
           <div className="p-3 border-t border-border">
             <div className="syn-card p-3">
               <div className="text-xs text-muted-foreground mono">SLID</div>
               <div className="text-sm font-semibold mono">{session.slid}</div>
               <div className="mt-2 flex items-center justify-between">
-                <span className="syn-chip">HL {session.hl}</span>
+                <span className="syn-chip">{session.kind ?? "Account"}</span>
                 <span className="text-xs text-muted-foreground truncate ml-2">{session.name}</span>
               </div>
-              <button onClick={handleLogout} className="syn-btn-ghost w-full mt-3 text-xs">
+              <LiquidButton variant="ghost" size="sm" fullWidth onClick={handleLogout}>
                 <LogOut className="h-3.5 w-3.5" /> Trennen
-              </button>
+              </LiquidButton>
             </div>
           </div>
         </aside>
@@ -161,8 +171,8 @@ function AuthedLayout() {
           {/* mobile top bar */}
           <div className="md:hidden sticky top-0 z-30 flex items-center justify-between px-4 py-3 border-b border-border bg-card/80 backdrop-blur">
             <Link to="/home" className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4" style={{ color: "var(--synapse)" }} />
-              <span className="font-semibold">xSyna Central</span>
+              <XSynaLogo size={24} />
+              <span className="font-display font-semibold">xSyna Central</span>
             </Link>
             <button onClick={handleLogout} className="syn-btn-ghost text-xs"><LogOut className="h-3.5 w-3.5" /></button>
           </div>

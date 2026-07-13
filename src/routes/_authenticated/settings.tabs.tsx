@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Settings, ChevronUp, ChevronDown } from "lucide-react";
-import { tabPrefsForMe, tabPermsForMe, tabPrefSet } from "@/lib/permissions.functions";
+import { tabPrefsForMe, tabPermsForMe, tabPrefSet, myPermissions } from "@/lib/permissions.functions";
 import { TABS } from "@/lib/tabs-registry";
 import { getCredentials, getSession } from "@/lib/syn-session";
 
@@ -19,13 +19,19 @@ function TabPrefsPage() {
   const prefsFn = useServerFn(tabPrefsForMe);
   const permsFn = useServerFn(tabPermsForMe);
   const setFn = useServerFn(tabPrefSet);
+  const featsFn = useServerFn(myPermissions);
   const [prefs, setPrefs] = useState<Pref[]>([]);
   const [perms, setPerms] = useState<Perm[]>([]);
+  const [allowedFeatures, setAllowedFeatures] = useState<Set<string>>(new Set());
 
   async function reload() {
     const c = getCredentials(); if (!c) return;
-    const [p, q] = await Promise.all([prefsFn({ data: c }) as Promise<Pref[]>, permsFn({ data: c }) as Promise<Perm[]>]);
-    setPrefs(p); setPerms(q);
+    const [p, q, f] = await Promise.all([
+      prefsFn({ data: c }) as Promise<Pref[]>,
+      permsFn({ data: c }) as Promise<Perm[]>,
+      featsFn({ data: c }) as Promise<{ features: string[] }>,
+    ]);
+    setPrefs(p); setPerms(q); setAllowedFeatures(new Set(f.features));
   }
   useEffect(() => { void reload(); /* eslint-disable-next-line */ }, []);
 
@@ -47,11 +53,7 @@ function TabPrefsPage() {
     await reload();
   }
 
-  const eligible = TABS.filter((t) => {
-    if (t.requires?.superuser && !session?.isSuperuser) return false;
-    if (t.requires?.hl && (session?.hl ?? 0) < t.requires.hl && !session?.isSuperuser) return false;
-    return true;
-  });
+  const eligible = TABS.filter((t) => session?.isSuperuser || allowedFeatures.has(t.feature));
 
   // Ordered by current sort_order (fallback: registry order)
   const ordered = [...eligible].sort((a, b) => {

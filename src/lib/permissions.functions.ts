@@ -19,10 +19,11 @@ export const tabPermsListAll = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => creds.parse(d))
   .handler(async ({ data }) => {
     const me = await actor(data.slid, data.pik);
-    if (!me.isSuperuser && me.hl < 5) throw new Error("HL 5+ oder Superuser.");
+    const { requirePermission } = await import("./syn-auth.server");
+    await requirePermission(me, "teams.permissions");
     const sb = await admin();
     const [{ data: emps }, { data: perms }] = await Promise.all([
-      sb.from("employees").select("slid,name,hl,kind,department,position").order("hl", { ascending: false }),
+      sb.from("employees").select("slid,name,hl,kind,department,position").order("name", { ascending: true }),
       sb.from("user_tab_permissions").select("*"),
     ]);
     return { employees: emps ?? [], permissions: perms ?? [] };
@@ -34,7 +35,8 @@ export const tabPermSet = createServerFn({ method: "POST" })
   }).parse(d))
   .handler(async ({ data }) => {
     const me = await actor(data.slid, data.pik);
-    if (!me.isSuperuser && me.hl < 5) throw new Error("HL 5+ oder Superuser.");
+    const { requirePermission } = await import("./syn-auth.server");
+    await requirePermission(me, "teams.permissions");
     const sb = await admin();
     const { error } = await sb.from("user_tab_permissions").upsert({
       slid: data.target_slid, tab_key: data.tab_key, allowed: data.allowed, updated_by: me.slid,
@@ -67,4 +69,14 @@ export const tabPrefSet = createServerFn({ method: "POST" })
     }, { onConflict: "slid,tab_key" });
     if (error) throw new Error(error.message);
     return { ok: true };
+  });
+
+// Effective, superuser-resolved permission set for the current account.
+export const myPermissions = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => creds.parse(d))
+  .handler(async ({ data }) => {
+    const me = await actor(data.slid, data.pik);
+    const { getEffectivePermissions } = await import("./syn-auth.server");
+    const set = await getEffectivePermissions(me);
+    return { features: [...set], isSuperuser: me.isSuperuser, kind: me.kind };
   });

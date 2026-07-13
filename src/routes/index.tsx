@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Sparkles, ArrowRight, BookOpen, Newspaper, Briefcase, Zap, Radio, Rocket } from "lucide-react";
 import { PublicHeader } from "@/components/PublicHeader";
+import { LiquidButton } from "@/components/nl";
 import { Markdown } from "@/components/Markdown";
 import { docsListPublic } from "@/lib/docs.functions";
 import { versionsListPublic } from "@/lib/versions.functions";
@@ -61,15 +62,15 @@ function PublicLanding() {
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border syn-card text-[11px] mono mb-6">
             <Sparkles className="h-3 w-3" style={{ color: "var(--synapse)" }} /> Neuromorphic Refresh · v2026.07.05
           </div>
-          <h1 className="text-4xl sm:text-6xl font-bold tracking-tight leading-tight">
+          <h1 className="font-display text-4xl sm:text-6xl font-bold tracking-tight leading-tight">
             Das <span className="syn-gradient-text">Kollektiv</span> im Netz.
           </h1>
           <p className="mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto">
             News, Leaks und Insider aus dem xSyna-Kosmos. Öffentliche Dokumentation zu Features & Partnerschaften. Und die offenen Stellen für alle, die mitgestalten wollen.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Link to="/docs" className="syn-btn"><BookOpen className="h-4 w-4" /> Docs entdecken</Link>
-            <Link to="/apply" className="syn-btn-ghost"><Briefcase className="h-4 w-4" /> Offene Stellen</Link>
+            <Link to="/docs"><LiquidButton><BookOpen className="h-4 w-4" /> Docs entdecken</LiquidButton></Link>
+            <Link to="/apply"><LiquidButton variant="ghost"><Briefcase className="h-4 w-4" /> Offene Stellen</LiquidButton></Link>
           </div>
         </div>
       </section>
@@ -163,7 +164,6 @@ function PublicLanding() {
                   <div className="text-[10px] mono uppercase text-muted-foreground">{p.department}{p.team ? ` · ${p.team}` : ""}</div>
                   <h3 className="font-semibold mt-1">{p.position}</h3>
                   {p.description && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{p.description}</p>}
-                  <div className="mt-2 syn-chip">HL max {p.hl_max}</div>
                 </Link>
               ))}
             </div>

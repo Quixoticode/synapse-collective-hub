@@ -1,67 +1,58 @@
-// Central registry of every tab/app in xSyna Central.
+// Central registry of every module/tab in xSyna Central.
+// Visibility is driven purely by per-feature permissions (see features.ts) —
+// there is no HL hierarchy anymore. The superuser sees everything.
 import {
-  LayoutGrid, Contact, MessageSquare, KeyRound, FileText, BookOpen,
-  Users, Plug, Calendar, LifeBuoy, Wallet, Newspaper, ShieldCheck, Settings,
-  CheckSquare, Bell, Palette, ShieldAlert, UserPlus, UsersRound, FileSignature,
-  Home, Clock, type LucideIcon,
+  Home, Clock, CheckSquare, Calendar, Contact, MessageSquare, KeyRound,
+  FileText, BookOpen, Newspaper, BookText, UserPlus, UsersRound, ShieldAlert,
+  Wallet, CircleUser, Settings, type LucideIcon,
 } from "lucide-react";
+import type { Feature } from "./features";
 
-export type TabKey =
-  | "home" | "apps" | "contacts" | "chat" | "vault" | "workspace" | "basics"
-  | "calendar" | "support" | "finances" | "news" | "collective" | "tasks"
-  | "security" | "notify" | "apply" | "teams" | "worktime" | "docs-admin" | "account"
-  | "permissions" | "settings" | "settings.tabs" | "settings.integrations" | "settings.design" | "settings.pdf";
+// Kept as a permissive alias for older imports.
+export type TabKey = string;
+
+export type TabCategory = "core" | "admin" | "personal";
 
 export type TabDef = {
-  key: TabKey;
+  key: string;
   to: string;
   label: string;
   desc: string;
   icon: LucideIcon;
-  accent: string;
-  requires?: { hl?: number; superuser?: boolean };
-  category: "core" | "admin" | "settings";
-  beta?: boolean;
+  feature: Feature; // permission key required to see this module
+  category: TabCategory;
+  order: number;
 };
 
 export const TABS: TabDef[] = [
-  { key: "home",       to: "/home",       label: "Start",      desc: "Übersicht heute",   icon: Home,         accent: "from-cyan-500/30 to-emerald-500/20", category: "core" },
-  { key: "account",    to: "/account",    label: "Mein Account", desc: "Profil & Passkeys", icon: ShieldCheck, accent: "from-cyan-500/30 to-violet-500/20", category: "core" },
-  { key: "apps",       to: "/apps",       label: "Apps",       desc: "Alle Anwendungen",  icon: LayoutGrid,   accent: "from-cyan-500/30 to-violet-500/20", category: "core" },
-  { key: "worktime",   to: "/worktime",   label: "WorkTime",   desc: "Arbeitszeit",       icon: Clock,        accent: "from-amber-500/30 to-cyan-500/20",  category: "core" },
-  { key: "contacts",   to: "/contacts",   label: "Kontakte",   desc: "Kunden & Leads",    icon: Contact,      accent: "from-cyan-500/30 to-blue-500/20",   category: "core" },
-  { key: "chat",       to: "/chat",       label: "Chat",       desc: "Team-Messaging",    icon: MessageSquare,accent: "from-emerald-500/30 to-cyan-500/20",category: "core" },
-  { key: "vault",      to: "/vault",      label: "Tresor",     desc: "Passwort-Tresor",   icon: KeyRound,     accent: "from-amber-500/30 to-rose-500/20",  category: "core" },
-  { key: "workspace",  to: "/workspace",  label: "Workspace",  desc: "Dokumente",         icon: FileText,     accent: "from-fuchsia-500/30 to-violet-500/20",category: "core" },
-  { key: "basics",     to: "/basics",     label: "Basics",     desc: "Regeln & AGB",      icon: BookOpen,     accent: "from-blue-500/30 to-emerald-500/20",category: "core" },
-  { key: "calendar",   to: "/calendar",   label: "SynCal",     desc: "Team-Kalender",     icon: Calendar,     accent: "from-rose-500/30 to-fuchsia-500/20",category: "core" },
-  { key: "support",    to: "/support",    label: "Support",    desc: "Tickets & Hilfe",   icon: LifeBuoy,     accent: "from-emerald-500/30 to-blue-500/20",category: "core" },
-  { key: "tasks",      to: "/tasks",      label: "Tasks",      desc: "Aufgaben",          icon: CheckSquare,  accent: "from-cyan-500/30 to-emerald-500/20",category: "core" },
-  { key: "notify",     to: "/notify",     label: "Notify",     desc: "Benachrichtigungen",icon: Bell,         accent: "from-amber-500/30 to-violet-500/20",category: "core" },
-  { key: "apply",      to: "/apply",      label: "Applyance",  desc: "Bewerbungen & Stellen", icon: UserPlus, accent: "from-emerald-500/30 to-violet-500/20", category: "core" },
-  { key: "teams",      to: "/teams",      label: "Teams",      desc: "Gruppen & Zuordnung",  icon: UsersRound, accent: "from-cyan-500/30 to-fuchsia-500/20", category: "core" },
-  { key: "finances",   to: "/finances",   label: "Finanzen",   desc: "Konten & Buchungen",icon: Wallet,       accent: "from-amber-500/30 to-emerald-500/20",category: "admin", requires: { hl: 4 } },
-  { key: "news",       to: "/news",       label: "News",       desc: "Updates & Roadmap", icon: Newspaper,    accent: "from-violet-500/30 to-fuchsia-500/20",category: "core" },
-  { key: "collective", to: "/collective", label: "Kollektiv",  desc: "Mitglieder",        icon: Users,        accent: "from-cyan-500/30 to-emerald-500/20",category: "admin", requires: { hl: 5 } },
-  { key: "security",   to: "/security",   label: "Security",   desc: "Logins & Bans",     icon: ShieldAlert,  accent: "from-rose-500/30 to-amber-500/20",  category: "admin", requires: { hl: 4 } },
-  { key: "permissions",to: "/permissions",label: "Berechtigungen", desc: "Tab-Rechte",    icon: ShieldCheck,  accent: "from-fuchsia-500/30 to-blue-500/20",category: "admin", requires: { hl: 5 } },
-  { key: "docs-admin", to: "/docs-admin",  label: "Docs-Admin",     desc: "Öffentliche Dokumentation", icon: BookOpen, accent: "from-cyan-500/30 to-blue-500/20", category: "admin", requires: { hl: 5 } },
-  { key: "settings",              to: "/settings",              label: "Einstellungen",    desc: "Session · Design · Reset", icon: Settings, accent: "from-blue-500/30 to-violet-500/20", category: "settings" },
-  { key: "settings.tabs",         to: "/settings/tabs",         label: "Tab-Sichtbarkeit", desc: "Meine Tabs",   icon: Settings, accent: "from-blue-500/30 to-violet-500/20", category: "settings" },
-  { key: "settings.design",       to: "/settings/design",       label: "Design",           desc: "Neuromorphic", icon: Palette,  accent: "from-fuchsia-500/30 to-cyan-500/20", category: "settings" },
-  { key: "settings.pdf",          to: "/settings/pdf",          label: "PDF-Vorlagen",     desc: "Druckvorlagen",icon: FileSignature, accent: "from-amber-500/30 to-cyan-500/20", category: "settings", requires: { hl: 5 } },
-  { key: "settings.integrations", to: "/settings/integrations", label: "Integrations",     desc: "SynID Gateway",icon: Plug,     accent: "from-violet-500/30 to-cyan-500/20", category: "settings", requires: { superuser: true } },
+  { key: "home",      to: "/home",       label: "Startseite", desc: "Übersicht heute",        icon: Home,          feature: "home",     category: "core",     order: 10 },
+  { key: "worktime",  to: "/worktime",   label: "WorkTime",   desc: "Arbeitszeit",            icon: Clock,         feature: "worktime", category: "core",     order: 20 },
+  { key: "tasks",     to: "/tasks",      label: "Tasks",      desc: "Projekte & Aufgaben",    icon: CheckSquare,   feature: "tasks",    category: "core",     order: 30 },
+  { key: "calendar",  to: "/calendar",   label: "Kalender",   desc: "Termine",                icon: Calendar,      feature: "calendar", category: "core",     order: 40 },
+  { key: "contacts",  to: "/contacts",   label: "Kontakte",   desc: "CRM · Kunden & Leads",   icon: Contact,       feature: "contacts", category: "core",     order: 50 },
+  { key: "chat",      to: "/chat",       label: "Chat",       desc: "Nachrichten & Support",  icon: MessageSquare, feature: "chat",     category: "core",     order: 60 },
+  { key: "vault",     to: "/vault",      label: "Tresor",     desc: "Passwort-Tresor",        icon: KeyRound,      feature: "vault",    category: "core",     order: 70 },
+  { key: "workspace", to: "/workspace",  label: "Workspace",  desc: "Dokumente",              icon: FileText,      feature: "workspace",category: "core",     order: 80 },
+  { key: "basics",    to: "/basics",     label: "Basics",     desc: "AGB · Lizenzen · Guides",icon: BookOpen,      feature: "basics",   category: "core",     order: 90 },
+  { key: "news",      to: "/news",       label: "News",       desc: "Roadmap & Updates",      icon: Newspaper,     feature: "news",     category: "core",     order: 100 },
+  { key: "docs",      to: "/docs",       label: "Docs",       desc: "Dokumentation",          icon: BookText,      feature: "docs",     category: "core",     order: 110 },
+  { key: "apply",     to: "/applyance",  label: "Applyance",  desc: "Bewerbungen & Stellen",  icon: UserPlus,      feature: "apply",    category: "admin",    order: 120 },
+  { key: "teams",     to: "/teams",      label: "Teams",      desc: "Accounts & Rechte",      icon: UsersRound,    feature: "teams",    category: "admin",    order: 130 },
+  { key: "security",  to: "/security",   label: "Security",   desc: "Logins & Geräte",        icon: ShieldAlert,   feature: "security", category: "admin",    order: 140 },
+  { key: "payments",  to: "/finances",   label: "Payments",   desc: "Budget & Buchungen",     icon: Wallet,        feature: "payments", category: "admin",    order: 150 },
+  { key: "account",   to: "/account",    label: "Mein Account", desc: "Profil & Passkeys",    icon: CircleUser,    feature: "account",  category: "personal", order: 160 },
+  { key: "settings",  to: "/settings",   label: "Einstellungen", desc: "Design · Admin",      icon: Settings,      feature: "settings", category: "personal", order: 170 },
 ];
 
-export type TabsCtx = { hl: number; isSuperuser?: boolean };
-export type TabRule = { permissions?: Record<string, boolean>; prefs?: Record<string, { visible: boolean; sort_order?: number }> };
-
-export function visibleTabs(ctx: TabsCtx, rule: TabRule = {}) {
-  return TABS.filter((t) => {
-    if (t.requires?.superuser && !ctx.isSuperuser) return false;
-    if (t.requires?.hl && ctx.hl < t.requires.hl && !ctx.isSuperuser) return false;
-    if (rule.permissions && rule.permissions[t.key] === false) return false;
-    if (rule.prefs && rule.prefs[t.key] && rule.prefs[t.key].visible === false) return false;
-    return true;
-  }).sort((a, b) => (rule.prefs?.[a.key]?.sort_order ?? 0) - (rule.prefs?.[b.key]?.sort_order ?? 0));
+// Given the set of features the current account is allowed to use (already
+// superuser-resolved server-side) and the account's own visibility prefs,
+// return the ordered list of tabs to show.
+export function visibleTabs(
+  allowed: Set<string>,
+  prefs: Record<string, { visible: boolean; sort_order?: number }> = {},
+): TabDef[] {
+  return TABS
+    .filter((t) => allowed.has(t.feature))
+    .filter((t) => prefs[t.key]?.visible !== false)
+    .sort((a, b) => (prefs[a.key]?.sort_order ?? a.order) - (prefs[b.key]?.sort_order ?? b.order));
 }
