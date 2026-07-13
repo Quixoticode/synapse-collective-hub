@@ -1,6 +1,6 @@
-name = "synapse-collective-hub"
-main = "dist/server/server.js"
-compatibility_date = "2024-11-06"
+name = "xsyna-central"
+main = "dist/server/index.mjs"
+compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
 
 [assets]
@@ -11,13 +11,12 @@ not_found_handling = "single-page-application"
 [observability]
 enabled = true
 
-# --- Set these via `bunx wrangler secret put <NAME>` before deploying ---
-# (Do not commit real values here — this file is version-controlled.)
-# [vars]
-# SUPABASE_URL = "..."
+# Custom Domain Route
+[[routes]]
+pattern = "central.xsyna.de"
+custom_domain = true
 
-
-# Geheimnisse setzt du via `bunx wrangler secret put <NAME>`:
+# --- Secrets setzen via `npx wrangler secret put <NAME>` ---
 #   SUPABASE_URL
 #   SUPABASE_PUBLISHABLE_KEY
 #   SUPABASE_SERVICE_ROLE_KEY
