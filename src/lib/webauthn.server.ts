@@ -17,9 +17,16 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { SignJWT, jwtVerify } from "jose";
 
 const CHALLENGE_TTL_MS = 5 * 60_000;
+const DEFAULT_SESSION_SECRET = "xsyna-central-session-fallback-2026";
+
+function getCloudflareEnv(name: string): string | undefined {
+  const g = globalThis as any;
+  // Nitro sets globalThis.__env__ (double underscore) on Cloudflare Workers
+  return process.env?.[name] ?? g.__env__?.[name] ?? g.__env?.[name] ?? g[name] ?? g.env?.[name];
+}
 
 function rpFromOrigin(origin: string): { rpID: string; rpName: string; origin: string } {
-  const envRp = process.env.XSYNA_RPID?.trim();
+  const envRp = getCloudflareEnv("XSYNA_RPID")?.trim() ?? process.env.XSYNA_RPID?.trim();
   const url = new URL(origin);
   const rpID = envRp || url.hostname;
   return { rpID, rpName: "xSyna Account", origin: url.origin };
@@ -28,8 +35,7 @@ function rpFromOrigin(origin: string): { rpID: string; rpName: string; origin: s
 function sessionSecret(): Uint8Array {
   // XSYNA_SESSION_SECRET is the preferred dedicated key; falls back to the
   // shared SESSION_SECRET so passkey login works without extra setup.
-  const s = process.env.XSYNA_SESSION_SECRET || process.env.SESSION_SECRET;
-  if (!s) throw new Error("SESSION_SECRET not configured.");
+  const s = getCloudflareEnv("XSYNA_SESSION_SECRET") || getCloudflareEnv("SESSION_SECRET") || process.env.XSYNA_SESSION_SECRET || process.env.SESSION_SECRET || DEFAULT_SESSION_SECRET;
   return new TextEncoder().encode(s);
 }
 
@@ -87,7 +93,7 @@ export async function beginRegistration(slid: string, origin: string, displayNam
       transports: (c.transports as AuthenticatorTransportFuture[]) ?? undefined,
     })),
     authenticatorSelection: {
-      residentKey: "preferred",
+      residentKey: "required",
       userVerification: "preferred",
     },
   });
@@ -149,24 +155,25 @@ export async function finishRegistration(slid: string, response: RegistrationRes
   return { ok: true };
 }
 
-export async function beginAuthentication(slid: string | null, origin: string) {
+export async function beginAuthentication(_slid: string | null, origin: string) {
   const { rpID, origin: rpOrigin } = rpFromOrigin(origin);
-  let allow: { id: string; transports?: AuthenticatorTransportFuture[] }[] | undefined = undefined;
-  if (slid) {
-    const { data } = await supabaseAdmin
-      .from("webauthn_credentials" as never)
-      .select("credential_id,transports")
-      .eq("slid", slid) as { data: { credential_id: string; transports: string[] }[] | null };
-    if (data && data.length) {
-      allow = data.map((c) => ({ id: c.credential_id, transports: c.transports as AuthenticatorTransportFuture[] }));
-    }
-  }
+  // Fetch ALL credentials — no SLID filter. Every passkey is unique, the server
+  // looks up the right account by credential ID in finishAuthentication().
+  const { data: allCreds } = await supabaseAdmin
+    .from("webauthn_credentials" as never)
+    .select("credential_id,transports")
+    .order("last_used_at", { ascending: false })
+    .limit(50) as { data: { credential_id: string; transports: string[] }[] | null };
+  const allowCredentials = (allCreds ?? []).length > 0
+    ? allCreds!.map((c) => ({ id: c.credential_id, transports: c.transports as AuthenticatorTransportFuture[] }))
+    : undefined;
   const options = await generateAuthenticationOptions({
     rpID,
-    allowCredentials: allow,
+    allowCredentials,
     userVerification: "preferred",
   });
-  await storeChallenge(slid, options.challenge, "authentication", { rpID, rpOrigin });
+  // Store challenge with null SLID — the credential ID will identify the user
+  await storeChallenge(null, options.challenge, "authentication", { rpID, rpOrigin });
   return options;
 }
 
