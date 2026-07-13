@@ -7,6 +7,7 @@ import {
   applySubmitAnon, applyApplicationsList, applyHire, applyApplicationSetStatus,
 } from "@/lib/apply.functions";
 import { getSession, getCredentials } from "@/lib/syn-session";
+import { myPermissions } from "@/lib/permissions.functions";
 import { Markdown } from "@/components/Markdown";
 
 export const Route = createFileRoute("/apply")({
@@ -33,6 +34,7 @@ function ApplyPage() {
   const appsListFn = useServerFn(applyApplicationsList);
   const hireFn = useServerFn(applyHire);
   const statusFn = useServerFn(applyApplicationSetStatus);
+  const permsFn = useServerFn(myPermissions);
 
   const [positions, setPositions] = useState<Position[]>([]);
   const [apps, setApps] = useState<Application[]>([]);
@@ -42,19 +44,24 @@ function ApplyPage() {
   const [sent, setSent] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [tab, setTab] = useState<"apply" | "manage" | "hire">("apply");
+  const [allowedFeatures, setAllowedFeatures] = useState<Set<string>>(new Set());
 
-  const isLeitung = session ? (session.isSuperuser || session.hl >= 5 || session.kind === "service") : false;
-  const canHire = session ? (session.isSuperuser || session.hl >= 2) : false;
+  // Stellen verwalten / Status setzen: server keeps a "service" kind bypass alongside apply.manage.
+  const isLeitung = session ? (session.isSuperuser || allowedFeatures.has("apply.manage") || session.kind === "service") : false;
+  // Einstellen (hire): server requires plain apply.manage, no service-kind bypass.
+  const canHire = session ? (session.isSuperuser || allowedFeatures.has("apply.manage")) : false;
 
   async function reload() {
     try {
       if (session) {
         const c = getCredentials()!;
-        const [p, a] = await Promise.all([
+        const [p, a, feats] = await Promise.all([
           allListFn({ data: c }) as Promise<Position[]>,
           appsListFn({ data: c }) as Promise<Application[]>,
+          permsFn({ data: c }) as Promise<{ features: string[] }>,
         ]);
         setPositions(p); setApps(a);
+        setAllowedFeatures(new Set(feats.features));
       } else {
         setPositions((await publicListFn()) as Position[]);
       }
@@ -169,7 +176,7 @@ function ApplyPage() {
 
       {session && tab === "hire" && canHire && (
         <div className="space-y-3">
-          <div className="text-xs text-muted-foreground">Du siehst Bewerbungen — stelle direkt ein (HL &lt; deins).</div>
+          <div className="text-xs text-muted-foreground">Du siehst Bewerbungen — stelle direkt ein.</div>
           {apps.length === 0 && <div className="text-sm text-muted-foreground">Keine Bewerbungen.</div>}
           {apps.map((a) => {
             const pos = positions.find((p) => p.id === a.position_id);

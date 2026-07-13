@@ -8,12 +8,17 @@ import { getCredentials, getSession } from "@/lib/syn-session";
 
 export const Route = createFileRoute("/_authenticated/security")({
   ssr: false,
-  beforeLoad: () => {
+  beforeLoad: async () => {
     if (typeof window === "undefined") return;
     const raw = localStorage.getItem("syn.session.v1");
     if (!raw) throw redirect({ to: "/auth" });
-    try { const s = JSON.parse(raw); if ((s?.hl ?? 0) < 4 && !s?.isSuperuser) throw redirect({ to: "/apps" }); }
-    catch { throw redirect({ to: "/auth" }); }
+    let s: { slid?: string; pik?: string; isSuperuser?: boolean };
+    try { s = JSON.parse(raw); } catch { throw redirect({ to: "/auth" }); }
+    if (!s?.slid || !s?.pik) throw redirect({ to: "/auth" });
+    if (s.isSuperuser) return;
+    const { myPermissions } = await import("@/lib/permissions.functions");
+    const r = await myPermissions({ data: { slid: s.slid, pik: s.pik } }).catch(() => null);
+    if (!r || (!r.isSuperuser && !r.features.includes("security.all"))) throw redirect({ to: "/apps" });
   },
   component: SecurityPage,
 });
@@ -41,7 +46,9 @@ function SecurityPage() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [quickCode, setQuickCode] = useState<{ slid: string; code: string; expires_at: string } | null>(null);
 
-  const canQuickLogin = session?.isSuperuser || (session?.hl ?? 0) >= 5;
+  // The route's beforeLoad already requires the "security.all" permission (or superuser)
+  // to reach this page at all, so anyone here may issue quick-login codes for others.
+  const canQuickLogin = true;
 
   async function reload() {
     const c = getCredentials(); if (!c) return;

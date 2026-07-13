@@ -5,12 +5,10 @@ async function admin() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   return supabaseAdmin;
 }
+async function auth() { return import("./syn-auth.server"); }
 async function verify(slid: string, pik: string) {
-  const a = await admin();
-  const { data, error } = await a.from("employees").select("slid,hl,name").eq("slid", slid).eq("pik", pik).maybeSingle();
-  if (error) throw new Error(error.message);
-  if (!data) throw new Error("Ungültige SynID.");
-  return data;
+  const { verifyActor } = await auth();
+  return verifyActor(slid, pik);
 }
 const creds = z.object({ slid: z.string(), pik: z.string() });
 
@@ -42,7 +40,7 @@ export const notifSend = createServerFn({ method: "POST" })
   }).parse(d))
   .handler(async ({ data }) => {
     const me = await verify(data.slid, data.pik);
-    if (me.hl < 5) throw new Error("HL 5+ erforderlich für eigene Benachrichtigungen.");
+    await (await auth()).requirePermission(me, "notify.manage");
     const a = await admin();
     const rows = data.recipients.map((r) => ({
       recipient_slid: r, title: data.title, body: data.body || null, url: data.url || null,

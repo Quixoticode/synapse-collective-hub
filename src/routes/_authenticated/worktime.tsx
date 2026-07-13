@@ -5,6 +5,7 @@ import { Clock, ArrowLeft, Plus, Play, StopCircle, Zap, X, Trash2 } from "lucide
 import { getSession, getCredentials } from "@/lib/syn-session";
 import { wtShiftsList, wtShiftUpsert, wtShiftDelete, wtSessionsList, wtSessionActive, wtSessionStart, wtSessionStop, wtSessionPing, wtSessionUpsert, wtSessionAdminDelete } from "@/lib/worktime.functions";
 import { employeesList } from "@/lib/syn.functions";
+import { myPermissions } from "@/lib/permissions.functions";
 
 export const Route = createFileRoute("/_authenticated/worktime")({
   ssr: false,
@@ -45,6 +46,7 @@ function WorkTimePage() {
   const empsFn = useServerFn(employeesList);
   const sessionUpsertFn = useServerFn(wtSessionUpsert);
   const sessionAdminDelFn = useServerFn(wtSessionAdminDelete);
+  const permsFn = useServerFn(myPermissions);
 
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -54,26 +56,31 @@ function WorkTimePage() {
   const [editSession, setEditSession] = useState<Partial<Session> & { target_slid?: string } | null>(null);
   const [showAllUsers, setShowAllUsers] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [allowedFeatures, setAllowedFeatures] = useState<Set<string>>(new Set());
   const [, setTick] = useState(0);
 
-  const canManage = session ? (session.isSuperuser || session.hl >= 4) : false;
-  const canDeleteShift = session ? (session.isSuperuser || session.hl >= 7) : false;
+  const canManage = !!session?.isSuperuser || allowedFeatures.has("worktime.manage");
+  const canDeleteShift = canManage;
 
   async function load() {
     const c = getCredentials(); if (!c) return;
     setErr(null);
     try {
+      const feats = await permsFn({ data: c }) as { features: string[] };
+      const allowed = new Set(feats.features);
+      setAllowedFeatures(allowed);
+      const manage = !!session?.isSuperuser || allowed.has("worktime.manage");
       const now = new Date();
       const from = new Date(now); from.setDate(now.getDate() - 7); from.setHours(0,0,0,0);
       const to = new Date(now); to.setDate(now.getDate() + 14); to.setHours(23,59,59,999);
-      const filter = canManage && showAllUsers ? null : session?.slid;
+      const filter = manage && showAllUsers ? null : session?.slid;
       const [sh, se, ac] = await Promise.all([
         shiftsFn({ data: { ...c, from: from.toISOString(), to: to.toISOString(), slid_filter: filter } }) as Promise<Shift[]>,
         sessionsFn({ data: { ...c, from: from.toISOString(), to: to.toISOString(), slid_filter: filter } }) as Promise<Session[]>,
         activeFn({ data: c }) as Promise<Session | null>,
       ]);
       setShifts(sh); setSessions(se); setActive(ac);
-      if (canManage) {
+      if (manage) {
         try { setEmps(await empsFn({ data: c }) as Emp[]); } catch { /* ignore */ }
       }
     } catch (e) { setErr(e instanceof Error ? e.message : "Fehler."); }

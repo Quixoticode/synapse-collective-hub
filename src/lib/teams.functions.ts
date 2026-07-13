@@ -2,7 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 async function admin() { const m = await import("@/integrations/supabase/client.server"); return m.supabaseAdmin; }
-async function actor(slid: string, pik: string) { const m = await import("./syn-auth.server"); return m.verifyActor(slid, pik); }
+async function auth() { return import("./syn-auth.server"); }
+async function actor(slid: string, pik: string) { const m = await auth(); return m.verifyActor(slid, pik); }
 
 const creds = z.object({ slid: z.string().min(1), pik: z.string().min(8) });
 
@@ -29,7 +30,7 @@ export const teamUpsert = createServerFn({ method: "POST" })
   }).parse(d))
   .handler(async ({ data }) => {
     const me = await actor(data.slid, data.pik);
-    if (!me.isSuperuser && me.hl < 4) throw new Error("Nur HL 4+ dürfen Teams anlegen/ändern.");
+    await (await auth()).requirePermission(me, "teams.manage");
     const sb = await admin();
     const payload = {
       name: data.name,
@@ -52,7 +53,7 @@ export const teamDelete = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => creds.extend({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data }) => {
     const me = await actor(data.slid, data.pik);
-    if (!me.isSuperuser && me.hl < 4) throw new Error("Nur HL 4+.");
+    await (await auth()).requirePermission(me, "teams.manage");
     const sb = await admin();
     const { error } = await sb.from("teams").delete().eq("id", data.id);
     if (error) throw new Error(error.message); return { ok: true };
@@ -67,15 +68,12 @@ export const teamMemberAdd = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const me = await actor(data.slid, data.pik);
     const sb = await admin();
-    const { data: team } = await sb.from("teams").select("leader_slid,min_hl").eq("id", data.team_id).maybeSingle();
+    const { data: team } = await sb.from("teams").select("leader_slid").eq("id", data.team_id).maybeSingle();
     const isLeaderOfTeam = team?.leader_slid === me.slid;
-    if (!me.isSuperuser && me.hl < 4 && !(me.hl >= 2 && isLeaderOfTeam)) {
+    if (!isLeaderOfTeam && !(await (await auth()).hasPermission(me, "teams.manage"))) {
       throw new Error("Keine Berechtigung, Mitglieder hinzuzufügen.");
     }
     const { data: emp } = await sb.from("employees").select("hl").eq("slid", data.target_slid).maybeSingle();
-    if (team?.min_hl && (emp?.hl ?? 0) < team.min_hl) {
-      throw new Error(`Diese Person erfüllt die Mindest-HL ${team.min_hl} nicht.`);
-    }
     const { error } = await sb.from("team_members").insert({
       team_id: data.team_id, slid: data.target_slid, role: data.role || null, hl_at_join: emp?.hl ?? null,
     });
@@ -91,7 +89,7 @@ export const teamMemberRemove = createServerFn({ method: "POST" })
     if (!mem) throw new Error("Nicht gefunden.");
     const { data: team } = await sb.from("teams").select("leader_slid").eq("id", mem.team_id).maybeSingle();
     const isLeaderOfTeam = team?.leader_slid === me.slid;
-    if (!me.isSuperuser && me.hl < 4 && !(me.hl >= 2 && isLeaderOfTeam)) {
+    if (!isLeaderOfTeam && !(await (await auth()).hasPermission(me, "teams.manage"))) {
       throw new Error("Keine Berechtigung.");
     }
     const { error } = await sb.from("team_members").delete().eq("id", data.id);

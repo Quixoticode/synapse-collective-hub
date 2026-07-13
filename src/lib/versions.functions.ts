@@ -3,11 +3,12 @@ import { z } from "zod";
 
 const creds = z.object({ slid: z.string().min(1), pik: z.string().min(8) });
 async function admin() { const m = await import("@/integrations/supabase/client.server"); return m.supabaseAdmin; }
-async function actor(slid: string, pik: string) { const m = await import("./syn-auth.server"); return m.verifyActor(slid, pik); }
+async function auth() { return import("./syn-auth.server"); }
+async function actor(slid: string, pik: string) { const m = await auth(); return m.verifyActor(slid, pik); }
 
 // ---- Public: list published versions filtered by visibility ----
 // - unauthenticated caller: only visibility='public'
-// - authenticated caller: 'public' + 'authenticated' (+ 'insider' when HL>=5 or superuser)
+// - authenticated caller: 'public' + 'authenticated' (+ 'insider' when news.manage or superuser)
 export const versionsListPublic = createServerFn({ method: "GET" })
   .handler(async () => {
     const sb = await admin();
@@ -26,8 +27,8 @@ export const versionsList = createServerFn({ method: "POST" })
     const sb = await admin();
     const { data: rows, error } = await sb.from("app_versions").select("*").order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
-    // Hide insider entries unless HL 5+ or superuser
-    const canInsider = me.isSuperuser || me.hl >= 5;
+    // Hide insider entries unless the account has news.manage (or is superuser)
+    const canInsider = await (await auth()).hasPermission(me, "news.manage");
     return (rows ?? []).filter((r) => r.visibility !== "insider" || canInsider);
   });
 
@@ -56,7 +57,7 @@ export const versionsUpsert = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => upsert.parse(d))
   .handler(async ({ data }) => {
     const me = await actor(data.slid, data.pik);
-    if (!me.isSuperuser && me.hl < 6) throw new Error("HL 6+ oder Superuser erforderlich.");
+    await (await auth()).requirePermission(me, "news.manage");
     const sb = await admin();
     const payload = {
       version: data.version, title: data.title, notes_md: data.notes_md,
@@ -108,7 +109,7 @@ export const roadmapUpsert = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => rmUpsert.parse(d))
   .handler(async ({ data }) => {
     const me = await actor(data.slid, data.pik);
-    if (!me.isSuperuser && me.hl < 5) throw new Error("HL 5+ oder Superuser erforderlich.");
+    await (await auth()).requirePermission(me, "news.manage");
     const sb = await admin();
     const payload = {
       title: data.title, description: data.description, status: data.status,
@@ -126,7 +127,7 @@ export const roadmapDelete = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => creds.extend({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data }) => {
     const me = await actor(data.slid, data.pik);
-    if (!me.isSuperuser && me.hl < 5) throw new Error("HL 5+ oder Superuser.");
+    await (await auth()).requirePermission(me, "news.manage");
     const sb = await admin();
     const { error } = await sb.from("roadmap_items").delete().eq("id", data.id);
     if (error) throw new Error(error.message); return { ok: true };

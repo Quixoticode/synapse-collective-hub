@@ -23,6 +23,12 @@ async function verify(slid: string, pik: string) {
 
 const creds = z.object({ slid: z.string().min(1), pik: z.string().min(8) });
 
+async function auth() { return import("./syn-auth.server"); }
+async function actor(slid: string, pik: string) {
+  const { verifyActor } = await auth();
+  return verifyActor(slid, pik);
+}
+
 // --- AUTH ------------------------------------------------------------------
 
 async function buildSession(me: {
@@ -87,11 +93,12 @@ export const synVerifyByPik = createServerFn({ method: "POST" })
 export const crmList = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => creds.parse(d))
   .handler(async ({ data }) => {
-    const me = await verify(data.slid, data.pik);
+    const me = await actor(data.slid, data.pik);
     const admin = await getAdmin();
-    // HL >= 5 sees all CRM data; below sees only own
+    // contacts.manage (or superuser) sees all CRM data; everyone else sees only own
+    const seeAll = await (await auth()).hasPermission(me, "contacts.manage");
     const q = admin.from("crm_data").select("*").order("created_at", { ascending: false });
-    const { data: rows, error } = me.hl >= 5 ? await q : await q.eq("owner_slid", me.slid);
+    const { data: rows, error } = seeAll ? await q : await q.eq("owner_slid", me.slid);
     if (error) throw new Error(error.message);
     return rows ?? [];
   });
@@ -110,7 +117,7 @@ const crmUpsertSchema = creds.extend({
 export const crmUpsert = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => crmUpsertSchema.parse(d))
   .handler(async ({ data }) => {
-    const me = await verify(data.slid, data.pik);
+    const me = await actor(data.slid, data.pik);
     const admin = await getAdmin();
     const payload = {
       name: data.name,
@@ -123,10 +130,10 @@ export const crmUpsert = createServerFn({ method: "POST" })
       owner_slid: me.slid,
     };
     if (data.id) {
-      // ensure owner or HL>=5
+      // ensure owner or contacts.manage
       const { data: row } = await admin.from("crm_data").select("owner_slid").eq("id", data.id).maybeSingle();
       if (!row) throw new Error("Kontakt nicht gefunden.");
-      if (row.owner_slid !== me.slid && me.hl < 5) throw new Error("Keine Berechtigung.");
+      if (row.owner_slid !== me.slid) await (await auth()).requirePermission(me, "contacts.manage");
       const { data: updated, error } = await admin
         .from("crm_data")
         .update(payload)
@@ -144,27 +151,23 @@ export const crmUpsert = createServerFn({ method: "POST" })
 export const crmDelete = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => creds.extend({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data }) => {
-    const me = await verify(data.slid, data.pik);
+    const me = await actor(data.slid, data.pik);
     const admin = await getAdmin();
     const { data: row } = await admin.from("crm_data").select("owner_slid").eq("id", data.id).maybeSingle();
     if (!row) throw new Error("Kontakt nicht gefunden.");
-    if (row.owner_slid !== me.slid && me.hl < 5) throw new Error("Keine Berechtigung.");
+    if (row.owner_slid !== me.slid) await (await auth()).requirePermission(me, "contacts.manage");
     const { error } = await admin.from("crm_data").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
 
-// --- EMPLOYEES (HL >= 5 only) ---------------------------------------------
-
-function requireHl5(hl: number) {
-  if (hl < 5) throw new Error("Hierarchie-Level 5+ erforderlich.");
-}
+// --- EMPLOYEES (teams.manage only) -----------------------------------------
 
 export const employeesList = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => creds.parse(d))
   .handler(async ({ data }) => {
-    const me = await verify(data.slid, data.pik);
-    requireHl5(me.hl);
+    const me = await actor(data.slid, data.pik);
+    await (await auth()).requirePermission(me, "teams.manage");
     const admin = await getAdmin();
     const { data: rows, error } = await admin
       .from("employees")
@@ -197,8 +200,8 @@ const empPayload = z.object({
 export const employeeSave = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => empPayload.parse(d))
   .handler(async ({ data }) => {
-    const me = await verify(data.caller_slid, data.caller_pik);
-    requireHl5(me.hl);
+    const me = await actor(data.caller_slid, data.caller_pik);
+    await (await auth()).requirePermission(me, "teams.manage");
     const admin = await getAdmin();
     const isEdit = !!data.original_slid;
 
@@ -265,8 +268,8 @@ const empDelPayload = z.object({
 export const employeeDelete = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => empDelPayload.parse(d))
   .handler(async ({ data }) => {
-    const me = await verify(data.caller_slid, data.caller_pik);
-    requireHl5(me.hl);
+    const me = await actor(data.caller_slid, data.caller_pik);
+    await (await auth()).requirePermission(me, "teams.manage");
     if (data.target_slid === me.slid) throw new Error("Eigener Zugang kann nicht gelöscht werden.");
     const admin = await getAdmin();
     const { error } = await admin.from("employees").delete().eq("slid", data.target_slid);

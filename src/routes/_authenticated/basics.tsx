@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { BookOpen, Plus, X, Pin, Trash2, Pencil, Scale, FileSignature, Info } from "lucide-react";
 import { basicsList, basicsUpsert, basicsDelete } from "@/lib/basics.functions";
+import { myPermissions } from "@/lib/permissions.functions";
 import { getSession, getCredentials } from "@/lib/syn-session";
 
 export const Route = createFileRoute("/_authenticated/basics")({
@@ -20,21 +21,27 @@ const KIND_LABEL = { rule: "Regel", agb: "AGB", contract: "Vertrag", info: "Info
 
 function BasicsPage() {
   const session = getSession();
-  const canEdit = !!session && (session.isSuperuser || session.hl >= 5);
   const listFn = useServerFn(basicsList);
   const saveFn = useServerFn(basicsUpsert);
   const delFn = useServerFn(basicsDelete);
+  const permsFn = useServerFn(myPermissions);
 
   const [docs, setDocs] = useState<Doc[]>([]);
   const [active, setActive] = useState<Doc | null>(null);
   const [editing, setEditing] = useState<Partial<Doc> | null>(null);
   const [busy, setBusy] = useState(false);
+  const [allowedFeatures, setAllowedFeatures] = useState<Set<string>>(new Set());
+  const canEdit = !!session?.isSuperuser || allowedFeatures.has("basics.manage");
 
   async function reload() {
     const c = getCredentials();
     if (!c) return;
-    const r = (await listFn({ data: c })) as Doc[];
+    const [r, feats] = await Promise.all([
+      listFn({ data: c }) as Promise<Doc[]>,
+      permsFn({ data: c }) as Promise<{ features: string[] }>,
+    ]);
     setDocs(r);
+    setAllowedFeatures(new Set(feats.features));
     if (!active && r.length) setActive(r[0]);
   }
   useEffect(() => { void reload(); /* eslint-disable-next-line */ }, []);

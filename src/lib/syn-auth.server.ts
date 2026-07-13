@@ -63,3 +63,11 @@ export async function requirePermission(actor: SynActor, key: Feature | string) 
   const perms = await getEffectivePermissions(actor);
   if (!perms.has(key)) throw new Error("Keine Berechtigung für diese Aktion.");
 }
+
+// Non-throwing variant for conditional logic (e.g. filtering a list query,
+// or deciding whether a secondary bypass like "own team leader" applies).
+export async function hasPermission(actor: SynActor, key: Feature | string): Promise<boolean> {
+  if (actor.isSuperuser) return true;
+  const perms = await getEffectivePermissions(actor);
+  return perms.has(key);
+}

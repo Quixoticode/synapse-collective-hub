@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Plus, Search, Pencil, Trash2, X, Mail, Phone, Building2 } from "lucide-react";
 import { crmList, crmUpsert, crmDelete } from "@/lib/syn.functions";
+import { myPermissions } from "@/lib/permissions.functions";
 import { getCredentials, getSession } from "@/lib/syn-session";
 
 export const Route = createFileRoute("/_authenticated/contacts")({
@@ -37,6 +38,7 @@ function ContactsPage() {
   const list = useServerFn(crmList);
   const upsert = useServerFn(crmUpsert);
   const remove = useServerFn(crmDelete);
+  const permsFn = useServerFn(myPermissions);
 
   const [items, setItems] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,15 +47,21 @@ function ContactsPage() {
   const [editing, setEditing] = useState<Partial<Contact> | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [allowedFeatures, setAllowedFeatures] = useState<Set<string>>(new Set());
   const session = getSession();
+  const hasFullAccess = !!session?.isSuperuser || allowedFeatures.has("contacts.manage");
 
   async function refresh() {
     const c = getCredentials();
     if (!c) return;
     setLoading(true);
     try {
-      const rows = (await list({ data: c })) as Contact[];
+      const [rows, feats] = await Promise.all([
+        list({ data: c }) as Promise<Contact[]>,
+        permsFn({ data: c }) as Promise<{ features: string[] }>,
+      ]);
       setItems(rows);
+      setAllowedFeatures(new Set(feats.features));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Fehler beim Laden.");
     } finally {
@@ -121,7 +129,7 @@ function ContactsPage() {
         <div className="min-w-0">
           <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight truncate">Kontakte</h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            {session && session.hl >= 5 ? "Vollzugriff (HL ≥ 5)." : "Deine CRM-Kontakte."}
+            {hasFullAccess ? "Vollzugriff (Berechtigung „Kontakte verwalten“)." : "Deine CRM-Kontakte."}
           </p>
         </div>
         <button onClick={() => setEditing({ status: "lead", tags: [] })} className="syn-btn shrink-0">

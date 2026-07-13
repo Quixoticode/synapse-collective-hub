@@ -5,13 +5,12 @@ async function admin() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   return supabaseAdmin;
 }
-async function verify(slid: string, pik: string, minHl = 4) {
-  const a = await admin();
-  const { data, error } = await a.from("employees").select("slid,hl").eq("slid", slid).eq("pik", pik).maybeSingle();
-  if (error) throw new Error(error.message);
-  if (!data) throw new Error("Ungültige SynID.");
-  if (data.hl < minHl) throw new Error(`HL ${minHl}+ erforderlich.`);
-  return data;
+async function auth() { return import("./syn-auth.server"); }
+async function verify(slid: string, pik: string) {
+  const { verifyActor, requirePermission } = await auth();
+  const me = await verifyActor(slid, pik);
+  await requirePermission(me, "security.all");
+  return me;
 }
 const creds = z.object({ slid: z.string(), pik: z.string() });
 
@@ -32,7 +31,7 @@ export const banStatus = createServerFn({ method: "POST" })
 export const securityOverview = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => creds.parse(d))
   .handler(async ({ data }) => {
-    await verify(data.slid, data.pik, 4);
+    await verify(data.slid, data.pik);
     const a = await admin();
     const [{ data: emps }, { data: last }, { data: sess }, { data: bans }] = await Promise.all([
       a.from("employees").select("slid,name,hl,kind"),
@@ -46,7 +45,7 @@ export const securityOverview = createServerFn({ method: "POST" })
 export const banUser = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => creds.extend({ target: z.string(), message: z.string().min(1).max(500), hours: z.number().int().min(1).max(24*30) }).parse(d))
   .handler(async ({ data }) => {
-    const me = await verify(data.slid, data.pik, 4);
+    const me = await verify(data.slid, data.pik);
     if (data.target === me.slid) throw new Error("Selbst-Bann nicht möglich.");
     const a = await admin();
     const expires = new Date(Date.now() + data.hours * 3600_000).toISOString();
@@ -59,7 +58,7 @@ export const banUser = createServerFn({ method: "POST" })
 export const unbanUser = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => creds.extend({ target: z.string() }).parse(d))
   .handler(async ({ data }) => {
-    await verify(data.slid, data.pik, 4);
+    await verify(data.slid, data.pik);
     const a = await admin();
     const { error } = await a.from("user_bans").update({ active: false }).eq("slid", data.target).eq("active", true);
     if (error) throw new Error(error.message);
@@ -69,7 +68,7 @@ export const unbanUser = createServerFn({ method: "POST" })
 export const revokeSession = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => creds.extend({ session_id: z.string().uuid() }).parse(d))
   .handler(async ({ data }) => {
-    await verify(data.slid, data.pik, 4);
+    await verify(data.slid, data.pik);
     const a = await admin();
     const { error } = await a.from("user_sessions").delete().eq("id", data.session_id);
     if (error) throw new Error(error.message);

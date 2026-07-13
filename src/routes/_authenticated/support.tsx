@@ -5,6 +5,7 @@ import { Plus, Send, LifeBuoy, X } from "lucide-react";
 import {
   supportTicketsList, supportTicketCreate, supportMessagesList, supportMessageSend, supportTicketSetStatus,
 } from "@/lib/support.functions";
+import { myPermissions } from "@/lib/permissions.functions";
 import { getCredentials, getSession } from "@/lib/syn-session";
 
 export const Route = createFileRoute("/_authenticated/support")({
@@ -22,12 +23,14 @@ type Msg = { id: string; ticket_id: string; author_slid: string; author_role: "u
 
 function SupportPage() {
   const session = getSession();
-  const isStaff = !!session && (session.isSuperuser || session.hl >= 3);
+  const [allowedFeatures, setAllowedFeatures] = useState<Set<string>>(new Set());
+  const isStaff = !!session?.isSuperuser || allowedFeatures.has("support.manage");
   const listFn = useServerFn(supportTicketsList);
   const createFn = useServerFn(supportTicketCreate);
   const msgsFn = useServerFn(supportMessagesList);
   const sendFn = useServerFn(supportMessageSend);
   const statusFn = useServerFn(supportTicketSetStatus);
+  const permsFn = useServerFn(myPermissions);
 
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [active, setActive] = useState<Ticket | null>(null);
@@ -40,8 +43,12 @@ function SupportPage() {
 
   async function reload() {
     const c = getCredentials(); if (!c) return;
-    const t = (await listFn({ data: c })) as Ticket[];
+    const [t, feats] = await Promise.all([
+      listFn({ data: c }) as Promise<Ticket[]>,
+      permsFn({ data: c }) as Promise<{ features: string[] }>,
+    ]);
     setTickets(t);
+    setAllowedFeatures(new Set(feats.features));
     if (!active && t.length) setActive(t[0]);
   }
   useEffect(() => { void reload(); /* eslint-disable-next-line */ }, []);

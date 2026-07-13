@@ -2,7 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 async function admin() { const m = await import("@/integrations/supabase/client.server"); return m.supabaseAdmin; }
-async function actor(slid: string, pik: string) { const m = await import("./syn-auth.server"); return m.verifyActor(slid, pik); }
+async function auth() { return import("./syn-auth.server"); }
+async function actor(slid: string, pik: string) { const m = await auth(); return m.verifyActor(slid, pik); }
 
 const creds = z.object({ slid: z.string().min(1), pik: z.string().min(8) });
 const PING_TIMEOUT_MIN = 3;
@@ -26,7 +27,7 @@ export const wtShiftsList = createServerFn({ method: "POST" })
     const sb = await admin();
     let q = sb.from("work_shifts").select("*").gte("starts_at", data.from).lte("starts_at", data.to).order("starts_at");
     if (data.slid_filter) q = q.eq("slid", data.slid_filter);
-    else if (!me.isSuperuser && me.hl < 4) q = q.eq("slid", me.slid);
+    else if (!(await (await auth()).hasPermission(me, "worktime.manage"))) q = q.eq("slid", me.slid);
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
     return rows ?? [];
@@ -42,7 +43,7 @@ export const wtShiftUpsert = createServerFn({ method: "POST" })
   }).parse(d))
   .handler(async ({ data }) => {
     const me = await actor(data.slid, data.pik);
-    if (!me.isSuperuser && me.hl < 4) throw new Error("Nur HL 4+ dürfen Schichten planen.");
+    await (await auth()).requirePermission(me, "worktime.manage");
     const sb = await admin();
     const payload = {
       slid: data.target_slid, starts_at: data.starts_at, ends_at: data.ends_at,
@@ -60,7 +61,7 @@ export const wtShiftDelete = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => creds.extend({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data }) => {
     const me = await actor(data.slid, data.pik);
-    if (!me.isSuperuser && me.hl < 5) throw new Error("Nur Administratoren (HL 5+) dürfen Schichten löschen.");
+    await (await auth()).requirePermission(me, "worktime.manage");
     const sb = await admin();
     const { error } = await sb.from("work_shifts").delete().eq("id", data.id);
     if (error) throw new Error(error.message); return { ok: true };
@@ -79,7 +80,7 @@ export const wtSessionUpsert = createServerFn({ method: "POST" })
   }).parse(d))
   .handler(async ({ data }) => {
     const me = await actor(data.slid, data.pik);
-    if (!me.isSuperuser && me.hl < 5) throw new Error("Nur Administratoren (HL 5+) dürfen Arbeitszeiten bearbeiten.");
+    await (await auth()).requirePermission(me, "worktime.manage");
     const sb = await admin();
     const payload = {
       slid: data.target_slid, started_at: data.started_at,
@@ -100,7 +101,7 @@ export const wtSessionAdminDelete = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => creds.extend({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data }) => {
     const me = await actor(data.slid, data.pik);
-    if (!me.isSuperuser && me.hl < 5) throw new Error("Nur Administratoren (HL 5+) dürfen Arbeitszeiten löschen.");
+    await (await auth()).requirePermission(me, "worktime.manage");
     const sb = await admin();
     const { error } = await sb.from("work_sessions").delete().eq("id", data.id);
     if (error) throw new Error(error.message); return { ok: true };
@@ -118,7 +119,7 @@ export const wtSessionsList = createServerFn({ method: "POST" })
     await cleanupStale(sb);
     let q = sb.from("work_sessions").select("*").gte("started_at", data.from).lte("started_at", data.to).order("started_at");
     if (data.slid_filter) q = q.eq("slid", data.slid_filter);
-    else if (!me.isSuperuser && me.hl < 4) q = q.eq("slid", me.slid);
+    else if (!(await (await auth()).hasPermission(me, "worktime.manage"))) q = q.eq("slid", me.slid);
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
     return rows ?? [];

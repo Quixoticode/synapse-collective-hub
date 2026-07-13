@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Plus, Newspaper, Pencil, Trash2, X, Sparkles, Wrench, Map } from "lucide-react";
 import { versionsList, versionsUpsert, versionsDelete, roadmapList, roadmapUpsert, roadmapDelete } from "@/lib/versions.functions";
+import { myPermissions } from "@/lib/permissions.functions";
 import { getCredentials, getSession } from "@/lib/syn-session";
 import { Markdown } from "@/components/Markdown";
 
@@ -16,8 +17,9 @@ type Roadmap = { id: string; title: string; description: string; status: "planne
 
 function NewsPage() {
   const session = getSession();
+  const [allowedFeatures, setAllowedFeatures] = useState<Set<string>>(new Set());
   const canEdit = !!session?.isSuperuser;
-  const canEditRoadmap = canEdit || (session && session.hl >= 5);
+  const canEditRoadmap = canEdit || allowedFeatures.has("news.manage");
 
   const listV = useServerFn(versionsList);
   const saveV = useServerFn(versionsUpsert);
@@ -25,6 +27,7 @@ function NewsPage() {
   const listR = useServerFn(roadmapList);
   const saveR = useServerFn(roadmapUpsert);
   const delR = useServerFn(roadmapDelete);
+  const permsFn = useServerFn(myPermissions);
 
   const [versions, setVersions] = useState<Version[]>([]);
   const [roadmap, setRoadmap] = useState<Roadmap[]>([]);
@@ -33,8 +36,12 @@ function NewsPage() {
 
   async function reload() {
     const c = getCredentials(); if (!c) return;
-    const [v, r] = await Promise.all([listV({ data: c }) as Promise<Version[]>, listR({ data: c }) as Promise<Roadmap[]>]);
-    setVersions(v); setRoadmap(r);
+    const [v, r, feats] = await Promise.all([
+      listV({ data: c }) as Promise<Version[]>,
+      listR({ data: c }) as Promise<Roadmap[]>,
+      permsFn({ data: c }) as Promise<{ features: string[] }>,
+    ]);
+    setVersions(v); setRoadmap(r); setAllowedFeatures(new Set(feats.features));
   }
   useEffect(() => { void reload(); /* eslint-disable-next-line */ }, []);
 
@@ -140,7 +147,7 @@ function NewsPage() {
             <select className="syn-input" value={editV.visibility || "authenticated"} onChange={(e) => setEditV({ ...editV, visibility: e.target.value as Version["visibility"] })}>
               <option value="public">Öffentlich (Landing)</option>
               <option value="authenticated">Nur angemeldet</option>
-              <option value="insider">Nur Insider (HL 5+)</option>
+              <option value="insider">Nur Insider (Berechtigung „News verwalten“)</option>
             </select>
           </div>
           <textarea className="syn-input min-h-32" placeholder="Release Notes (Markdown)" value={editV.notes_md || ""} onChange={(e) => setEditV({ ...editV, notes_md: e.target.value })} />

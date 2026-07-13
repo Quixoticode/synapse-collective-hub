@@ -2,7 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 async function admin() { const m = await import("@/integrations/supabase/client.server"); return m.supabaseAdmin; }
-async function actor(slid: string, pik: string) { const m = await import("./syn-auth.server"); return m.verifyActor(slid, pik); }
+async function auth() { return import("./syn-auth.server"); }
+async function actor(slid: string, pik: string) { const m = await auth(); return m.verifyActor(slid, pik); }
 
 const creds = z.object({ slid: z.string().min(1), pik: z.string().min(8) });
 
@@ -40,7 +41,7 @@ export const docsListAll = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => creds.parse(d))
   .handler(async ({ data }) => {
     const me = await actor(data.slid, data.pik);
-    if (!me.isSuperuser && me.hl < 5) throw new Error("HL 5+ oder Superuser erforderlich.");
+    await (await auth()).requirePermission(me, "docs.manage");
     const sb = await admin();
     const { data: rows, error } = await sb.from("public_docs").select("*").order("sort_order").order("updated_at", { ascending: false });
     if (error) throw new Error(error.message);
@@ -63,7 +64,7 @@ export const docsUpsert = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => upsertSchema.parse(d))
   .handler(async ({ data }) => {
     const me = await actor(data.slid, data.pik);
-    if (!me.isSuperuser && me.hl < 5) throw new Error("HL 5+ oder Superuser erforderlich.");
+    await (await auth()).requirePermission(me, "docs.manage");
     const sb = await admin();
     const payload = {
       slug: data.slug, title: data.title, summary: data.summary,
@@ -83,7 +84,7 @@ export const docsDelete = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => creds.extend({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data }) => {
     const me = await actor(data.slid, data.pik);
-    if (!me.isSuperuser && me.hl < 5) throw new Error("HL 5+ oder Superuser erforderlich.");
+    await (await auth()).requirePermission(me, "docs.manage");
     const sb = await admin();
     const { error } = await sb.from("public_docs").delete().eq("id", data.id);
     if (error) throw new Error(error.message); return { ok: true };

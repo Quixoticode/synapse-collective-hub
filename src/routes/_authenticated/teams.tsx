@@ -5,6 +5,7 @@ import { UsersRound, ArrowLeft, Plus, Trash2, X, Briefcase, Crown, UserPlus2, Ch
 import { teamsList, teamUpsert, teamDelete, teamMemberAdd, teamMemberRemove } from "@/lib/teams.functions";
 import { employeesList } from "@/lib/syn.functions";
 import { applyPositionUpsert } from "@/lib/apply.functions";
+import { myPermissions } from "@/lib/permissions.functions";
 import { getCredentials, getSession } from "@/lib/syn-session";
 import { Markdown } from "@/components/Markdown";
 
@@ -26,6 +27,7 @@ function TeamsPage() {
   const remFn = useServerFn(teamMemberRemove);
   const lookupFn = useServerFn(employeesList);
   const positionFn = useServerFn(applyPositionUpsert);
+  const permsFn = useServerFn(myPermissions);
 
   const [teams, setTeams] = useState<Team[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
@@ -36,19 +38,24 @@ function TeamsPage() {
   const [postFor, setPostFor] = useState<Team | null>(null);
   const [postPos, setPostPos] = useState({ position: "", hl_max: 3, description: "" });
   const [err, setErr] = useState<string | null>(null);
+  const [allowedFeatures, setAllowedFeatures] = useState<Set<string>>(new Set());
 
-  const canManage = session ? (session.isSuperuser || session.hl >= 4) : false;
+  const canManage = !!session?.isSuperuser || allowedFeatures.has("teams.manage");
 
   async function reload() {
     const c = getCredentials(); if (!c) return;
     setErr(null);
     try {
+      const feats = await permsFn({ data: c }) as { features: string[] };
+      setAllowedFeatures(new Set(feats.features));
       const r = await listFn({ data: c }) as unknown as { teams: Team[]; members: Member[] };
       setTeams(r.teams); setMembers(r.members);
-      const all = await lookupFn({ data: c }) as Emp[];
-      const map: Record<string, Emp> = {};
-      for (const e of all) map[e.slid] = e;
-      setEmps(map);
+      try {
+        const all = await lookupFn({ data: c }) as Emp[];
+        const map: Record<string, Emp> = {};
+        for (const e of all) map[e.slid] = e;
+        setEmps(map);
+      } catch { /* no teams.manage — employee lookup unavailable, skip name resolution */ }
     } catch (e) { setErr(e instanceof Error ? e.message : "Fehler."); }
   }
   useEffect(() => { void reload(); /* eslint-disable-next-line */ }, []);
@@ -113,7 +120,7 @@ function TeamsPage() {
       const mems = membersByTeam.get(t.id) ?? [];
       const leader = t.leader_slid ? emps[t.leader_slid] : null;
       const isTeamLeader = session?.slid === t.leader_slid;
-      const canEditMembers = canManage || (isTeamLeader && (session?.hl ?? 0) >= 2);
+      const canEditMembers = canManage || isTeamLeader;
       return (
         <div key={t.id} style={{ marginLeft: depth * 16 }}>
           <div className="syn-card p-3 space-y-2 mb-2">
@@ -122,13 +129,11 @@ function TeamsPage() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-base font-semibold truncate">{t.name}</span>
-                  {t.min_hl != null && <span className="syn-chip text-[10px]">min. HL {t.min_hl}</span>}
                 </div>
                 {leader && (
                   <div className="text-[11px] mt-1 flex items-center gap-1">
                     <Crown className="h-3 w-3" style={{ color: "var(--neural-mint)" }} />
                     <span>Leitung:</span> <span className="mono">{leader.name}</span>
-                    <span className="text-muted-foreground">· HL {leader.hl}</span>
                   </div>
                 )}
                 {t.description && <div className="mt-2 text-xs"><Markdown>{t.description}</Markdown></div>}
@@ -158,7 +163,6 @@ function TeamsPage() {
                         <span className="mono">{m.slid}</span> · {e?.name || "?"}
                         {m.role && <span className="text-muted-foreground"> — {m.role}</span>}
                       </div>
-                      <span className="text-[10px] text-muted-foreground shrink-0">HL {e?.hl ?? "?"}</span>
                       {canEditMembers && (
                         <button onClick={async () => { const c = getCredentials(); if (!c) return; await remFn({ data: { ...c, id: m.id } }); await reload(); }} className="syn-btn-ghost text-xs">
                           <X className="h-3 w-3" />
@@ -193,10 +197,6 @@ function TeamsPage() {
         <Link to="/apps" className="syn-btn-ghost text-xs shrink-0"><ArrowLeft className="h-3.5 w-3.5" /> Apps</Link>
       </header>
 
-      <section className="syn-card p-3 mb-4 text-[11px] text-muted-foreground">
-        HL 7–5 = Leitung · HL 4 = Abteilungsleiter · HL 3 = Abteilungsposition · HL 2 = Teamleiter · HL 1 = Mitarbeiter.
-      </section>
-
       {canManage && (
         <button onClick={() => setEdit({ name: "" })} className="syn-btn mb-4">
           <Plus className="h-4 w-4" /> Neues Team
@@ -219,9 +219,6 @@ function TeamsPage() {
               <option key={x.id} value={x.id}>{x.name}</option>
             ))}
           </select>
-          <input className="syn-input" type="number" min={1} max={9} placeholder="min. HL (optional)"
-            value={edit.min_hl == null ? "" : String(edit.min_hl)}
-            onChange={(e) => setEdit({ ...edit, min_hl: e.target.value ? Number(e.target.value) : null })} />
           <input className="syn-input" placeholder="Leiter (SLID)" value={edit.leader_slid || ""} onChange={(e) => setEdit({ ...edit, leader_slid: e.target.value })} />
           <textarea className="syn-input min-h-24" placeholder="Beschreibung (Markdown erlaubt)" value={edit.description || ""} onChange={(e) => setEdit({ ...edit, description: e.target.value })} />
           <button className="syn-btn w-full" onClick={() => void saveTeam()}>Speichern</button>

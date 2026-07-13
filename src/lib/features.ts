@@ -48,6 +48,8 @@ export const ACTION_FEATURES = [
   "apply.manage",
   "vault.shared",
   "sso.admin",
+  "notify.manage", // send broadcast notifications to other accounts
+  "support.manage", // see/manage all support tickets, not just your own
 ] as const;
 export type ActionFeature = (typeof ACTION_FEATURES)[number];
 

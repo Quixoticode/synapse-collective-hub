@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { BookOpen, Plus, Pencil, Trash2, X, Eye, EyeOff } from "lucide-react";
 import { docsListAll, docsUpsert, docsDelete } from "@/lib/docs.functions";
+import { myPermissions } from "@/lib/permissions.functions";
 import { getSession, getCredentials } from "@/lib/syn-session";
 import { useSync } from "@/lib/use-sync";
 import { SyncSpinner } from "@/components/SyncSpinner";
@@ -16,18 +17,21 @@ type Doc = { id: string; slug: string; title: string; summary: string; category:
 
 function DocsAdmin() {
   const session = getSession();
-  const canEdit = !!(session && (session.isSuperuser || session.hl >= 5));
   const [docs, setDocs] = useState<Doc[]>([]);
   const [edit, setEdit] = useState<Partial<Doc> | null>(null);
+  const [allowedFeatures, setAllowedFeatures] = useState<Set<string>>(new Set());
+  const canEdit = !!session?.isSuperuser || allowedFeatures.has("docs.manage");
   const listFn = useServerFn(docsListAll);
   const saveFn = useServerFn(docsUpsert);
   const delFn = useServerFn(docsDelete);
+  const permsFn = useServerFn(myPermissions);
   const { run, syncing, error } = useSync();
 
   async function reload() {
     const c = getCredentials(); if (!c) return;
     const r = await run(listFn({ data: c }) as Promise<Doc[]>);
     if (r) setDocs(r);
+    try { const feats = await permsFn({ data: c }) as { features: string[] }; setAllowedFeatures(new Set(feats.features)); } catch { /* not permitted */ }
   }
   useEffect(() => { void reload(); /* eslint-disable-next-line */ }, []);
 
@@ -50,7 +54,7 @@ function DocsAdmin() {
     await reload();
   }
 
-  if (!canEdit) return <div className="p-8 text-sm text-muted-foreground">HL 5+ oder Superuser erforderlich.</div>;
+  if (!canEdit) return <div className="p-8 text-sm text-muted-foreground">Keine Berechtigung.</div>;
 
   return (
     <div className="p-4 sm:p-6 max-w-4xl mx-auto pb-28 md:pb-8 space-y-4">

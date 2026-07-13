@@ -5,12 +5,10 @@ async function admin() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   return supabaseAdmin;
 }
+async function auth() { return import("./syn-auth.server"); }
 async function verify(slid: string, pik: string) {
-  const a = await admin();
-  const { data, error } = await a.from("employees").select("slid,hl,name").eq("slid", slid).eq("pik", pik).maybeSingle();
-  if (error) throw new Error(error.message);
-  if (!data) throw new Error("Ungültige SynID.");
-  return data;
+  const { verifyActor } = await auth();
+  return verifyActor(slid, pik);
 }
 const creds = z.object({ slid: z.string(), pik: z.string() });
 
@@ -51,7 +49,7 @@ export const tasksUpsert = createServerFn({ method: "POST" })
     if (data.id) {
       const { data: existing } = await a.from("tasks").select("creator_slid,assignee_slid").eq("id", data.id).maybeSingle();
       if (!existing) throw new Error("Task nicht gefunden.");
-      if (existing.creator_slid !== me.slid && existing.assignee_slid !== me.slid && me.hl < 5) throw new Error("Keine Berechtigung.");
+      if (existing.creator_slid !== me.slid && existing.assignee_slid !== me.slid) await (await auth()).requirePermission(me, "tasks.manage");
       const { data: u, error } = await a.from("tasks").update(row).eq("id", data.id).select().single();
       if (error) throw new Error(error.message);
       // notify assignee if changed
@@ -73,7 +71,7 @@ export const tasksDelete = createServerFn({ method: "POST" })
     const a = await admin();
     const { data: t } = await a.from("tasks").select("creator_slid").eq("id", data.id).maybeSingle();
     if (!t) return { ok: true };
-    if (t.creator_slid !== me.slid && me.hl < 5) throw new Error("Keine Berechtigung.");
+    if (t.creator_slid !== me.slid) await (await auth()).requirePermission(me, "tasks.manage");
     const { error } = await a.from("tasks").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };

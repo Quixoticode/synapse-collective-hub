@@ -2,7 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 async function admin() { const m = await import("@/integrations/supabase/client.server"); return m.supabaseAdmin; }
-async function actor(slid: string, pik: string) { const m = await import("./syn-auth.server"); return m.verifyActor(slid, pik); }
+async function auth() { return import("./syn-auth.server"); }
+async function actor(slid: string, pik: string) { const m = await auth(); return m.verifyActor(slid, pik); }
 
 const creds = z.object({ slid: z.string().min(1), pik: z.string().min(8) });
 
@@ -49,7 +50,7 @@ export const applyPositionsAll = createServerFn({ method: "POST" })
     return rows ?? [];
   });
 
-// ---- Auth (Leitung HL>=5 or service): upsert position ----
+// ---- Auth (apply.manage or service kind): upsert position ----
 export const applyPositionUpsert = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => creds.extend({
     id: z.string().uuid().optional(),
@@ -62,7 +63,7 @@ export const applyPositionUpsert = createServerFn({ method: "POST" })
   }).parse(d))
   .handler(async ({ data }) => {
     const me = await actor(data.slid, data.pik);
-    if (!me.isSuperuser && me.hl < 5 && me.kind !== "service") throw new Error("Nur Leitung (HL 5+ / Service).");
+    if (me.kind !== "service") await (await auth()).requirePermission(me, "apply.manage");
     const sb = await admin();
     const payload = {
       department: data.department, team: data.team || null, position: data.position,
@@ -80,7 +81,7 @@ export const applyPositionDelete = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => creds.extend({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data }) => {
     const me = await actor(data.slid, data.pik);
-    if (!me.isSuperuser && me.hl < 5 && me.kind !== "service") throw new Error("Nur Leitung.");
+    if (me.kind !== "service") await (await auth()).requirePermission(me, "apply.manage");
     const sb = await admin();
     const { error } = await sb.from("apply_positions").delete().eq("id", data.id);
     if (error) throw new Error(error.message); return { ok: true };
@@ -110,7 +111,7 @@ export const applyHire = createServerFn({ method: "POST" })
   }).parse(d))
   .handler(async ({ data }) => {
     const me = await actor(data.slid, data.pik);
-    if (!me.isSuperuser && data.hl >= me.hl) throw new Error("HL muss niedriger als deins sein.");
+    await (await auth()).requirePermission(me, "apply.manage");
     const sb = await admin();
     // Generate synthetic slid/regid/cip/pik (real assignment can be edited later)
     const rand = () => Math.random().toString(16).slice(2).padEnd(8, "0").slice(0, 8);
@@ -137,7 +138,7 @@ export const applyApplicationSetStatus = createServerFn({ method: "POST" })
   }).parse(d))
   .handler(async ({ data }) => {
     const me = await actor(data.slid, data.pik);
-    if (!me.isSuperuser && me.hl < 5 && me.kind !== "service") throw new Error("Nur Leitung darf Bewerbungen entscheiden.");
+    if (me.kind !== "service") await (await auth()).requirePermission(me, "apply.manage");
     const sb = await admin();
     const { error } = await sb.from("apply_applications").update({ status: data.status }).eq("id", data.id);
     if (error) throw new Error(error.message);

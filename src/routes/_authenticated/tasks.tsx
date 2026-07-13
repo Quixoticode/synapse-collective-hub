@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Plus, Trash2, X, CheckSquare, Clock, Flag, User } from "lucide-react";
 import { tasksList, tasksUpsert, tasksDelete, tasksPeople } from "@/lib/tasks.functions";
+import { myPermissions } from "@/lib/permissions.functions";
 import { getSession, getCredentials } from "@/lib/syn-session";
 
 export const Route = createFileRoute("/_authenticated/tasks")({
@@ -28,6 +29,7 @@ function TasksPage() {
   const saveFn = useServerFn(tasksUpsert);
   const delFn = useServerFn(tasksDelete);
   const peopleFn = useServerFn(tasksPeople);
+  const permsFn = useServerFn(myPermissions);
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [people, setPeople] = useState<Person[]>([]);
@@ -35,12 +37,15 @@ function TasksPage() {
   const [editing, setEditing] = useState<Partial<Task> | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [allowedFeatures, setAllowedFeatures] = useState<Set<string>>(new Set());
+  const canManageAll = !!s?.isSuperuser || allowedFeatures.has("tasks.manage");
 
   async function reload() {
     const c = getCredentials(); if (!c) return;
     try {
-      const [t, p] = await Promise.all([listFn({ data: c }), peopleFn({ data: c })]);
+      const [t, p, feats] = await Promise.all([listFn({ data: c }), peopleFn({ data: c }), permsFn({ data: c }) as Promise<{ features: string[] }>]);
       setTasks(t as Task[]); setPeople(p as Person[]);
+      setAllowedFeatures(new Set(feats.features));
     } catch (e) { setErr(e instanceof Error ? e.message : "Fehler."); }
   }
   useEffect(() => { void reload(); /* eslint-disable-next-line */ }, []);
@@ -126,7 +131,7 @@ function TasksPage() {
             </div>
             <div className="flex flex-col gap-1 shrink-0">
               <button onClick={() => setEditing(t)} className="syn-btn-ghost text-xs">Bearb.</button>
-              {(t.creator_slid === s?.slid || (s?.hl ?? 0) >= 5) && (
+              {(t.creator_slid === s?.slid || canManageAll) && (
                 <button onClick={() => void remove(t.id)} className="syn-btn-ghost text-xs"><Trash2 className="h-3.5 w-3.5" /></button>
               )}
             </div>

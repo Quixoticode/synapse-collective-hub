@@ -2,7 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 async function admin() { const m = await import("@/integrations/supabase/client.server"); return m.supabaseAdmin; }
-async function actor(slid: string, pik: string) { const m = await import("./syn-auth.server"); return m.verifyActor(slid, pik); }
+async function auth() { return import("./syn-auth.server"); }
+async function actor(slid: string, pik: string) { const m = await auth(); return m.verifyActor(slid, pik); }
 
 async function hashCode(code: string): Promise<string> {
   const buf = new TextEncoder().encode("xsyna-ql-v1:" + code);
@@ -18,7 +19,7 @@ export const quickLoginIssue = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const me = await actor(data.slid, data.pik);
     const isSelf = me.slid === data.target_slid;
-    if (!isSelf && !me.isSuperuser && me.hl < 5) throw new Error("Nur HL 5+ darf fremde Quick-Login-Codes ausstellen.");
+    if (!isSelf) await (await auth()).requirePermission(me, "security.all");
     const sb = await admin();
     const { data: target } = await sb.from("employees").select("slid").eq("slid", data.target_slid).maybeSingle();
     if (!target) throw new Error("Ziel-Mitarbeiter unbekannt.");

@@ -8,14 +8,17 @@ import { getCredentials } from "@/lib/syn-session";
 
 export const Route = createFileRoute("/_authenticated/permissions")({
   ssr: false,
-  beforeLoad: () => {
+  beforeLoad: async () => {
     if (typeof window === "undefined") return;
     const raw = localStorage.getItem("syn.session.v1");
     if (!raw) throw redirect({ to: "/auth" });
-    try {
-      const s = JSON.parse(raw);
-      if ((s?.hl ?? 0) < 5 && !s?.isSuperuser) throw redirect({ to: "/apps" });
-    } catch { throw redirect({ to: "/auth" }); }
+    let s: { slid?: string; pik?: string; isSuperuser?: boolean };
+    try { s = JSON.parse(raw); } catch { throw redirect({ to: "/auth" }); }
+    if (!s?.slid || !s?.pik) throw redirect({ to: "/auth" });
+    if (s.isSuperuser) return;
+    const { myPermissions } = await import("@/lib/permissions.functions");
+    const r = await myPermissions({ data: { slid: s.slid, pik: s.pik } }).catch(() => null);
+    if (!r || (!r.isSuperuser && !r.features.includes("teams.permissions"))) throw redirect({ to: "/apps" });
   },
   component: PermissionsPage,
 });

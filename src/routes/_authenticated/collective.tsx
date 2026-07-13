@@ -6,16 +6,17 @@ import { employeesList, employeeSave, employeeDelete } from "@/lib/syn.functions
 import { getCredentials, getSession } from "@/lib/syn-session";
 
 export const Route = createFileRoute("/_authenticated/collective")({
-  beforeLoad: () => {
+  beforeLoad: async () => {
     if (typeof window === "undefined") return;
     const raw = localStorage.getItem("syn.session.v1");
     if (!raw) throw redirect({ to: "/auth" });
-    try {
-      const s = JSON.parse(raw);
-      if ((s?.hl ?? 0) < 5 && !s?.isSuperuser) throw redirect({ to: "/contacts" });
-    } catch {
-      throw redirect({ to: "/auth" });
-    }
+    let s: { slid?: string; pik?: string; isSuperuser?: boolean };
+    try { s = JSON.parse(raw); } catch { throw redirect({ to: "/auth" }); }
+    if (!s?.slid || !s?.pik) throw redirect({ to: "/auth" });
+    if (s.isSuperuser) return;
+    const { myPermissions } = await import("@/lib/permissions.functions");
+    const r = await myPermissions({ data: { slid: s.slid, pik: s.pik } }).catch(() => null);
+    if (!r || (!r.isSuperuser && !r.features.includes("teams.manage"))) throw redirect({ to: "/contacts" });
   },
   component: CollectivePage,
 });
@@ -153,7 +154,7 @@ function CollectivePage() {
           <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight truncate">Kollektiv</h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1 flex items-center gap-2">
             <ShieldAlert className="h-3.5 w-3.5 shrink-0" style={{ color: "var(--neural-magenta)" }} />
-            <span className="truncate">HL ≥ 5 – Mitarbeiter, Partner &amp; Kunden.</span>
+            <span className="truncate">Berechtigung „Teams verwalten“ – Mitarbeiter, Partner &amp; Kunden.</span>
           </p>
         </div>
         <div className="hidden sm:flex gap-2 shrink-0">

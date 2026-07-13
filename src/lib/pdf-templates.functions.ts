@@ -2,7 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 async function admin() { const m = await import("@/integrations/supabase/client.server"); return m.supabaseAdmin; }
-async function actor(slid: string, pik: string) { const m = await import("./syn-auth.server"); return m.verifyActor(slid, pik); }
+async function auth() { return import("./syn-auth.server"); }
+async function actor(slid: string, pik: string) { const m = await auth(); return m.verifyActor(slid, pik); }
 
 const creds = z.object({ slid: z.string().min(1), pik: z.string().min(8) });
 
@@ -27,7 +28,7 @@ export const pdfTemplateUpsert = createServerFn({ method: "POST" })
   }).parse(d))
   .handler(async ({ data }) => {
     const me = await actor(data.slid, data.pik);
-    if (!me.isSuperuser && me.hl < 5) throw new Error("Nur Leitung (HL 5+).");
+    await (await auth()).requirePermission(me, "payments.manage");
     const sb = await admin();
     const payload = {
       name: data.name, kind: data.kind, html: data.html,
@@ -48,7 +49,7 @@ export const pdfTemplateDelete = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => creds.extend({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data }) => {
     const me = await actor(data.slid, data.pik);
-    if (!me.isSuperuser && me.hl < 5) throw new Error("Nur HL 5+.");
+    await (await auth()).requirePermission(me, "payments.manage");
     const sb = await admin();
     const { error } = await sb.from("pdf_templates").delete().eq("id", data.id);
     if (error) throw new Error(error.message); return { ok: true };

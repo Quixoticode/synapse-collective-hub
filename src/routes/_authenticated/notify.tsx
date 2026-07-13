@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Bell, Send, X, Users } from "lucide-react";
 import { notifList, notifMarkRead, notifSend } from "@/lib/notify.functions";
 import { tasksPeople } from "@/lib/tasks.functions";
+import { myPermissions } from "@/lib/permissions.functions";
 import { getSession, getCredentials } from "@/lib/syn-session";
 
 export const Route = createFileRoute("/_authenticated/notify")({
@@ -20,6 +21,7 @@ function NotifyPage() {
   const markFn = useServerFn(notifMarkRead);
   const sendFn = useServerFn(notifSend);
   const peopleFn = useServerFn(tasksPeople);
+  const permsFn = useServerFn(myPermissions);
 
   const [items, setItems] = useState<Notif[]>([]);
   const [people, setPeople] = useState<Person[]>([]);
@@ -29,12 +31,19 @@ function NotifyPage() {
   const [body, setBody] = useState("");
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
-  const canSend = !!s && (s.hl >= 5 || s.isSuperuser);
+  const [allowedFeatures, setAllowedFeatures] = useState<Set<string>>(new Set());
+  const canSend = !!s?.isSuperuser || allowedFeatures.has("notify.manage");
 
   async function reload() {
     const c = getCredentials(); if (!c) return;
-    setItems(await listFn({ data: c }) as Notif[]);
-    if (canSend) setPeople(await peopleFn({ data: c }) as Person[]);
+    const [items, feats] = await Promise.all([
+      listFn({ data: c }) as Promise<Notif[]>,
+      permsFn({ data: c }) as Promise<{ features: string[] }>,
+    ]);
+    setItems(items);
+    const allowed = new Set(feats.features);
+    setAllowedFeatures(allowed);
+    if (!!s?.isSuperuser || allowed.has("notify.manage")) setPeople(await peopleFn({ data: c }) as Person[]);
   }
   useEffect(() => { void reload(); const t = setInterval(reload, 30000); return () => clearInterval(t); /* eslint-disable-next-line */ }, []);
 

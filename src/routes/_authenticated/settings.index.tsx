@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Settings as SettingsIcon, Palette, Sun, Moon, Trash2, LogOut, Smartphone, MessageCircle, Phone, ArrowLeft, Zap, FileSignature } from "lucide-react";
 import { getSession, clearSession, getCredentials } from "@/lib/syn-session";
 import { quickLoginIssue } from "@/lib/quick-login.functions";
+import { myPermissions } from "@/lib/permissions.functions";
 
 export const Route = createFileRoute("/_authenticated/settings/")({
   ssr: false,
@@ -30,8 +31,10 @@ function SettingsIndex() {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [storageKeys, setStorageKeys] = useState<{ key: string; size: number }[]>([]);
   const [quick, setQuick] = useState<{ code: string; expires_at: string } | null>(null);
+  const [allowedFeatures, setAllowedFeatures] = useState<Set<string>>(new Set());
   const session = typeof window !== "undefined" ? getSession() : null;
   const fp = typeof window !== "undefined" ? localStorage.getItem(FP_KEY) : null;
+  const permsFn = useServerFn(myPermissions);
 
   useEffect(() => {
     const t = readTheme(); setTheme(t); applyTheme(t);
@@ -41,6 +44,9 @@ function SettingsIndex() {
       keys.push({ key: k, size: (localStorage.getItem(k) || "").length });
     }
     setStorageKeys(keys.sort((a, b) => b.size - a.size));
+    const c = getCredentials();
+    if (c) void permsFn({ data: c }).then((f: { features: string[] }) => setAllowedFeatures(new Set(f.features))).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function toggleTheme() { const next = theme === "dark" ? "light" : "dark"; setTheme(next); applyTheme(next); }
@@ -68,7 +74,7 @@ function SettingsIndex() {
           <button onClick={toggleTheme} className="syn-btn-ghost">
             {theme === "dark" ? <><Sun className="h-4 w-4" /> Light-Mode</> : <><Moon className="h-4 w-4" /> Dark-Mode</>}
           </button>
-          {(session?.isSuperuser || (session?.hl ?? 0) >= 5) && (
+          {(session?.isSuperuser || allowedFeatures.has("payments.manage")) && (
             <Link to="/settings/pdf" className="syn-btn-ghost"><FileSignature className="h-4 w-4" /> PDF-Vorlagen</Link>
           )}
         </div>
@@ -95,7 +101,7 @@ function SettingsIndex() {
         <div className="flex items-center gap-2 font-semibold text-sm"><Smartphone className="h-4 w-4" /> Aktuelle Sitzung & Gerät</div>
         <div className="text-xs grid grid-cols-2 gap-2 mt-2">
           <Info label="SLID" value={session?.slid || "—"} />
-          <Info label="HL" value={String(session?.hl ?? "—")} />
+          <Info label="Rolle" value={session?.isSuperuser ? "Superuser" : "Mitarbeiter"} />
           <Info label="Abteilung" value={session?.department || "—"} />
           <Info label="Position" value={session?.position || "—"} />
           <Info label="Gerät (FP)" value={fp ? fp.slice(0, 12) + "…" : "—"} />

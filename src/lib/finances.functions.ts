@@ -3,17 +3,18 @@ import { z } from "zod";
 
 const creds = z.object({ slid: z.string().min(1), pik: z.string().min(8) });
 async function admin() { const m = await import("@/integrations/supabase/client.server"); return m.supabaseAdmin; }
-async function actor(slid: string, pik: string) { const m = await import("./syn-auth.server"); return m.verifyActor(slid, pik); }
+async function auth() { return import("./syn-auth.server"); }
+async function actor(slid: string, pik: string) { const m = await auth(); return m.verifyActor(slid, pik); }
 
-function requireFinance(me: { hl: number; isSuperuser: boolean }) {
-  if (!me.isSuperuser && me.hl < 4) throw new Error("HL 4+ oder Superuser erforderlich.");
+async function requireFinance(me: Awaited<ReturnType<typeof actor>>) {
+  await (await auth()).requirePermission(me, "payments.manage");
 }
 
 // ---- Accounts ----
 export const finAccountsList = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => creds.parse(d))
   .handler(async ({ data }) => {
-    const me = await actor(data.slid, data.pik); requireFinance(me);
+    const me = await actor(data.slid, data.pik); await requireFinance(me);
     const sb = await admin();
     const { data: rows, error } = await sb.from("fin_accounts").select("*").order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
@@ -34,7 +35,7 @@ const accUpsert = creds.extend({
 export const finAccountUpsert = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => accUpsert.parse(d))
   .handler(async ({ data }) => {
-    const me = await actor(data.slid, data.pik); requireFinance(me);
+    const me = await actor(data.slid, data.pik); await requireFinance(me);
     const sb = await admin();
     const payload = {
       name: data.name, iban: data.iban || null, bic: data.bic || null,
@@ -52,7 +53,7 @@ export const finAccountUpsert = createServerFn({ method: "POST" })
 export const finAccountDelete = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => creds.extend({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data }) => {
-    const me = await actor(data.slid, data.pik); requireFinance(me);
+    const me = await actor(data.slid, data.pik); await requireFinance(me);
     const sb = await admin();
     const { error } = await sb.from("fin_accounts").delete().eq("id", data.id);
     if (error) throw new Error(error.message); return { ok: true };
@@ -62,7 +63,7 @@ export const finAccountDelete = createServerFn({ method: "POST" })
 export const finTxList = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => creds.extend({ account_id: z.string().uuid().optional() }).parse(d))
   .handler(async ({ data }) => {
-    const me = await actor(data.slid, data.pik); requireFinance(me);
+    const me = await actor(data.slid, data.pik); await requireFinance(me);
     const sb = await admin();
     let q = sb.from("fin_transactions").select("*").order("booking_date", { ascending: false }).limit(500);
     if (data.account_id) q = q.eq("account_id", data.account_id);
@@ -90,7 +91,7 @@ const txUpsert = creds.extend({
 export const finTxUpsert = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => txUpsert.parse(d))
   .handler(async ({ data }) => {
-    const me = await actor(data.slid, data.pik); requireFinance(me);
+    const me = await actor(data.slid, data.pik); await requireFinance(me);
     const sb = await admin();
     const payload = {
       account_id: data.account_id, direction: data.direction, amount: data.amount,
@@ -110,7 +111,7 @@ export const finTxUpsert = createServerFn({ method: "POST" })
 export const finTxDelete = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => creds.extend({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data }) => {
-    const me = await actor(data.slid, data.pik); requireFinance(me);
+    const me = await actor(data.slid, data.pik); await requireFinance(me);
     const sb = await admin();
     const { error } = await sb.from("fin_transactions").delete().eq("id", data.id);
     if (error) throw new Error(error.message); return { ok: true };
