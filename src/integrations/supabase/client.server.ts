@@ -9,7 +9,8 @@ const DEFAULT_SUPABASE_URL = 'https://evwfeauffghrvllxizja.supabase.co';
 
 function getCloudflareEnv(name: string): string | undefined {
   const g = globalThis as any;
-  return process.env?.[name] ?? g.__env?.[name] ?? g[name] ?? g.env?.[name];
+  // CRITICAL FIX: Nitro sets globalThis.__env__ (double underscore)
+  return process.env?.[name] ?? g.__env__?.[name] ?? g.__env?.[name] ?? g[name] ?? g.env?.[name];
 }
 
 function createSupabaseAdminClient() {
@@ -43,8 +44,6 @@ let _supabaseAdmin: ReturnType<typeof createSupabaseAdminClient> | undefined;
 
 // Server-side Supabase client with service role - bypasses RLS
 // SECURITY: Only use this for trusted server-side operations, never expose to client code
-// Load inside server handlers: const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-// Top-level import is safe only in other .server.ts modules - route files and *.functions.ts ship to the client bundle.
 export const supabaseAdmin = new Proxy({} as ReturnType<typeof createSupabaseAdminClient>, {
   get(_, prop, receiver) {
     if (!_supabaseAdmin) _supabaseAdmin = createSupabaseAdminClient();
