@@ -80,7 +80,7 @@ export const xaBeginAuth = createServerFn({ method: "POST" })
     return beginAuthentication(data.slid ?? null, originFromInput(data.origin));
   });
 
-// Builds the full legacy-compatible session (same shape as SynID/PIK login)
+// Builds the full legacy-compatible session (same shape as xSyna Account/PIK login)
 // plus the xSyna passkey token/profile, from a verified SLID. Reused by
 // passkey-authentication, and by fresh signups right after registration.
 async function buildFullSession(slid: string) {
@@ -214,19 +214,28 @@ export const xaConsumePairing = createServerFn({ method: "POST" })
 
 // -------- Admin module — account management (superuser only) --------
 
-async function requireSuperuserByToken(token: string) {
-  const { verifySessionToken } = await wa();
-  const { slid } = await verifySessionToken(token);
+// Unified auth: accepts either xSyna token OR legacy {slid, pik} credentials
+async function requireSuperuser(input: { token?: string; slid?: string; pik?: string }) {
+  let slid: string;
   const sb = await admin();
+  if (input.token) {
+    const { verifySessionToken } = await wa();
+    slid = (await verifySessionToken(input.token)).slid;
+  } else if (input.slid && input.pik) {
+    const me = await actor(input.slid, input.pik);
+    slid = me.slid;
+  } else {
+    throw new Error("Token oder SLID+PIK erforderlich.");
+  }
   const { data: r } = await sb.from("employee_roles").select("role").eq("slid", slid).eq("role", "superuser").maybeSingle();
   if (!r) throw new Error("Superuser-Rechte erforderlich.");
   return slid;
 }
 
 export const xaAdminListAccounts = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) => z.object({ token: z.string() }).parse(d))
+  .inputValidator((d: unknown) => z.object({ token: z.string().optional(), slid: z.string().optional(), pik: z.string().optional() }).parse(d))
   .handler(async ({ data }) => {
-    await requireSuperuserByToken(data.token);
+    await requireSuperuser(data);
     const sb = await admin();
     const { data: employees } = await sb.from("employees").select("slid,name,email,hl,kind,department,position,created_at").order("created_at", { ascending: false });
     const { data: allRoles } = await sb.from("employee_roles").select("slid,role");
@@ -249,7 +258,9 @@ export const xaAdminListAccounts = createServerFn({ method: "POST" })
 
 export const xaAdminCreateAccount = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object({
-    token: z.string(),
+    token: z.string().optional(),
+    slid: z.string().optional(),
+    pik: z.string().optional(),
     name: z.string().min(1),
     email: z.string().email().optional().or(z.literal("")),
     kind: z.enum(["kunde", "partner", "mitarbeiter"]),
@@ -258,7 +269,7 @@ export const xaAdminCreateAccount = createServerFn({ method: "POST" })
     position: z.string().optional(),
   }).parse(d))
   .handler(async ({ data }) => {
-    await requireSuperuserByToken(data.token);
+    await requireSuperuser(data);
     const sb = await admin();
     // Generate SLID
     let slid = "";
@@ -267,7 +278,7 @@ export const xaAdminCreateAccount = createServerFn({ method: "POST" })
       const { data: exists } = await sb.from("employees").select("slid").eq("slid", candidate).maybeSingle();
       if (!exists) { slid = candidate; break; }
     }
-    if (!slid) throw new Error("Konnte keine eindeutige SynID erzeugen.");
+    if (!slid) throw new Error("Konnte keine eindeutige Account-ID erzeugen.");
 
     const { error: empErr } = await sb.from("employees").insert({
       slid, name: data.name, hl: data.hl ?? 1, kind: data.kind,
@@ -279,17 +290,19 @@ export const xaAdminCreateAccount = createServerFn({ method: "POST" })
     const { error: roleErr } = await sb.from("employee_roles").insert({ slid, role: data.kind });
     if (roleErr) throw new Error(roleErr.message);
 
-    return { slid, name: data.name, pik: "(nur Passkey — kein PIK)" };
+    return { slid, name: data.name };
   });
 
 export const xaAdminUpdateRoles = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object({
-    token: z.string(),
+    token: z.string().optional(),
+    slid: z.string().optional(),
+    pik: z.string().optional(),
     target_slid: z.string().min(1),
     roles: z.array(z.enum(["superuser", "admin", "mitarbeiter", "partner", "kunde"])),
   }).parse(d))
   .handler(async ({ data }) => {
-    await requireSuperuserByToken(data.token);
+    await requireSuperuser(data);
     const sb = await admin();
     // Delete all existing roles for target
     await sb.from("employee_roles").delete().eq("slid", data.target_slid);
@@ -309,14 +322,13 @@ export const xaAdminUpdateRoles = createServerFn({ method: "POST" })
 
 export const xaAdminDeleteAccount = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object({
-    token: z.string(),
+    token: z.string().optional(),
+    slid: z.string().optional(),
+    pik: z.string().optional(),
     target_slid: z.string().min(1),
   }).parse(d))
   .handler(async ({ data }) => {
-    await requireSuperuserByToken(data.token);
-    // Prevent deleting own account
-    const { verifySessionToken } = await wa();
-    const { slid: callerSlid } = await verifySessionToken(data.token);
+    const callerSlid = await requireSuperuser(data);
     if (data.target_slid === callerSlid) throw new Error("Du kannst nicht deinen eigenen Account löschen.");
     const sb = await admin();
     await sb.from("webauthn_credentials").delete().eq("slid", data.target_slid);
