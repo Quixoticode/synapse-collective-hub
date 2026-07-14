@@ -1,7 +1,7 @@
 import {
   Home, Clock, CheckSquare, Calendar, Contact, MessageSquare, KeyRound,
   FileText, BookOpen, Newspaper, BookText, UserPlus, UsersRound, ShieldAlert,
-  Wallet, CircleUser, Settings, ClipboardList, ShieldCheck, type LucideIcon,
+  Wallet, CircleUser, Settings, ClipboardList, ShieldCheck, Shield, type LucideIcon,
 } from "lucide-react";
 import type { Feature, ModuleFeature } from "./features";
 
@@ -34,6 +34,7 @@ export const TABS: TabDef[] = [
   { key: "payments",  to: "/finances",   label: "Payments",   desc: "Budget & Buchungen",     icon: Wallet,        feature: "payments", category: "admin",    order: 150 },
   { key: "auftrag",   to: "/auftrag",    label: "Aufträge",   desc: "Kundenaufträge & Todos", icon: ClipboardList, feature: "auftrag",  category: "core",     order: 155 },
   { key: "admin",     to: "/admin",      label: "Admin",      desc: "System & Berechtigungen",icon: ShieldCheck,   feature: "admin",    category: "admin",    order: 158 },
+  { key: "sso",       to: "/sso",        label: "SSO",        desc: "Single Sign-On",        icon: Shield,        feature: "settings", category: "personal", order: 159 },
   { key: "account",   to: "/account",    label: "Mein Account", desc: "Profil & Passkeys",    icon: CircleUser,    feature: "account",  category: "personal", order: 160 },
   { key: "settings",  to: "/settings",   label: "Einstellungen", desc: "Design · Admin",      icon: Settings,      feature: "settings", category: "personal", order: 170 },
 ];
