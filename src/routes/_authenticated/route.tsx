@@ -13,6 +13,7 @@ import { StartupAnimation } from "@/components/StartupAnimation";
 import { UpdateScreen } from "@/components/UpdateScreen";
 import { BanScreen } from "@/components/BanScreen";
 import { WorkTimeAttentionCheck } from "@/components/WorkTimeAttentionCheck";
+import { DebugConsole } from "@/components/DebugConsole";
 import { STARTUP_PLAYED_KEY } from "@/lib/app-version";
 
 const FP_KEY = "xsyna.deviceFp.v1";
@@ -61,7 +62,6 @@ function AuthedLayout() {
     const c = getCredentials(); if (!c) return;
     void (async () => {
       try {
-        // Ban check first — blocks the whole UI
         const b = await checkBan({ data: { slid: session.slid } }) as { banned: boolean; message?: string; expires_at?: string | null };
         if (b.banned) { setBan({ message: b.message || "Zugriff gesperrt.", expires_at: b.expires_at ?? null }); return; }
         setBan(null);
@@ -109,7 +109,6 @@ function AuthedLayout() {
     { label: "Arbeiten", items: tabs.filter((t) => t.category === "core") },
     { label: "Verwaltung", items: tabs.filter((t) => t.category === "admin") },
     { label: "Persönlich", items: tabs.filter((t) => t.category === "personal") },
-    { label: "System", items: tabs.filter((t) => t.category === "debug") },
   ].filter((g) => g.items.length > 0);
 
   return (
@@ -123,7 +122,6 @@ function AuthedLayout() {
       <UpdateScreen />
       <WorkTimeAttentionCheck />
 
-
       <div className="min-h-[100dvh] flex">
         {/* Desktop sidebar */}
         <aside className="hidden md:flex w-64 shrink-0 flex-col border-r border-border bg-card/40 backdrop-blur-sm sticky top-0 h-screen">
@@ -132,7 +130,7 @@ function AuthedLayout() {
               <XSynaLogo size={32} />
               <div>
                 <div className="font-display text-sm font-semibold tracking-wide">xSyna Central</div>
-                <div className="text-[10px] mono text-muted-foreground">xSyna Account · Kollektiv</div>
+                <div className="text-[10px] mono text-muted-foreground">xSyna · Kollektiv</div>
               </div>
             </div>
           </div>
@@ -155,7 +153,7 @@ function AuthedLayout() {
           </nav>
           <div className="p-3 border-t border-border">
             <div className="syn-card p-3">
-              <div className="text-xs text-muted-foreground mono">Account-ID</div>
+              <div className="text-xs text-muted-foreground mono">SLID</div>
               <div className="text-sm font-semibold mono">{session.slid}</div>
               <div className="mt-2 flex items-center justify-between">
                 <span className="syn-chip">{session.kind ?? "Account"}</span>
@@ -184,7 +182,7 @@ function AuthedLayout() {
         </main>
       </div>
 
-      {/* Fixed mobile bottom nav (always at viewport bottom) */}
+      {/* Fixed mobile bottom nav */}
       <nav className="md:hidden fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 backdrop-blur"
            style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.3rem)" }}>
         <div className="grid grid-cols-6 gap-0.5 px-1 pt-2">
@@ -226,6 +224,9 @@ function AuthedLayout() {
           </div>
         </div>
       )}
+
+      {/* Debug Console */}
+      <DebugConsole />
     </>
   );
 }
