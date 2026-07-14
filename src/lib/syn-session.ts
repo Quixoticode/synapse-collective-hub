@@ -1,4 +1,4 @@
-// Client-side SynID session helper.
+// Client-side xSyna Account session helper.
 export type SynSession = {
   slid: string;
   pik: string;
