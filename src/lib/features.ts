@@ -1,14 +1,7 @@
-// Central feature / permission registry.
-//
-// Every module and every sensitive action maps to a permission key. The
-// superuser (only Jake) bypasses ALL checks. A non-superuser account starts
-// from DEFAULT_ALLOWED and then receives explicit grants (allowed=true) or
-// revokes (allowed=false) stored in the `user_tab_permissions` table.
-//
-// This replaces the old HL (hierarchy level) system: access is now granted
-// per-feature, never by a numeric rank.
+// ──────────────────────────────────────────
+// xSyna Central – Feature definitions
+// ──────────────────────────────────────────
 
-// Module-level keys — control whether a module is visible/usable at all.
 export const MODULE_FEATURES = [
   "home",
   "worktime",
@@ -27,22 +20,20 @@ export const MODULE_FEATURES = [
   "payments",
   "account",
   "settings",
+  "auftrag",
   "admin",
-  "debug",
 ] as const;
-export type ModuleFeature = (typeof MODULE_FEATURES)[number];
 
-// Action-level keys — finer-grained rights inside a module.
 export const ACTION_FEATURES = [
-  "worktime.manage", // edit / invalidate / hide other people's times
+  "worktime.manage",
   "contacts.manage",
   "calendar.manage",
   "tasks.manage",
-  "teams.manage", // upgrade accounts, departments, positions
-  "teams.permissions", // grant per-account permissions
-  "security.all", // view / manage other accounts' security data
-  "settings.admin", // admin settings submenu
-  "maintenance.manage", // maintenance mode + temporary bans
+  "teams.manage",
+  "teams.permissions",
+  "security.all",
+  "settings.admin",
+  "maintenance.manage",
   "news.manage",
   "docs.manage",
   "basics.manage",
@@ -50,27 +41,87 @@ export const ACTION_FEATURES = [
   "apply.manage",
   "vault.shared",
   "sso.admin",
-  "notify.manage", // send broadcast notifications to other accounts
-  "support.manage", // see/manage all support tickets, not just your own
+  "notify.manage",
+  "support.manage",
+  "workspace.manage",
+  "auftrag.manage",
 ] as const;
-export type ActionFeature = (typeof ACTION_FEATURES)[number];
 
+export type ModuleFeature = (typeof MODULE_FEATURES)[number];
+export type ActionFeature = (typeof ACTION_FEATURES)[number];
 export type Feature = ModuleFeature | ActionFeature;
 
-export const ALL_FEATURES: Feature[] = [...MODULE_FEATURES, ...ACTION_FEATURES];
+export const FEATURE_DESCRIPTIONS: Record<Feature, string> = {
+  home: "Dashboard mit Profil-Quick-Login und Uhrzeit",
+  worktime: "Arbeitszeiterfassung",
+  "worktime.manage": "Alle Arbeitszeiten verwalten",
+  tasks: "Aufgaben-Tracking",
+  "tasks.manage": "Alle Aufgaben verwalten",
+  calendar: "Kalender",
+  "calendar.manage": "Alle Kalender-Einträge verwalten",
+  contacts: "Kontaktliste",
+  "contacts.manage": "Alle Kontakte verwalten",
+  chat: "Chat / Notizen",
+  vault: "Tresor (Passwörter)",
+  "vault.shared": "Geteilte Tresor-Einträge verwalten",
+  workspace: "Arbeitsbereich (Docs, Files)",
+  "workspace.manage": "Alle Workspace-Docs verwalten",
+  basics: "Grundlagen / Wiki",
+  "basics.manage": "Grundlagen verwalten",
+  news: "Neuigkeiten",
+  "news.manage": "Neuigkeiten verwalten",
+  docs: "Dokumente",
+  "docs.manage": "Dokumente verwalten",
+  apply: "Bewerbungen",
+  "apply.manage": "Bewerbungen verwalten",
+  teams: "Teams & Ränge",
+  "teams.manage": "Teams verwalten",
+  "teams.permissions": "Team-Berechtigungen verwalten",
+  security: "Sicherheit / Logs",
+  "security.all": "Alle Sicherheitsfunktionen",
+  payments: "Zahlungen / Finanzen",
+  "payments.manage": "Zahlungen verwalten",
+  account: "Mein Account",
+  settings: "Einstellungen",
+  "settings.admin": "Admin-Einstellungen verwalten",
+  "maintenance.manage": "Wartungsmodus verwalten",
+  "sso.admin": "SSO/Keycloak verwalten",
+  "notify.manage": "Benachrichtigungen verwalten",
+  "support.manage": "Support-Tickets verwalten",
+  auftrag: "Kundenaufträge & Todos",
+  "auftrag.manage": "Alle Aufträge verwalten",
+  admin: "System & Berechtigungen",
+};
 
-// Granted to every authenticated account (including a plain `kunde`) without
-// needing an explicit grant. Everything else is deny-by-default.
+/** Features that every authenticated user gets by default */
 export const DEFAULT_ALLOWED: Feature[] = [
   "home",
   "account",
   "settings",
-  "chat", // customers only see their own support conversation
+  "chat",
   "news",
   "docs",
   "basics",
+  "workspace",
 ];
 
-export function isFeature(x: string): x is Feature {
-  return (ALL_FEATURES as string[]).includes(x);
-}
+/** Every module that an employee needs to see the sidebar */
+export const CORE_EMPLOYEE_FEATURES: Feature[] = [
+  "home",
+  "worktime",
+  "tasks",
+  "calendar",
+  "contacts",
+  "chat",
+  "vault",
+  "workspace",
+  "basics",
+  "news",
+  "docs",
+  "apply",
+  "teams",
+  "security",
+  "payments",
+  "auftrag",
+  "admin",
+];
