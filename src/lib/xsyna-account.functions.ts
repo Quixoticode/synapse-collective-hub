@@ -11,6 +11,10 @@ function originFromInput(o?: string | null): string {
   return (o && /^https?:\/\//i.test(o)) ? o : "https://pass.xsyna.de";
 }
 
+function randomHex(bytes: number) {
+  return Array.from(crypto.getRandomValues(new Uint8Array(bytes)), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 // -------- Passkey registration (requires either PIK or an existing xSyna token) --------
 
 const regBeginInput = z.object({
@@ -126,9 +130,11 @@ export const xaMe = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { slid } = await requireToken(data.token);
     const sb = await admin();
-    const { data: emp } = await sb.from("employees").select("slid,name,hl,kind,department,position").eq("slid", slid).maybeSingle();
+    const { data: emp } = await sb.from("employees").select("slid,name,hl,kind,department,position,email").eq("slid", slid).maybeSingle();
     const { data: prof } = await sb.from("xsyna_accounts" as never).select("*").eq("slid", slid).maybeSingle() as { data: Record<string, unknown> | null };
-    return { slid, employee: emp, profile: (prof ?? null) as unknown as Record<string, string | number | boolean | null> | null };
+    // Fetch roles from employee_roles table
+    const { data: roles } = await sb.from("employee_roles").select("role").eq("slid", slid);
+    return { slid, employee: emp, profile: (prof ?? null) as unknown as Record<string, string | number | boolean | null> | null, roles: (roles ?? []).map((r: { role: string }) => r.role) };
   });
 
 export const xaUpdateProfile = createServerFn({ method: "POST" })
@@ -175,8 +181,6 @@ export const xaDeleteCredential = createServerFn({ method: "POST" })
   });
 
 // -------- Cross-device pairing (8-digit code) --------
-// Device A (already authenticated / has PIK) issues a pairing code.
-// Device B opens /account/pair and enters the code + creates a passkey.
 
 export const xaBeginPairing = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object({ slid: z.string(), pik: z.string().min(8).optional(), token: z.string().optional() }).parse(d))
@@ -204,8 +208,120 @@ export const xaConsumePairing = createServerFn({ method: "POST" })
     if (!row) throw new Error("Kopplungscode unbekannt.");
     if (row.status !== "pending") throw new Error("Code bereits verwendet.");
     if (new Date(row.expires_at) < new Date()) throw new Error("Code abgelaufen.");
-    // Return slid so the second device can start a passkey registration for that slid.
-    // Also mark consumed to prevent replay.
     await sb.from("xsyna_pairings" as never).update({ status: "consumed" } as never).eq("id", row.id);
     return { slid: row.slid };
+  });
+
+// -------- Admin module — account management (superuser only) --------
+
+async function requireSuperuserByToken(token: string) {
+  const { verifySessionToken } = await wa();
+  const { slid } = await verifySessionToken(token);
+  const sb = await admin();
+  const { data: r } = await sb.from("employee_roles").select("role").eq("slid", slid).eq("role", "superuser").maybeSingle();
+  if (!r) throw new Error("Superuser-Rechte erforderlich.");
+  return slid;
+}
+
+export const xaAdminListAccounts = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => z.object({ token: z.string() }).parse(d))
+  .handler(async ({ data }) => {
+    await requireSuperuserByToken(data.token);
+    const sb = await admin();
+    const { data: employees } = await sb.from("employees").select("slid,name,email,hl,kind,department,position,created_at").order("created_at", { ascending: false });
+    const { data: allRoles } = await sb.from("employee_roles").select("slid,role");
+    const { data: allProfiles } = await sb.from("xsyna_accounts" as never).select("slid,first_name,last_name,email,passkey_migrated");
+    const rolesBySlid: Record<string, string[]> = {};
+    (allRoles ?? []).forEach((r: { slid: string; role: string }) => {
+      if (!rolesBySlid[r.slid]) rolesBySlid[r.slid] = [];
+      rolesBySlid[r.slid].push(r.role);
+    });
+    const profBySlid: Record<string, { first_name?: string; last_name?: string; email?: string; passkey_migrated?: boolean }> = {};
+    (allProfiles ?? []).forEach((p: { slid: string; first_name?: string; last_name?: string; email?: string; passkey_migrated?: boolean }) => {
+      profBySlid[p.slid] = p;
+    });
+    return (employees ?? []).map((e: { slid: string; name: string; email: string | null; hl: number; kind: string; department: string | null; position: string | null; created_at: string }) => ({
+      ...e,
+      roles: rolesBySlid[e.slid] ?? [],
+      profile: profBySlid[e.slid] ?? null,
+    }));
+  });
+
+export const xaAdminCreateAccount = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => z.object({
+    token: z.string(),
+    name: z.string().min(1),
+    email: z.string().email().optional().or(z.literal("")),
+    kind: z.enum(["kunde", "partner", "mitarbeiter"]),
+    hl: z.number().int().min(1).max(7).optional(),
+    department: z.string().optional(),
+    position: z.string().optional(),
+  }).parse(d))
+  .handler(async ({ data }) => {
+    await requireSuperuserByToken(data.token);
+    const sb = await admin();
+    // Generate SLID
+    let slid = "";
+    for (let i = 0; i < 20; i++) {
+      const candidate = "K" + Array.from({ length: 8 }, () => Math.floor(Math.random() * 10)).join("");
+      const { data: exists } = await sb.from("employees").select("slid").eq("slid", candidate).maybeSingle();
+      if (!exists) { slid = candidate; break; }
+    }
+    if (!slid) throw new Error("Konnte keine eindeutige SynID erzeugen.");
+
+    const { error: empErr } = await sb.from("employees").insert({
+      slid, name: data.name, hl: data.hl ?? 1, kind: data.kind,
+      regid: "ADMIN-CREATED", pik: randomHex(32), cip: randomHex(8),
+      email: data.email || null, department: data.department || null, position: data.position || null,
+    });
+    if (empErr) throw new Error(empErr.message);
+
+    const { error: roleErr } = await sb.from("employee_roles").insert({ slid, role: data.kind });
+    if (roleErr) throw new Error(roleErr.message);
+
+    return { slid, name: data.name, pik: "(nur Passkey — kein PIK)" };
+  });
+
+export const xaAdminUpdateRoles = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => z.object({
+    token: z.string(),
+    target_slid: z.string().min(1),
+    roles: z.array(z.enum(["superuser", "admin", "mitarbeiter", "partner", "kunde"])),
+  }).parse(d))
+  .handler(async ({ data }) => {
+    await requireSuperuserByToken(data.token);
+    const sb = await admin();
+    // Delete all existing roles for target
+    await sb.from("employee_roles").delete().eq("slid", data.target_slid);
+    // Insert new role set
+    const inserts = data.roles.map((role) => ({ slid: data.target_slid, role }));
+    const { error } = await sb.from("employee_roles").insert(inserts);
+    if (error) throw new Error(error.message);
+    // Update kind to match highest tier role
+    const tierPriority = ["superuser", "admin", "mitarbeiter", "partner", "kunde"];
+    const highestTier = tierPriority.find((t) => data.roles.includes(t as any));
+    if (highestTier) {
+      const kindMap: Record<string, string> = { superuser: "mitarbeiter", admin: "mitarbeiter", mitarbeiter: "mitarbeiter", partner: "partner", kunde: "kunde" };
+      await sb.from("employees").update({ kind: kindMap[highestTier] }).eq("slid", data.target_slid);
+    }
+    return { ok: true };
+  });
+
+export const xaAdminDeleteAccount = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => z.object({
+    token: z.string(),
+    target_slid: z.string().min(1),
+  }).parse(d))
+  .handler(async ({ data }) => {
+    await requireSuperuserByToken(data.token);
+    // Prevent deleting own account
+    const { verifySessionToken } = await wa();
+    const { slid: callerSlid } = await verifySessionToken(data.token);
+    if (data.target_slid === callerSlid) throw new Error("Du kannst nicht deinen eigenen Account löschen.");
+    const sb = await admin();
+    await sb.from("webauthn_credentials").delete().eq("slid", data.target_slid);
+    await sb.from("xsyna_accounts" as never).delete().eq("slid", data.target_slid);
+    await sb.from("employee_roles").delete().eq("slid", data.target_slid);
+    await sb.from("employees").delete().eq("slid", data.target_slid);
+    return { ok: true };
   });
