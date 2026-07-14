@@ -4,6 +4,12 @@
 // ============================================================
 // NO Node.js globals (Buffer, process, etc.) — pure Web APIs.
 //
+// CRITICAL: public_key is stored as PostgreSQL hex \x... in the bytea
+// column. Supabase returns bytea as hex strings with \x prefix.
+// Storing base64url text in bytea stores the ASCII bytes of the
+// text — NOT the actual key bytes — causing "signature verification
+// failed" on every login.
+//
 import {
   generateRegistrationOptions,
   verifyRegistrationResponse,
@@ -72,11 +78,19 @@ function b64urlEncode(buf: ArrayBuffer | Uint8Array): string {
   return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-function b64urlToBuf(input: unknown): Uint8Array {
-  // Already a Uint8Array / ArrayBuffer
+// Convert Uint8Array → \xHH PostgreSQL bytea hex format
+function bufToPgHex(buf: ArrayBuffer | Uint8Array): string {
+  const u8 = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+  const hex = Array.from(u8, (b) => b.toString(16).padStart(2, "0")).join("");
+  return "\\x" + hex;
+}
+
+// Decode whatever Supabase returns for a bytea column
+function decodeBytea(input: unknown): Uint8Array {
+  // Already binary
   if (input instanceof Uint8Array) return input;
   if (input instanceof ArrayBuffer) return new Uint8Array(input);
-  if (typeof input !== "string") throw new Error("public_key is not a string");
+  if (typeof input !== "string") throw new Error("bytea is not a string");
 
   // Old JSON-serialized Buffer: {"type":"Buffer","data":[165,1,...]}
   if (input.startsWith("{")) {
@@ -88,7 +102,7 @@ function b64urlToBuf(input: unknown): Uint8Array {
     } catch { /* fall through */ }
   }
 
-  // Hex with \x prefix (PostgreSQL bytea hex format)
+  // PostgreSQL hex format: \xA50102...
   if (input.startsWith("\\x")) {
     const hex = input.slice(2);
     const bytes = new Uint8Array(hex.length / 2);
@@ -98,7 +112,7 @@ function b64urlToBuf(input: unknown): Uint8Array {
     return bytes;
   }
 
-  // Base64url string (the correct format)
+  // Fallback: base64url string
   return b64urlDecode(input);
 }
 
@@ -264,11 +278,13 @@ export async function finishRegistration(
   const info = v.registrationInfo;
   const cred = info.credential;
 
-  // Store credential_id (base64url) and public_key (base64url string)
+  // Store public_key as PostgreSQL hex \x... — NOT base64url text.
+  // The bytea column stores binary. \xHH format tells PostgreSQL to
+  // store actual bytes. Base64url text would store ASCII of the text.
   await supabaseAdmin.from("webauthn_credentials" as never).insert({
     slid,
     credential_id: cred.id,
-    public_key: b64urlEncode(cred.publicKey),
+    public_key: bufToPgHex(cred.publicKey),
     counter: cred.counter,
     device_label: deviceLabel || "Unbekanntes Gerät",
     transports: cred.transports ?? [],
@@ -371,10 +387,10 @@ export async function finishAuthentication(
 
   if (!cred) throw new Error("Passkey nicht bekannt.");
 
-  // Convert public_key from DB format → Uint8Array
+  // Decode bytea → Uint8Array (handles \xHH hex, Uint8Array, JSON Buffer)
   let publicKeyBytes: Uint8Array;
   try {
-    publicKeyBytes = b64urlToBuf(cred.public_key);
+    publicKeyBytes = decodeBytea(cred.public_key);
   } catch (e) {
     throw new Error(
       "Passkey-Daten beschädigt (public_key). " + (e as Error).message
