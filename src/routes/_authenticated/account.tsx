@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { KeyRound, ShieldCheck, Smartphone, Trash2, Plus, User, QrCode, Camera, Save, Mail, Building, CalendarDays, IdCard, Briefcase, Fingerprint, Shield } from "lucide-react";
+import { KeyRound, ShieldCheck, Smartphone, Trash2, Plus, User, QrCode, Camera, Save, Mail, Building, CalendarDays, IdCard, Briefcase, Fingerprint, Shield, XCircle, CheckCircle2 } from "lucide-react";
 import { startRegistration } from "@simplewebauthn/browser";
 import { xaBeginRegistration, xaFinishRegistration, xaListCredentials, xaDeleteCredential, xaUpdateProfile, xaMe, xaBeginPairing } from "@/lib/xsyna-account.functions";
 import { getSession } from "@/lib/syn-session";
@@ -46,7 +46,7 @@ function AccountPage() {
   const updateProfile = useServerFn(xaUpdateProfile);
   const me = useServerFn(xaMe);
   const beginPair = useServerFn(xaBeginPairing);
-  const { run, syncing, error } = useSync();
+  const { run, syncing, error, clearError } = useSync();
 
   const [creds, setCreds] = useState<Credential[]>([]);
   const [profile, setProfile] = useState<AccountData>({ slid: "" });
@@ -54,7 +54,7 @@ function AccountPage() {
   const [roles, setRoles] = useState<string[]>([]);
   const [tab, setTab] = useState<"profile" | "security" | "pair">("profile");
   const [pairing, setPairing] = useState<{ code: string; expires_at: string } | null>(null);
-  const [saved, setSaved] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "success" | "error">("idle");
 
   useEffect(() => {
     if (!xa) return;
@@ -80,7 +80,7 @@ function AccountPage() {
 
   async function addPasskey() {
     if (!legacy && !xa) return;
-    await run(async () => {
+    const res = await run(async () => {
       const options = await beginReg({ data: {
         slid: (xa?.slid ?? legacy?.slid) as string,
         pik: xa ? undefined : legacy?.pik,
@@ -104,27 +104,35 @@ function AccountPage() {
       const c = await listCreds({ data: { token: (session as { token: string }).token } });
       setCreds(c as Credential[]);
     });
+    if (!res) return; // error already shown by useSync
   }
 
   async function removePasskey(id: string) {
     if (!xa) return;
-    await run(async () => {
+    const res = await run(async () => {
       await delCred({ data: { token: xa.token, id } });
       const c = await listCreds({ data: { token: xa.token } });
       setCreds(c as Credential[]);
     });
+    if (!res) return;
   }
 
   async function saveProfile() {
     if (!xa) return;
-    await run(updateProfile({ data: { token: xa.token, ...profile, birthdate: profile.birthdate || null } }));
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setSaveStatus("idle");
+    clearError();
+    const res = await run(updateProfile({ data: { token: xa.token, ...profile, birthdate: profile.birthdate || null } }));
+    if (res) {
+      setSaveStatus("success");
+      setTimeout(() => setSaveStatus("idle"), 3000);
+    } else {
+      setSaveStatus("error");
+    }
   }
 
   async function startPairing() {
     if (!legacy && !xa) return;
-    await run(async () => {
+    const res = await run(async () => {
       const p = await beginPair({ data: {
         slid: (xa?.slid ?? legacy?.slid) as string,
         pik: xa ? undefined : legacy?.pik,
@@ -132,6 +140,7 @@ function AccountPage() {
       }});
       setPairing(p as { code: string; expires_at: string });
     });
+    if (!res) return;
   }
 
   // Role label derived from roles array (not just employee.kind)
@@ -156,6 +165,18 @@ function AccountPage() {
 
   return (
     <div className="max-w-3xl mx-auto p-4 sm:p-6 space-y-5">
+      {/* Error Banner — sticky at top, dismissible */}
+      {error && (
+        <div className="flex items-start gap-2 p-3 rounded-2xl bg-destructive/10 border border-destructive/30 animate-in fade-in slide-in-from-top-2 duration-200">
+          <XCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <div className="text-xs font-medium text-destructive">Fehler</div>
+            <div className="text-xs text-destructive/80 mono">{error}</div>
+          </div>
+          <button onClick={clearError} className="syn-btn-ghost p-1 shrink-0"><XCircle className="h-3.5 w-3.5" /></button>
+        </div>
+      )}
+
       {/* Header Card */}
       <div className="syn-card p-5 relative overflow-hidden">
         <div className="absolute inset-0 opacity-5" style={{ background: "var(--gradient-neural-soft)" }} />
@@ -187,7 +208,7 @@ function AccountPage() {
               )}
             </div>
             <div className="flex items-center gap-2 mt-1 flex-wrap">
-              <p className="text-xs text-muted-foreground mono">SLID: {profile.slid}</p>
+              <p className="text-xs text-muted-foreground mono">Account-ID: {profile.slid}</p>
               {roles.length > 0 && (
                 <p className="text-[10px] text-muted-foreground mono">Rollen: {roles.join(", ")}</p>
               )}
@@ -200,13 +221,11 @@ function AccountPage() {
       {/* Tabs */}
       <div className="grid grid-cols-3 gap-1.5">
         {(["profile","security","pair"] as const).map((t) => (
-          <button key={t} onClick={() => setTab(t)} className={`px-3 py-2 rounded-2xl text-xs ${tab === t ? "syn-tab-active font-semibold" : "syn-btn-ghost"}`}>
+          <button key={t} onClick={() => { setTab(t); clearError(); }} className={`px-3 py-2 rounded-2xl text-xs ${tab === t ? "syn-tab-active font-semibold" : "syn-btn-ghost"}`}>
             {t === "profile" ? "Profil" : t === "security" ? "Passkeys" : "Zweites Gerät"}
           </button>
         ))}
       </div>
-
-      {error && <div className="text-xs text-destructive mono p-2 rounded-lg bg-destructive/10 border border-destructive/30">{error}</div>}
 
       {/* Profile Tab */}
       {tab === "profile" && (
@@ -216,7 +235,7 @@ function AccountPage() {
             <div className="syn-card p-4 space-y-3">
               <div className="text-[11px] text-muted-foreground mono uppercase tracking-wider">Kontodaten</div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <InfoRow icon={<IdCard className="w-4 h-4" />} label="SLID" value={employee.slid} />
+                <InfoRow icon={<IdCard className="w-4 h-4" />} label="Account-ID" value={employee.slid} />
                 <InfoRow icon={<User className="w-4 h-4" />} label="Name" value={employee.name} />
                 {employee.email && <InfoRow icon={<Mail className="w-4 h-4" />} label="E-Mail" value={employee.email} />}
                 {employee.position && <InfoRow icon={<Briefcase className="w-4 h-4" />} label="Position" value={employee.position} />}
@@ -261,8 +280,21 @@ function AccountPage() {
               <Field label="Geburtsdatum" type="date" value={profile.birthdate || ""} onChange={(v) => setProfile((p) => ({ ...p, birthdate: v }))} />
               <Field label="Firma" value={profile.company || ""} onChange={(v) => setProfile((p) => ({ ...p, company: v }))} />
             </div>
-            <button onClick={() => void saveProfile()} disabled={syncing} className="syn-btn w-full flex items-center justify-center gap-2">
-              <Save className="w-4 h-4" />{saved ? "Gespeichert ✓" : "Speichern"}
+
+            {/* Save button with clear status */}
+            <button
+              onClick={() => void saveProfile()}
+              disabled={syncing}
+              className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-medium transition-all ${
+                saveStatus === "success"
+                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
+                  : saveStatus === "error"
+                  ? "bg-destructive/20 text-destructive border border-destructive/40"
+                  : "syn-btn"
+              }`}
+            >
+              {saveStatus === "success" ? <CheckCircle2 className="w-4 h-4" /> : saveStatus === "error" ? <XCircle className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+              {saveStatus === "success" ? "Gespeichert ✓" : saveStatus === "error" ? "Fehler — siehe oben" : syncing ? "Speichern…" : "Speichern"}
             </button>
           </div>
         </div>
