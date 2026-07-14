@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Shield, Users, Plus, Trash2, Save, X, ChevronDown, ChevronUp, Search, RefreshCw, UserPlus, AtSign, Building2, Star, Crown, User, Briefcase, XCircle, CheckCircle2 } from "lucide-react";
+import { Shield, Plus, Trash2, Save, X, ChevronDown, ChevronUp, Search, RefreshCw, UserPlus, AtSign, Building2, Star, Crown, User, Briefcase, XCircle, CheckCircle2 } from "lucide-react";
 import { xaAdminListAccounts, xaAdminCreateAccount, xaAdminUpdateRoles, xaAdminDeleteAccount } from "@/lib/xsyna-account.functions";
 import { getXsynaSession } from "@/lib/xsyna-session";
+import { getSession } from "@/lib/syn-session";
 import { useSync } from "@/lib/use-sync";
-import { SyncSpinner } from "@/components/SyncSpinner";
+import { LoadingOverlay } from "@/components/NeuLoader";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   ssr: false,
@@ -41,8 +42,16 @@ const ROLE_COLORS: Record<string, string> = {
   kunde: "var(--neural-amber)",
 };
 
-function AdminPage() {
+/** Build auth payload: uses xSyna token if available, falls back to legacy SLID+PIK */
+function getAuthPayload() {
   const xa = getXsynaSession();
+  if (xa?.token) return { token: xa.token };
+  const legacy = getSession();
+  if (legacy) return { slid: legacy.slid, pik: legacy.pik };
+  return null;
+}
+
+function AdminPage() {
   const listFn = useServerFn(xaAdminListAccounts);
   const createFn = useServerFn(xaAdminCreateAccount);
   const updateRolesFn = useServerFn(xaAdminUpdateRoles);
@@ -56,6 +65,7 @@ function AdminPage() {
   const [expandedSlid, setExpandedSlid] = useState<string | null>(null);
   const [editRoles, setEditRoles] = useState<Record<string, string[]>>({});
   const [createStatus, setCreateStatus] = useState<"idle" | "success" | "error">("idle");
+  const [loaded, setLoaded] = useState(false);
 
   // Create form state
   const [cName, setCName] = useState("");
@@ -83,26 +93,30 @@ function AdminPage() {
   }, [search, accounts]);
 
   async function loadAccounts() {
-    if (!xa) return;
+    const auth = getAuthPayload();
+    if (!auth) return;
+    clearError();
     const res = await run(async () => {
-      const rows = await listFn({ data: { token: xa.token } }) as Account[];
+      const rows = await listFn({ data: auth }) as Account[];
       setAccounts(rows);
       setFiltered(rows);
-      // Init edit roles
       const er: Record<string, string[]> = {};
       rows.forEach((r) => { er[r.slid] = [...r.roles]; });
       setEditRoles(er);
     });
+    setLoaded(true);
     if (!res) return;
   }
 
   async function createAccount() {
-    if (!xa || !cName.trim()) return;
+    const auth = getAuthPayload();
+    if (!auth || !cName.trim()) return;
     setCreateStatus("idle");
     clearError();
     const res = await run(async () => {
       await createFn({ data: {
-        token: xa.token, name: cName.trim(), email: cEmail.trim() || undefined,
+        ...auth,
+        name: cName.trim(), email: cEmail.trim() || undefined,
         kind: cKind, hl: cHl, department: cDept.trim() || undefined, position: cPos.trim() || undefined,
       }});
     });
@@ -111,18 +125,20 @@ function AdminPage() {
       setShowCreate(false);
       setCName(""); setCEmail(""); setCKind("kunde"); setCHl(1); setCDept(""); setCPos("");
       await loadAccounts();
+      setTimeout(() => setCreateStatus("idle"), 2000);
     } else {
       setCreateStatus("error");
     }
   }
 
   async function saveRoles(slid: string) {
-    if (!xa) return;
+    const auth = getAuthPayload();
+    if (!auth) return;
     const roles = editRoles[slid] ?? [];
     if (roles.length === 0) return;
     clearError();
     const res = await run(async () => {
-      await updateRolesFn({ data: { token: xa.token, target_slid: slid, roles: roles as any } });
+      await updateRolesFn({ data: { ...auth, target_slid: slid, roles: roles as any } });
       await loadAccounts();
       setExpandedSlid(null);
     });
@@ -130,11 +146,12 @@ function AdminPage() {
   }
 
   async function deleteAccount(slid: string) {
-    if (!xa) return;
+    const auth = getAuthPayload();
+    if (!auth) return;
     if (!window.confirm(`Account ${slid} wirklich löschen? Alle Passkeys und Daten werden entfernt.`)) return;
     clearError();
     const res = await run(async () => {
-      await deleteFn({ data: { token: xa.token, target_slid: slid } });
+      await deleteFn({ data: { ...auth, target_slid: slid } });
       await loadAccounts();
     });
     if (!res) return;
@@ -158,9 +175,17 @@ function AdminPage() {
     kunden: accounts.filter((a) => a.roles.includes("kunde")).length,
   };
 
+  if (!loaded) {
+    return (
+      <div className="max-w-5xl mx-auto p-4 sm:p-6">
+        <LoadingOverlay type="sync" label="Lade Accounts…" visible={true} />
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-5xl mx-auto p-4 sm:p-6 space-y-5">
-      {/* Error Banner — sticky at top, dismissible */}
+      {/* Error Banner */}
       {error && (
         <div className="flex items-start gap-2 p-3 rounded-2xl bg-destructive/10 border border-destructive/30 animate-in fade-in slide-in-from-top-2 duration-200">
           <XCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
@@ -168,7 +193,7 @@ function AdminPage() {
             <div className="text-xs font-medium text-destructive">Fehler</div>
             <div className="text-xs text-destructive/80 mono">{error}</div>
           </div>
-          <button onClick={clearError} className="syn-btn-ghost p-1 shrink-0"><XCircle className="h-3.5 w-3.5" /></button>
+          <button onClick={clearError} className="syn-btn-ghost p-1 shrink-0"><X className="h-3.5 w-3.5" /></button>
         </div>
       )}
 
@@ -184,8 +209,12 @@ function AdminPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => void loadAccounts()} disabled={syncing} className="syn-btn-ghost"><RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} /></button>
-          <button onClick={() => { setShowCreate(true); setCreateStatus("idle"); clearError(); }} className="syn-btn"><Plus className="h-4 w-4" />Neu</button>
+          <button onClick={() => void loadAccounts()} disabled={syncing} className="syn-btn-ghost">
+            <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
+          </button>
+          <button onClick={() => { setShowCreate(true); setCreateStatus("idle"); clearError(); }} className="syn-btn">
+            <Plus className="h-4 w-4" />Neu
+          </button>
         </div>
       </div>
 
@@ -212,6 +241,11 @@ function AdminPage() {
         <input className="syn-input pl-9" placeholder="Account-ID, Name, E-Mail, Abteilung, Rolle…" value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
 
+      {/* Loading overlay for sync operations */}
+      {syncing && accounts.length === 0 && (
+        <LoadingOverlay type="sync" label="Synchronisiere…" visible={true} />
+      )}
+
       {/* Account List */}
       <div className="space-y-2">
         {filtered.length === 0 && (
@@ -222,7 +256,6 @@ function AdminPage() {
         {filtered.map((a) => (
           <div key={a.slid} className="syn-card p-4 space-y-3">
             <div className="flex items-center gap-3">
-              {/* Avatar initials */}
               <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shrink-0" style={{ background: "var(--gradient-neural-soft)", color: "var(--synapse)" }}>
                 {a.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
               </div>
@@ -243,13 +276,14 @@ function AdminPage() {
                 <button onClick={() => setExpandedSlid(expandedSlid === a.slid ? null : a.slid)} className="syn-btn-ghost p-1.5">
                   {expandedSlid === a.slid ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                 </button>
-                <button onClick={() => void deleteAccount(a.slid)} className="syn-btn-ghost p-1.5 text-destructive" title="Account löschen"><Trash2 className="h-4 w-4" /></button>
+                <button onClick={() => void deleteAccount(a.slid)} className="syn-btn-ghost p-1.5 text-destructive" title="Account löschen">
+                  <Trash2 className="h-4 w-4" />
+                </button>
               </div>
             </div>
 
             {expandedSlid === a.slid && (
               <div className="pt-2 border-t border-border space-y-3 animate-in fade-in duration-200">
-                {/* Account details */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                   {a.email && <div><span className="text-muted-foreground">E-Mail:</span> {a.email}</div>}
                   {a.department && <div><span className="text-muted-foreground">Abteilung:</span> {a.department}</div>}
@@ -259,8 +293,6 @@ function AdminPage() {
                   <div><span className="text-muted-foreground">Erstellt:</span> {new Date(a.created_at).toLocaleDateString("de-DE")}</div>
                   <div><span className="text-muted-foreground">Passkey:</span> {a.profile?.passkey_migrated ? "✓" : "—"}</div>
                 </div>
-
-                {/* Role editor */}
                 <div>
                   <div className="text-[11px] text-muted-foreground mono uppercase tracking-wider mb-2">Rollen bearbeiten</div>
                   <div className="flex flex-wrap gap-2">
@@ -296,7 +328,7 @@ function AdminPage() {
               </div>
               <button onClick={() => setShowCreate(false)} className="syn-btn-ghost p-1.5"><X className="h-4 w-4" /></button>
             </div>
-            <p className="text-xs text-muted-foreground">Neuer Account mit automatisch generierter Account-ID und zufälligem PIK. Der Nutzer meldet sich per Passkey an.</p>
+            <p className="text-xs text-muted-foreground">Neuer Account mit automatisch generierter Account-ID. Der Nutzer meldet sich per Passkey an.</p>
 
             <div className="space-y-3">
               <label className="block space-y-1">
@@ -333,7 +365,6 @@ function AdminPage() {
               </div>
             </div>
 
-            {/* Create button with status */}
             <button
               onClick={() => void createAccount()}
               disabled={syncing || !cName.trim()}
