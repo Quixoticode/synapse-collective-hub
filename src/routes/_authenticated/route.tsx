@@ -131,7 +131,7 @@ function AuthedLayout() {
               <XSynaLogo size={32} />
               <div>
                 <div className="font-display text-sm font-semibold tracking-wide">xSyna Central</div>
-                <div className="text-[10px] mono text-muted-foreground">SynID · Kollektiv</div>
+                <div className="text-[10px] mono text-muted-foreground">xSyna Account · Kollektiv</div>
               </div>
             </div>
           </div>
@@ -154,7 +154,7 @@ function AuthedLayout() {
           </nav>
           <div className="p-3 border-t border-border">
             <div className="syn-card p-3">
-              <div className="text-xs text-muted-foreground mono">SLID</div>
+              <div className="text-xs text-muted-foreground mono">Account-ID</div>
               <div className="text-sm font-semibold mono">{session.slid}</div>
               <div className="mt-2 flex items-center justify-between">
                 <span className="syn-chip">{session.kind ?? "Account"}</span>
