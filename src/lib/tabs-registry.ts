@@ -4,14 +4,14 @@
 import {
   Home, Clock, CheckSquare, Calendar, Contact, MessageSquare, KeyRound,
   FileText, BookOpen, Newspaper, BookText, UserPlus, UsersRound, ShieldAlert,
-  Wallet, CircleUser, Settings, Shield, type LucideIcon,
+  Wallet, CircleUser, Settings, Shield, Bug, type LucideIcon,
 } from "lucide-react";
 import type { Feature } from "./features";
 
 // Kept as a permissive alias for older imports.
 export type TabKey = string;
 
-export type TabCategory = "core" | "admin" | "personal";
+export type TabCategory = "core" | "admin" | "personal" | "debug";
 
 export type TabDef = {
   key: string;
@@ -41,6 +41,7 @@ export const TABS: TabDef[] = [
   { key: "security",  to: "/security",   label: "Security",   desc: "Logins & Geräte",        icon: ShieldAlert,   feature: "security", category: "admin",    order: 140 },
   { key: "payments",  to: "/finances",   label: "Payments",   desc: "Budget & Buchungen",     icon: Wallet,        feature: "payments", category: "admin",    order: 150 },
   { key: "admin",     to: "/admin",      label: "Admin",      desc: "Account-Verwaltung",     icon: Shield,        feature: "admin",    category: "admin",    order: 155 },
+  { key: "debug",     to: "/debug",      label: "Debug",      desc: "Console & Diagnose",     icon: Bug,           feature: "debug",    category: "debug",    order: 156 },
   { key: "account",   to: "/account",    label: "Mein Account", desc: "Profil & Passkeys",    icon: CircleUser,    feature: "account",  category: "personal", order: 160 },
   { key: "settings",  to: "/settings",   label: "Einstellungen", desc: "Design · Admin",      icon: Settings,      feature: "settings", category: "personal", order: 170 },
 ];
