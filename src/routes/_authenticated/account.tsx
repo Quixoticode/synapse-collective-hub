@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { KeyRound, ShieldCheck, Smartphone, Trash2, Plus, User, QrCode, Camera, Save, Mail, Building, CalendarDays, IdCard, Briefcase, Fingerprint } from "lucide-react";
+import { KeyRound, ShieldCheck, Smartphone, Trash2, Plus, User, QrCode, Camera, Save, Mail, Building, CalendarDays, IdCard, Briefcase, Fingerprint, Shield } from "lucide-react";
 import { startRegistration } from "@simplewebauthn/browser";
 import { xaBeginRegistration, xaFinishRegistration, xaListCredentials, xaDeleteCredential, xaUpdateProfile, xaMe, xaBeginPairing } from "@/lib/xsyna-account.functions";
 import { getSession } from "@/lib/syn-session";
@@ -23,7 +23,7 @@ type AccountData = {
   birthdate?: string;
   avatar_url?: string;
   company?: string;
-  contact_json?: Record<string, any>;
+  contact_json?: Record<string, unknown>;
   created_at?: string;
 };
 type EmployeeData = {
@@ -33,10 +33,7 @@ type EmployeeData = {
   department: string | null;
   position: string | null;
   kind: string;
-  kwn: string | null;
-  kwn_active: boolean;
   created_at: string;
-  notes: string | null;
 };
 
 function AccountPage() {
@@ -54,6 +51,7 @@ function AccountPage() {
   const [creds, setCreds] = useState<Credential[]>([]);
   const [profile, setProfile] = useState<AccountData>({ slid: "" });
   const [employee, setEmployee] = useState<EmployeeData | null>(null);
+  const [roles, setRoles] = useState<string[]>([]);
   const [tab, setTab] = useState<"profile" | "security" | "pair">("profile");
   const [pairing, setPairing] = useState<{ code: string; expires_at: string } | null>(null);
   const [saved, setSaved] = useState(false);
@@ -66,15 +64,16 @@ function AccountPage() {
         me({ data: { token: xa.token } }),
       ]);
       setCreds(c as Credential[]);
-      const result = m as { profile: AccountData | null; employee: EmployeeData | null };
+      const result = m as { profile: AccountData | null; employee: EmployeeData | null; roles: string[] };
       const p = result.profile ?? {};
       setProfile({
         slid: (xa?.slid ?? legacy?.slid) as string,
-        first_name: p.first_name ?? "", last_name: p.last_name ?? "",
-        email: p.email ?? "", birthdate: p.birthdate ?? "",
-        avatar_url: p.avatar_url ?? "", company: p.company ?? "",
+        first_name: (p.first_name as string) ?? "", last_name: (p.last_name as string) ?? "",
+        email: (p.email as string) ?? "", birthdate: (p.birthdate as string) ?? "",
+        avatar_url: (p.avatar_url as string) ?? "", company: (p.company as string) ?? "",
       });
       setEmployee(result.employee ?? null);
+      setRoles(result.roles ?? []);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -135,10 +134,20 @@ function AccountPage() {
     });
   }
 
+  // Role label derived from roles array (not just employee.kind)
+  const roleLabel = roles.includes("superuser") ? "Superuser"
+    : roles.includes("admin") ? "Administrator"
+    : roles.includes("mitarbeiter") ? "Mitarbeiter"
+    : roles.includes("partner") ? "Partner"
+    : "Kunde";
+
+  const roleColor = roles.includes("superuser") ? "var(--neural-magenta)"
+    : roles.includes("admin") ? "var(--synapse)"
+    : "var(--neural-mint)";
+
   const displayName = profile.first_name && profile.last_name
     ? `${profile.first_name} ${profile.last_name}`
     : employee?.name ?? profile.slid;
-  const roleLabel = employee?.kind === "admin" ? "Administrator" : employee?.kind === "partner" ? "Partner" : employee?.kind === "superuser" ? "Superuser" : "Mitarbeiter";
   const initials = (profile.first_name?.[0] ?? "").toUpperCase() + (profile.last_name?.[0] ?? "").toUpperCase() || profile.slid.slice(0, 2).toUpperCase();
 
   if (!legacy && !xa) {
@@ -167,7 +176,8 @@ function AccountPage() {
           <div className="min-w-0 flex-1">
             <h1 className="text-xl sm:text-2xl font-bold truncate">{displayName}</h1>
             <div className="flex items-center gap-2 flex-wrap mt-1">
-              <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: "rgba(0,229,255,0.1)", color: "var(--synapse)", border: "1px solid rgba(0,229,255,0.25)" }}>
+              <span className="text-xs px-2 py-0.5 rounded-full font-medium flex items-center gap-1" style={{ background: `${roleColor}15`, color: roleColor, border: `1px solid ${roleColor}40` }}>
+                {roles.includes("superuser") && <Shield className="w-3 h-3" />}
                 {roleLabel}
               </span>
               {employee?.department && (
@@ -176,7 +186,12 @@ function AccountPage() {
                 </span>
               )}
             </div>
-            <p className="text-xs text-muted-foreground mono mt-1">SLID: {profile.slid}</p>
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
+              <p className="text-xs text-muted-foreground mono">SLID: {profile.slid}</p>
+              {roles.length > 0 && (
+                <p className="text-[10px] text-muted-foreground mono">Rollen: {roles.join(", ")}</p>
+              )}
+            </div>
           </div>
           {syncing && <SyncSpinner inline />}
         </div>
@@ -294,7 +309,7 @@ function AccountPage() {
             <QrCode className="h-5 w-5" style={{ color: "var(--neural-violet)" }} />
             <div>
               <div className="font-semibold">Passkey über zweites Gerät</div>
-              <div className="text-xs text-muted-foreground">Erhalte einen 8-stelligen Code, den du auf dem anderen Gerät unter <span className="mono">/auth</span> → „Passkey via Code" eingibst.</div>
+              <div className="text-xs text-muted-foreground">Erhalte einen 8-stelligen Code, den du auf dem anderen Gerät unter <span className="mono">/auth</span> eingibst.</div>
             </div>
           </div>
           {!pairing ? (
