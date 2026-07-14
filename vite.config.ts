@@ -11,9 +11,6 @@ export default defineConfig({
       lazy: true,
       esmImport: true,
     },
-    externals: {
-      external: ["ws"],
-    },
     alias: {
       ws: "unenv/runtime/mock/proxy",
     },
