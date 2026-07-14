@@ -1,12 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useServerFn } from "@tanstack/react-start";
 import {
   CheckSquare, Calendar as CalIcon, Newspaper, Clock, ArrowRight,
-  Play, Square, Zap, User, Shield, Building2, Hash,
+  Play, Square, Zap, User, Shield, Building2, Hash, Timer,
+  ClipboardList, Mail,
 } from "lucide-react";
-import { LiquidButton, T } from "@/components/nl";
+import { LiquidButton, T, Spin } from "@/components/nl";
+import { PageLoader, InlineLoader, SkeletonCard } from "@/components/NeuLoader";
 import { getSession, getCredentials, type SynSession } from "@/lib/syn-session";
 import { tasksList } from "@/lib/tasks.functions";
 import { calList } from "@/lib/calendar.functions";
@@ -19,279 +21,299 @@ export const Route = createFileRoute("/_authenticated/home")({
   component: HomePage,
 });
 
+/* ──────────── Types ──────────── */
 type Task = { id: string; title: string; status: string; priority: string; due_at: string | null; assignee_slid: string };
-type Event = { id: string; title: string; starts_at: string; ends_at: string; location: string | null };
-type Roadmap = { id: string; title: string; status: string; description: string | null; sort_order?: number };
-type Shift = { id: string; slid: string; starts_at: string; ends_at: string; note: string | null };
-type Session = { id: string; started_at: string; status: string };
+type Event = { id: string; title: string; start: string; all_day: boolean };
+type RoadmapItem = { id: string; title: string; status: string; eta?: string };
 
-function fmtTime(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-}
-function fmtDate(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleDateString([], { weekday: "short", day: "2-digit", month: "short" });
-}
-function elapsed(from: string) {
-  const s = Math.floor((Date.now() - new Date(from).getTime()) / 1000);
-  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
-}
-
-const cardAnim = {
-  initial: { opacity: 0, y: 20, scale: 0.98 },
-  animate: { opacity: 1, y: 0, scale: 1 },
-  transition: { type: "spring", stiffness: 300, damping: 28 },
+/* ──────────── Stagger Animation ──────────── */
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.08, delayChildren: 0.1 } },
+};
+const itemVariants = {
+  hidden: { opacity: 0, y: 16 },
+  visible: { opacity: 1, y: 0, transition: { type: "spring", damping: 18, stiffness: 200 } },
 };
 
-function NlCard({ children, className = "", delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
-  return (
-    <motion.section
-      initial={cardAnim.initial}
-      animate={cardAnim.animate}
-      transition={{ ...cardAnim.transition, delay }}
-      className={`p-4 ${className}`}
-      style={{ background: T.bg2, border: `1px solid ${T.border}`, borderRadius: "16px" }}
-    >
-      {children}
-    </motion.section>
-  );
-}
-
-function ProfileCard({ session, delay = 0 }: { session: SynSession; delay?: number }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20, scale: 0.97 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ type: "spring", stiffness: 300, damping: 28, delay }}
-      style={{
-        background: `linear-gradient(135deg, ${T.bg2} 0%, ${T.surface} 100%)`,
-        border: `1px solid ${T.border}`,
-        borderRadius: "16px",
-        padding: "16px",
-        position: "relative",
-        overflow: "hidden",
-      }}
-    >
-      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "2px", background: `linear-gradient(90deg, ${T.primary}, ${T.accent}, ${T.secondary})`, opacity: 0.6 }} />
-      <div className="flex items-center gap-3">
-        <div style={{ width: "48px", height: "48px", borderRadius: "14px", flexShrink: 0, background: `linear-gradient(135deg, ${T.primary}22, ${T.accent}18)`, border: `1px solid ${T.primary}30`, display: "grid", placeItems: "center" }}>
-          <User size={22} style={{ color: T.primary }} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-sm truncate" style={{ color: T.text }}>{session.name || "Unbekannt"}</span>
-            <span className="text-[10px] mono px-1.5 py-0.5 rounded-md" style={{ background: `${T.primary}15`, color: T.primary, border: `1px solid ${T.primary}30` }}>{session.slid}</span>
-          </div>
-          <div className="flex items-center gap-2 mt-0.5">
-            {session.kind && <span className="text-[10px] flex items-center gap-1" style={{ color: T.muted }}><Shield size={10} /> {session.kind}</span>}
-            {session.department && <span className="text-[10px] flex items-center gap-1" style={{ color: T.muted }}><Building2 size={10} /> {session.department}</span>}
-            {session.position && <span className="text-[10px] flex items-center gap-1" style={{ color: T.muted }}><Hash size={10} /> {session.position}</span>}
-          </div>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
+/* ──────────── Home Page ──────────── */
 function HomePage() {
-  const [session, setSession] = useState<SynSession | null>(null);
+  const session = getSession();
+  const [loading, setLoading] = useState(true);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
-  const [roadmap, setRoadmap] = useState<Roadmap[]>([]);
-  const [shifts, setShifts] = useState<Shift[]>([]);
-  const [active, setActive] = useState<Session | null>(null);
-  const [tick, setTick] = useState(0);
+  const [roadmap, setRoadmap] = useState<RoadmapItem[]>([]);
+  const [timerRunning, setTimerRunning] = useState(false);
+  const [timerLoading, setTimerLoading] = useState(false);
+  const [hoursToday, setHoursToday] = useState("0.0");
+  const [shifts, setShifts] = useState<any[]>([]);
+  const [showQuickCode, setShowQuickCode] = useState(false);
+  const [quickCode, setQuickCode] = useState("");
+  const [unreadCount] = useState(0);
 
-  const tFn = useServerFn(tasksList);
-  const cFn = useServerFn(calList);
-  const rFn = useServerFn(roadmapList);
-  const sFn = useServerFn(wtShiftsList);
-  const aFn = useServerFn(wtSessionActive);
-  const startFn = useServerFn(wtSessionStart);
-  const stopFn = useServerFn(wtSessionStop);
+  const tasksListFn = useServerFn(tasksList);
+  const calListFn = useServerFn(calList);
+  const roadmapListFn = useServerFn(roadmapList);
+  const wtShiftsFn = useServerFn(wtShiftsList);
+  const wtActiveFn = useServerFn(wtSessionActive);
+  const wtStartFn = useServerFn(wtSessionStart);
+  const wtStopFn = useServerFn(wtSessionStop);
+  const quickLoginFn = useServerFn(quickLoginIssue);
 
-  async function load() {
-    const s = getSession(); setSession(s);
-    const c = getCredentials(); if (!c) return;
-    const now = new Date();
-    const in7 = new Date(now.getTime() + 7 * 24 * 3600_000);
-    try {
-      const [tk, ev, rm, sh, ac] = await Promise.all([
-        tFn({ data: c }) as Promise<Task[]>,
-        cFn({ data: { ...c, from: now.toISOString(), to: in7.toISOString() } }) as Promise<Event[]>,
-        rFn({ data: c }) as Promise<Roadmap[]>,
-        sFn({ data: { ...c, from: new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString(), to: in7.toISOString(), slid_filter: s?.slid } }) as Promise<Shift[]>,
-        aFn({ data: c }) as Promise<Session | null>,
-      ]);
-      setTasks(tk.filter((x) => x.status !== "done" && x.assignee_slid === s?.slid).slice(0, 5));
-      setEvents(ev.slice(0, 5));
-      setRoadmap(rm.filter((x) => x.status !== "done" && x.status !== "shipped").slice(0, 3));
-      setShifts(sh);
-      setActive(ac);
-    } catch { /* tolerate */ }
-  }
-
-  useEffect(() => { void load(); /* eslint-disable-next-line */ }, []);
   useEffect(() => {
-    const id = window.setInterval(() => setTick((t) => t + 1), 1000);
-    return () => window.clearInterval(id);
+    loadData();
   }, []);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _ = tick;
+
+  async function loadData() {
+    setLoading(true);
+    try {
+      const c = getCredentials();
+      const today = new Date().toISOString().split("T")[0];
+      const [t, e, r, s, a] = await Promise.all([
+        tasksListFn({ data: { limit: 5 } }).catch(() => []),
+        calListFn({ data: { from: today, to: today, limit: 5 } }).catch(() => []),
+        roadmapListFn().catch(() => []),
+        wtShiftsFn({ data: { from: today, to: today } }).catch(() => []),
+        c ? wtActiveFn({ data: c }).catch(() => ({ active: false })) : { active: false },
+      ]);
+      setTasks((t as Task[]) || []);
+      setEvents((e as Event[]) || []);
+      setRoadmap((r as RoadmapItem[]) || []);
+      setShifts((s as any[]) || []);
+      setTimerRunning((a as { active: boolean }).active);
+
+      // Calculate hours today
+      const totalMs = (s as any[])?.reduce((acc: number, shift: any) => {
+        if (shift.duration_ms) return acc + shift.duration_ms;
+        if (shift.start_time && shift.end_time) {
+          return acc + (new Date(shift.end_time).getTime() - new Date(shift.start_time).getTime());
+        }
+        return acc;
+      }, 0) || 0;
+      setHoursToday((totalMs / 3600000).toFixed(1));
+    } catch { /* ignore */ }
+    setLoading(false);
+  }
 
   async function toggleTimer() {
-    const c = getCredentials(); if (!c) return;
-    if (active) { await stopFn({ data: { ...c, id: active.id } }); }
-    else { await startFn({ data: { ...c } }); }
-    await load();
+    setTimerLoading(true);
+    try {
+      const c = getCredentials();
+      if (!c) return;
+      if (timerRunning) {
+        await wtStopFn({ data: c });
+        setTimerRunning(false);
+      } else {
+        await wtStartFn({ data: c });
+        setTimerRunning(true);
+      }
+      // Refresh shifts
+      const today = new Date().toISOString().split("T")[0];
+      const s = await wtShiftsFn({ data: { from: today, to: today } }).catch(() => []);
+      setShifts((s as any[]) || []);
+      const totalMs = (s as any[])?.reduce((acc: number, shift: any) => {
+        if (shift.duration_ms) return acc + shift.duration_ms;
+        if (shift.start_time && shift.end_time) {
+          return acc + (new Date(shift.end_time).getTime() - new Date(shift.start_time).getTime());
+        }
+        return acc;
+      }, 0) || 0;
+      setHoursToday((totalMs / 3600000).toFixed(1));
+    } catch { /* ignore */ }
+    setTimerLoading(false);
   }
 
-  if (!session) return null;
-  const today = new Date();
-  const todayShifts = shifts.filter((s) => new Date(s.starts_at).toDateString() === today.toDateString());
+  async function generateQuickCode() {
+    try {
+      const c = getCredentials();
+      if (!c) return;
+      const result = await quickLoginFn({ data: c }) as { code: string };
+      setQuickCode(result.code);
+      setShowQuickCode(true);
+      setTimeout(() => setShowQuickCode(false), 30000);
+    } catch { /* ignore */ }
+  }
+
+  if (loading) {
+    return <PageLoader type="sync" label="Dashboard wird geladen…" />;
+  }
+
+  const openTasks = tasks.filter((t) => t.status !== "done").length;
 
   return (
-    <div className="p-4 sm:p-6 max-w-4xl mx-auto pb-28 md:pb-8 space-y-4">
-      <ProfileCard session={session} delay={0} />
-      <QuickLoginSection slid={session.slid} />
-
-      <NlCard delay={0.1}>
-        <div className="flex items-center gap-2 mb-3">
-          <Clock className="h-4 w-4" style={{ color: T.primary }} />
-          <h2 className="font-semibold text-sm" style={{ color: T.text }}>Arbeitszeit heute</h2>
-          <Link to="/worktime" className="ml-auto text-[11px] flex items-center gap-0.5 transition-colors hover:underline" style={{ color: T.muted }}>Zeitkalender <ArrowRight className="inline h-3 w-3" /></Link>
-        </div>
-        {todayShifts.length > 0 ? (
-          <div className="text-xs space-y-1.5 mb-3">
-            {todayShifts.map((s) => (
-              <div key={s.id} className="flex items-center gap-2 p-2.5 rounded-xl" style={{ background: `${T.surface}`, border: `1px solid ${T.border}` }}>
-                <span className="mono" style={{ color: T.text }}>{fmtTime(s.starts_at)} &ndash; {fmtTime(s.ends_at)}</span>
-                {s.note && <span className="truncate" style={{ color: T.muted }}>&middot; {s.note}</span>}
-              </div>
-            ))}
+    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="max-w-5xl mx-auto px-4 py-6 space-y-6">
+      {/* Profile Card */}
+      <motion.div variants={itemVariants} className="relative overflow-hidden rounded-3xl border p-6" style={{ background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.06)" }}>
+        <div className="absolute top-0 left-0 right-0 h-0.5" style={{ background: `linear-gradient(90deg, ${T.primary}, ${T.accent})` }} />
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="h-14 w-14 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ background: `linear-gradient(135deg, ${T.primary}20, ${T.accent}20)` }}>
+            <User className="h-7 w-7" style={{ color: T.primary }} />
           </div>
-        ) : (
-          <div className="text-xs mb-3" style={{ color: T.muted }}>Heute keine Schicht geplant.</div>
-        )}
-        <div className="flex items-center gap-3">
-          {active ? (
-            <>
-              <div className="flex-1">
-                <div className="text-[10px] uppercase mono" style={{ color: T.muted }}>Timer aktiv</div>
-                <motion.div key={active.started_at} className="text-lg mono font-semibold" style={{ color: T.success }} animate={{ opacity: [1, 0.7, 1] }} transition={{ duration: 2, repeat: Infinity }}>
-                  {elapsed(active.started_at)}
-                </motion.div>
-              </div>
-              <LiquidButton variant="danger" size="sm" onClick={() => void toggleTimer()}><Square className="h-4 w-4" /> Stop</LiquidButton>
-            </>
-          ) : (
-            <LiquidButton variant="success" fullWidth size="sm" onClick={() => void toggleTimer()}><Play className="h-4 w-4" /> Arbeit starten</LiquidButton>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg font-bold truncate" style={{ fontFamily: "'Space Grotesk', sans-serif", color: T.text }}>
+              {session?.name || "xSyna Mitglied"}
+            </h1>
+            <div className="flex flex-wrap items-center gap-2 mt-1">
+              <span className="text-xs mono px-2 py-0.5 rounded-lg" style={{ background: "rgba(0,229,255,0.1)", color: T.primary }}>
+                <Hash className="h-3 w-3 inline mr-1" />
+                {session?.slid}
+              </span>
+              <span className="text-xs px-2 py-0.5 rounded-lg" style={{ background: "rgba(255,255,255,0.05)", color: T.muted }}>
+                {session?.kind || "Account"}
+              </span>
+              {session?.hl && (
+                <span className="text-xs px-2 py-0.5 rounded-lg" style={{ background: "rgba(0,255,136,0.1)", color: T.success }}>
+                  <Shield className="h-3 w-3 inline mr-1" />
+                  HL
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <LiquidButton variant="primary" size="sm" onClick={toggleTimer} disabled={timerLoading}>
+              {timerLoading ? <Spin size={14} /> : timerRunning ? <><Square className="h-4 w-4 mr-1" /> Stop</> : <><Play className="h-4 w-4 mr-1" /> Start</>}
+            </LiquidButton>
+            <LiquidButton variant="ghost" size="sm" onClick={generateQuickCode}>
+              <Zap className="h-4 w-4 mr-1" /> Quick
+            </LiquidButton>
+          </div>
+        </div>
+
+        {/* Quick Code */}
+        <AnimatePresence>
+          {showQuickCode && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="mt-4 p-3 rounded-xl text-center" style={{ background: "rgba(0,229,255,0.05)", border: `1px solid ${T.primary}20` }}>
+              <span className="text-xs" style={{ color: T.muted }}>Quick-Login Code</span>
+              <div className="text-2xl font-bold tracking-[0.3em] mt-1" style={{ color: T.primary, fontFamily: "'JetBrains Mono', monospace" }}>{quickCode}</div>
+            </motion.div>
           )}
-        </div>
-      </NlCard>
+        </AnimatePresence>
+      </motion.div>
 
-      <NlCard delay={0.2}>
-        <div className="flex items-center gap-2 mb-3">
-          <CheckSquare className="h-4 w-4" style={{ color: T.success }} />
-          <h2 className="font-semibold text-sm" style={{ color: T.text }}>Meine Aufgaben</h2>
-          <Link to="/tasks" className="ml-auto text-[11px] flex items-center gap-0.5 transition-colors hover:underline" style={{ color: T.muted }}>Alle <ArrowRight className="inline h-3 w-3" /></Link>
-        </div>
-        {tasks.length === 0 ? (
-          <div className="text-xs" style={{ color: T.muted }}>Keine offenen Aufgaben.</div>
-        ) : (
-          <div className="space-y-1.5">
-            {tasks.map((t) => (
-              <motion.div key={t.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ type: "spring", stiffness: 400, damping: 30 }} className="flex items-center gap-2 p-2.5 rounded-xl text-xs" style={{ background: T.surface, border: `1px solid ${T.border}` }}>
-                <span className="h-2 w-2 rounded-full shrink-0" style={{ background: t.priority === "urgent" ? T.error : t.priority === "high" ? T.secondary : T.primary, boxShadow: `0 0 6px ${t.priority === "urgent" ? T.error : t.priority === "high" ? T.secondary : T.primary}50` }} />
-                <span className="flex-1 truncate" style={{ color: T.text }}>{t.title}</span>
-                {t.due_at && <span className="text-[10px] mono shrink-0" style={{ color: T.muted }}>{fmtDate(t.due_at)}</span>}
+      {/* Stats Row */}
+      <motion.div variants={itemVariants} className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: "Stunden heute", value: `${hoursToday}h`, icon: Clock, color: T.primary },
+          { label: "Aufgaben offen", value: String(openTasks), icon: CheckSquare, color: T.secondary },
+          { label: "Termine heute", value: String(events.length), icon: CalIcon, color: T.accent },
+          { label: "Nachrichten", value: String(unreadCount), icon: Mail, color: T.success },
+        ].map((stat) => (
+          <div key={stat.label} className="rounded-2xl border p-4 text-center" style={{ background: "rgba(255,255,255,0.03)", borderColor: "rgba(255,255,255,0.06)" }}>
+            <stat.icon className="h-5 w-5 mx-auto mb-2" style={{ color: stat.color }} />
+            <div className="text-xl font-bold" style={{ color: T.text, fontFamily: "'Space Grotesk', sans-serif" }}>{stat.value}</div>
+            <div className="text-[10px] mt-1" style={{ color: T.muted }}>{stat.label}</div>
+          </div>
+        ))}
+      </motion.div>
+
+      {/* Main Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Tasks Card */}
+        <motion.div variants={itemVariants} className="rounded-3xl border p-5" style={{ background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.06)" }}>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <CheckSquare className="h-5 w-5" style={{ color: T.secondary }} />
+              <h3 className="font-semibold text-sm" style={{ color: T.text }}>Aufgaben</h3>
+            </div>
+            <Link to="/tasks" className="text-xs flex items-center gap-1 hover:underline" style={{ color: T.primary }}>
+              Alle <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
+          <div className="space-y-2">
+            {tasks.slice(0, 4).map((task, i) => (
+              <motion.div
+                key={task.id}
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.05 }}
+                className="flex items-center gap-3 p-3 rounded-xl"
+                style={{ background: "rgba(255,255,255,0.02)" }}
+              >
+                <div className="h-2 w-2 rounded-full flex-shrink-0" style={{
+                  background: task.priority === "high" ? T.error : task.priority === "medium" ? T.secondary : T.success,
+                }} />
+                <span className="text-sm flex-1 truncate" style={{ color: T.text }}>{task.title}</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-md flex-shrink-0" style={{
+                  background: task.status === "done" ? `${T.success}15` : `${T.secondary}15`,
+                  color: task.status === "done" ? T.success : T.secondary,
+                }}>
+                  {task.status === "done" ? "Erledigt" : "Offen"}
+                </span>
               </motion.div>
             ))}
+            {tasks.length === 0 && <p className="text-xs text-center py-4" style={{ color: T.muted }}>Keine Aufgaben</p>}
           </div>
-        )}
-      </NlCard>
+        </motion.div>
 
-      <NlCard delay={0.3}>
-        <div className="flex items-center gap-2 mb-3">
-          <CalIcon className="h-4 w-4" style={{ color: T.primary }} />
-          <h2 className="font-semibold text-sm" style={{ color: T.text }}>Nächste Termine</h2>
-          <Link to="/calendar" className="ml-auto text-[11px] flex items-center gap-0.5 transition-colors hover:underline" style={{ color: T.muted }}>SynCal <ArrowRight className="inline h-3 w-3" /></Link>
-        </div>
-        {events.length === 0 ? (
-          <div className="text-xs" style={{ color: T.muted }}>Nichts geplant.</div>
-        ) : (
-          <div className="space-y-1.5">
-            {events.map((e) => (
-              <motion.div key={e.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ type: "spring", stiffness: 400, damping: 30 }} className="flex items-center gap-2 p-2.5 rounded-xl text-xs" style={{ background: T.surface, border: `1px solid ${T.border}` }}>
-                <span className="mono shrink-0 w-24" style={{ color: T.muted }}>{fmtDate(e.starts_at)} {fmtTime(e.starts_at)}</span>
-                <span className="flex-1 truncate" style={{ color: T.text }}>{e.title}</span>
+        {/* Calendar Card */}
+        <motion.div variants={itemVariants} className="rounded-3xl border p-5" style={{ background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.06)" }}>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <CalIcon className="h-5 w-5" style={{ color: T.accent }} />
+              <h3 className="font-semibold text-sm" style={{ color: T.text }}>Heutige Termine</h3>
+            </div>
+            <Link to="/calendar" className="text-xs flex items-center gap-1 hover:underline" style={{ color: T.primary }}>
+              Kalender <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
+          <div className="space-y-2">
+            {events.slice(0, 4).map((evt, i) => (
+              <motion.div
+                key={evt.id}
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.05 }}
+                className="flex items-center gap-3 p-3 rounded-xl"
+                style={{ background: "rgba(255,255,255,0.02)" }}
+              >
+                <div className="h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${T.accent}15` }}>
+                  <CalIcon className="h-4 w-4" style={{ color: T.accent }} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm truncate block" style={{ color: T.text }}>{evt.title}</span>
+                  <span className="text-[10px]" style={{ color: T.muted }}>
+                    {evt.all_day ? "Ganztägig" : new Date(evt.start).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                </div>
               </motion.div>
             ))}
+            {events.length === 0 && <p className="text-xs text-center py-4" style={{ color: T.muted }}>Keine Termine heute</p>}
           </div>
-        )}
-      </NlCard>
+        </motion.div>
 
-      {roadmap.length > 0 && (
-        <NlCard delay={0.4}>
-          <div className="flex items-center gap-2 mb-3">
-            <Newspaper className="h-4 w-4" style={{ color: T.accent }} />
-            <h2 className="font-semibold text-sm" style={{ color: T.text }}>Wichtig auf der Roadmap</h2>
-            <Link to="/news" className="ml-auto text-[11px] flex items-center gap-0.5 transition-colors hover:underline" style={{ color: T.muted }}>News <ArrowRight className="inline h-3 w-3" /></Link>
+        {/* Roadmap Card */}
+        <motion.div variants={itemVariants} className="rounded-3xl border p-5 lg:col-span-2" style={{ background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.06)" }}>
+          <div className="flex items-center gap-2 mb-4">
+            <ClipboardList className="h-5 w-5" style={{ color: T.primary }} />
+            <h3 className="font-semibold text-sm" style={{ color: T.text }}>Roadmap</h3>
           </div>
-          <div className="space-y-1.5">
-            {roadmap.map((r) => (
-              <motion.div key={r.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ type: "spring", stiffness: 400, damping: 30 }} className="p-2.5 rounded-xl text-xs" style={{ background: T.surface, border: `1px solid ${T.border}` }}>
-                <div className="font-medium truncate" style={{ color: T.text }}>{r.title}</div>
-                {r.description && <div className="text-[11px] line-clamp-2 mt-0.5" style={{ color: T.muted }}>{r.description}</div>}
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            {roadmap.slice(0, 6).map((item, i) => (
+              <motion.div
+                key={item.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05 }}
+                className="flex-shrink-0 w-40 p-3 rounded-2xl border"
+                style={{
+                  background: item.status === "done" ? `${T.success}08` : item.status === "in_progress" ? `${T.primary}08` : "rgba(255,255,255,0.02)",
+                  borderColor: item.status === "done" ? `${T.success}20` : item.status === "in_progress" ? `${T.primary}20` : "rgba(255,255,255,0.06)",
+                }}
+              >
+                <div className="h-1.5 w-full rounded-full mb-2" style={{ background: "rgba(255,255,255,0.05)" }}>
+                  <div className="h-full rounded-full" style={{
+                    width: item.status === "done" ? "100%" : item.status === "in_progress" ? "60%" : "20%",
+                    background: item.status === "done" ? T.success : item.status === "in_progress" ? T.primary : T.muted,
+                  }} />
+                </div>
+                <p className="text-xs font-medium truncate" style={{ color: T.text }}>{item.title}</p>
+                {item.eta && <p className="text-[10px] mt-1" style={{ color: T.muted }}>{item.eta}</p>}
               </motion.div>
             ))}
+            {roadmap.length === 0 && <p className="text-xs py-4" style={{ color: T.muted }}>Keine Roadmap-Einträge</p>}
           </div>
-        </NlCard>
-      )}
-    </div>
-  );
-}
-
-function QuickLoginSection({ slid }: { slid: string }) {
-  const [code, setCode] = useState<{ code: string; expires_at: string } | null>(null);
-  const [busy, setBusy] = useState(false);
-  const issueFn = useServerFn(quickLoginIssue);
-  async function issue() {
-    const c = getCredentials(); if (!c) return;
-    setBusy(true);
-    try { setCode(await issueFn({ data: { ...c, target_slid: slid } })); }
-    catch (e) { alert(e instanceof Error ? e.message : "Fehler."); }
-    finally { setBusy(false); }
-  }
-
-  return (
-    <motion.section
-      initial={{ opacity: 0, y: 20, scale: 0.98 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ type: "spring", stiffness: 300, damping: 28, delay: 0.05 }}
-      className="p-4"
-      style={{ background: T.bg2, border: `1px solid ${T.border}`, borderRadius: "16px" }}
-    >
-      <div className="flex items-center gap-2 mb-2">
-        <Zap className="h-4 w-4" style={{ color: T.primary }} />
-        <h2 className="font-semibold text-sm" style={{ color: T.text }}>Mein Quick-Login</h2>
-        <span className="ml-auto text-[10px] mono" style={{ color: T.muted }}>6-stelliger Einmal-Code &middot; 15 Min</span>
+        </motion.div>
       </div>
-      {code ? (
-        <div className="text-center p-3 rounded-2xl" style={{ background: T.surface, border: `1px solid ${T.border}` }}>
-          <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-3xl font-bold mono tracking-widest" style={{ color: T.primary, textShadow: `0 0 20px ${T.primary}40` }}>
-            {code.code}
-          </motion.div>
-          <div className="text-[10px] mono mt-1" style={{ color: T.muted }}>gültig bis {new Date(code.expires_at).toLocaleTimeString()}</div>
-          <LiquidButton variant="ghost" size="xs" onClick={() => setCode(null)} className="mt-2">Verbergen</LiquidButton>
-        </div>
-      ) : (
-        <LiquidButton fullWidth size="sm" onClick={() => void issue()} disabled={busy}>
-          {busy ? "Erzeuge…" : <><Zap className="h-3.5 w-3.5" /> Code auf Zweitgerät nutzen</>}
-        </LiquidButton>
-      )}
-    </motion.section>
+    </motion.div>
   );
 }
