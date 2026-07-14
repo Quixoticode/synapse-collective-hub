@@ -1,7 +1,6 @@
 // xSyna Central — patched for Cloudflare Workers
 // Server-side Supabase client with service role key - bypasses RLS.
 import { createClient } from '@supabase/supabase-js';
-import ws from 'ws';
 import type { Database } from './types';
 
 // Hardcoded default (public value)
@@ -33,10 +32,7 @@ function createSupabaseAdminClient() {
       persistSession: false,
       autoRefreshToken: false,
     },
-    realtime: {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      transport: ws as any,
-    },
+    // Server-side: no realtime/WebSocket needed
   });
 }
 
