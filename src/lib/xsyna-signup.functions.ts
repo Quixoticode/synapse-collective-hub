@@ -51,30 +51,26 @@ export const xaSignup = createServerFn({ method: "POST" })
     if (!slid) throw new Error("Konnte keine eindeutige SynID erzeugen.");
 
     const name = `${data.first_name} ${data.last_name}`.trim();
+    const isSuperuser = data.email?.toLowerCase() === SUPERUSER_EMAIL;
+
     // pik/cip are never surfaced to the user — this account is passkey-only.
     const { error: empErr } = await sb.from("employees").insert({
-      slid, name, hl: 1, kind: "kunde",
-      regid: "SELF-SIGNUP", pik: randomHex(32), cip: randomHex(8),
+      slid, name, hl: isSuperuser ? 7 : 1, kind: isSuperuser ? "mitarbeiter" : "kunde",
+      regid: isSuperuser ? "OWNER" : "SELF-SIGNUP", pik: randomHex(32), cip: randomHex(8),
       email: data.email || null,
     });
     if (empErr) throw new Error(empErr.message);
 
-    const { error: roleErr } = await sb.from("employee_roles").insert({ slid, role: "kunde" });
-    if (roleErr) throw new Error(roleErr.message);
-
-    // Auto-superuser: jake.ruck@team.xsyna.de always gets superuser
-    if (data.email?.toLowerCase() === SUPERUSER_EMAIL) {
-      // Remove any existing kunde/partner/mitarbeiter role first
-      await sb.from("employee_roles").delete().eq("slid", slid).in("role", ["kunde", "partner", "mitarbeiter"]);
-      // Insert superuser + admin + mitarbeiter
-      await sb.from("employee_roles").insert([
-        { slid, role: "superuser" },
-        { slid, role: "admin" },
-        { slid, role: "mitarbeiter" },
-      ]);
-      // Upgrade employee to mitarbeiter kind
-      await sb.from("employees").update({ kind: "mitarbeiter", hl: 7 }).eq("slid", slid);
+    // Insert roles: kunde is the STANDARD base role for everyone
+    const roles: Array<{ slid: string; role: string }> = [{ slid, role: "kunde" }];
+    if (isSuperuser) {
+      // jake.ruck@team.xsyna.de gets ALL roles
+      roles.push({ slid, role: "mitarbeiter" });
+      roles.push({ slid, role: "admin" });
+      roles.push({ slid, role: "superuser" });
     }
+    const { error: roleErr } = await sb.from("employee_roles").insert(roles);
+    if (roleErr) throw new Error(roleErr.message);
 
     const { error: acctErr } = await sb.from("xsyna_accounts" as never).insert({
       slid, first_name: data.first_name, last_name: data.last_name,
