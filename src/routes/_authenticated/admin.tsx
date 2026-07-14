@@ -1,387 +1,343 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useServerFn } from "@tanstack/react-start";
-import { Shield, Plus, Trash2, Save, X, ChevronDown, ChevronUp, Search, RefreshCw, UserPlus, AtSign, Building2, Star, Crown, User, Briefcase, XCircle, CheckCircle2 } from "lucide-react";
-import { xaAdminListAccounts, xaAdminCreateAccount, xaAdminUpdateRoles, xaAdminDeleteAccount } from "@/lib/xsyna-account.functions";
-import { getXsynaSession } from "@/lib/xsyna-session";
-import { getSession } from "@/lib/syn-session";
-import { useSync } from "@/lib/use-sync";
-import { LoadingOverlay } from "@/components/NeuLoader";
+import {
+  LayoutDashboard, Users, Shield, Smartphone, Ban, Search, ChevronDown, ChevronRight,
+  Edit3, Trash2, RotateCcw, Save, X, UserCheck, Activity, Lock, Eye, Clock, CheckSquare,
+  ShieldCheck, UserX, KeyRound, Fingerprint, Globe, Monitor
+} from "lucide-react";
+import {
+  T, LiquidButton, LiquidInput, LiquidCheckbox, TabBar, AccordionItem, Spin, XSynaLogo
+} from "@/components/nl";
+import { getCredentials, getSession } from "@/lib/syn-session";
+import {
+  adminStats, adminListAccounts, adminUpdateAccount, adminSetRole,
+  adminListDevices, adminRevokeDevice, adminAuditLog,
+  adminBanAccount, adminUnbanAccount, adminListBans,
+  adminListPermissions, adminSetPermission,
+} from "@/lib/admin.functions";
+import { MODULE_FEATURES, ACTION_FEATURES } from "@/lib/features";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   ssr: false,
   component: AdminPage,
 });
 
-type Account = {
-  slid: string;
-  name: string;
-  email: string | null;
-  hl: number;
-  kind: string;
-  department: string | null;
-  position: string | null;
-  created_at: string;
-  roles: string[];
-  profile: { first_name?: string; last_name?: string; email?: string; passkey_migrated?: boolean } | null;
+/* ─── types ─── */
+type AccountRow = {
+  slid: string; name: string; department: string | null; position: string | null;
+  kind: string | null; hl: boolean | null; roles: string[];
 };
 
-const ALL_ROLES = ["kunde", "partner", "mitarbeiter", "admin", "superuser"] as const;
-const ROLE_ICONS: Record<string, React.ReactNode> = {
-  superuser: <Crown className="w-3 h-3" />,
-  admin: <Star className="w-3 h-3" />,
-  mitarbeiter: <Briefcase className="w-3 h-3" />,
-  partner: <User className="w-3 h-3" />,
-  kunde: <AtSign className="w-3 h-3" />,
-};
-const ROLE_COLORS: Record<string, string> = {
-  superuser: "var(--neural-magenta)",
-  admin: "var(--synapse)",
-  mitarbeiter: "var(--neural-mint)",
-  partner: "var(--neural-violet)",
-  kunde: "var(--neural-amber)",
-};
-
-/** Build auth payload: uses xSyna token if available, falls back to legacy SLID+PIK */
-function getAuthPayload() {
-  const xa = getXsynaSession();
-  if (xa?.token) return { token: xa.token };
-  const legacy = getSession();
-  if (legacy) return { slid: legacy.slid, pik: legacy.pik };
-  return null;
-}
-
+/* ─── page ─── */
 function AdminPage() {
-  const listFn = useServerFn(xaAdminListAccounts);
-  const createFn = useServerFn(xaAdminCreateAccount);
-  const updateRolesFn = useServerFn(xaAdminUpdateRoles);
-  const deleteFn = useServerFn(xaAdminDeleteAccount);
-  const { run, syncing, error, clearError } = useSync();
+  const session = getSession();
+  const listAccountsFn = useServerFn(adminListAccounts);
+  const statsFn = useServerFn(adminStats);
+  const updateAccountFn = useServerFn(adminUpdateAccount);
+  const setRoleFn = useServerFn(adminSetRole);
+  const listDevicesFn = useServerFn(adminListDevices);
+  const revokeDeviceFn = useServerFn(adminRevokeDevice);
+  const listBansFn = useServerFn(adminListBans);
+  const banFn = useServerFn(adminBanAccount);
+  const unbanFn = useServerFn(adminUnbanAccount);
+  const auditFn = useServerFn(adminAuditLog);
+  const listPermsFn = useServerFn(adminListPermissions);
+  const setPermFn = useServerFn(adminSetPermission);
 
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [filtered, setFiltered] = useState<Account[]>([]);
+  const [tab, setTab] = useState(0);
+  const tabs = ["Dashboard", "Accounts", "Berechtigungen", "Security"];
+
+  /* Dashboard state */
+  const [stats, setStats] = useState<any>(null);
+
+  /* Accounts state */
+  const [accounts, setAccounts] = useState<AccountRow[]>([]);
   const [search, setSearch] = useState("");
-  const [showCreate, setShowCreate] = useState(false);
-  const [expandedSlid, setExpandedSlid] = useState<string | null>(null);
-  const [editRoles, setEditRoles] = useState<Record<string, string[]>>({});
-  const [createStatus, setCreateStatus] = useState<"idle" | "success" | "error">("idle");
-  const [loaded, setLoaded] = useState(false);
+  const [editingSlid, setEditingSlid] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<Partial<AccountRow>>({});
 
-  // Create form state
-  const [cName, setCName] = useState("");
-  const [cEmail, setCEmail] = useState("");
-  const [cKind, setCKind] = useState<"kunde" | "partner" | "mitarbeiter">("kunde");
-  const [cHl, setCHl] = useState(1);
-  const [cDept, setCDept] = useState("");
-  const [cPos, setCPos] = useState("");
+  /* Devices state */
+  const [devices, setDevices] = useState<any[]>([]);
 
-  useEffect(() => {
-    loadAccounts();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  /* Bans state */
+  const [bans, setBans] = useState<any[]>([]);
+  const [banForm, setBanForm] = useState({ slid: "", reason: "", hours: "" });
 
-  useEffect(() => {
-    const q = search.toLowerCase().trim();
-    if (!q) { setFiltered(accounts); return; }
-    setFiltered(accounts.filter((a) =>
-      a.slid.toLowerCase().includes(q) ||
-      a.name.toLowerCase().includes(q) ||
-      (a.email?.toLowerCase() ?? "").includes(q) ||
-      (a.department?.toLowerCase() ?? "").includes(q) ||
-      a.roles.some((r) => r.includes(q))
-    ));
-  }, [search, accounts]);
+  /* Audit state */
+  const [auditLog, setAuditLog] = useState<any[]>([]);
 
-  async function loadAccounts() {
-    const auth = getAuthPayload();
-    if (!auth) return;
-    clearError();
-    const res = await run(async () => {
-      const rows = await listFn({ data: auth }) as Account[];
-      setAccounts(rows);
-      setFiltered(rows);
-      const er: Record<string, string[]> = {};
-      rows.forEach((r) => { er[r.slid] = [...r.roles]; });
-      setEditRoles(er);
-    });
-    setLoaded(true);
-    if (!res) return;
-  }
+  /* Permissions state */
+  const [allPerms, setAllPerms] = useState<any[]>([]);
+  const [selectedPermSlid, setSelectedPermSlid] = useState<string | null>(null);
 
-  async function createAccount() {
-    const auth = getAuthPayload();
-    if (!auth || !cName.trim()) return;
-    setCreateStatus("idle");
-    clearError();
-    const res = await run(async () => {
-      await createFn({ data: {
-        ...auth,
-        name: cName.trim(), email: cEmail.trim() || undefined,
-        kind: cKind, hl: cHl, department: cDept.trim() || undefined, position: cPos.trim() || undefined,
-      }});
-    });
-    if (res) {
-      setCreateStatus("success");
-      setShowCreate(false);
-      setCName(""); setCEmail(""); setCKind("kunde"); setCHl(1); setCDept(""); setCPos("");
-      await loadAccounts();
-      setTimeout(() => setCreateStatus("idle"), 2000);
-    } else {
-      setCreateStatus("error");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const creds = { slid: session?.slid || "", pik: session?.pik || "" };
+
+  async function load() {
+    if (!creds.slid || !creds.pik) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const [s, a, d, b, al, p] = await Promise.all([
+        statsFn({ data: creds }).catch(() => null),
+        listAccountsFn({ data: creds }).catch(() => []),
+        listDevicesFn({ data: creds }).catch(() => []),
+        listBansFn({ data: creds }).catch(() => []),
+        auditFn({ data: { ...creds, limit: 100 } }).catch(() => []),
+        listPermsFn({ data: creds }).catch(() => []),
+      ]);
+      setStats(s);
+      setAccounts(a as AccountRow[]);
+      setDevices(d);
+      setBans(b);
+      setAuditLog(al);
+      setAllPerms(p);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
     }
   }
 
-  async function saveRoles(slid: string) {
-    const auth = getAuthPayload();
-    if (!auth) return;
-    const roles = editRoles[slid] ?? [];
-    if (roles.length === 0) return;
-    clearError();
-    const res = await run(async () => {
-      await updateRolesFn({ data: { ...auth, target_slid: slid, roles: roles as any } });
-      await loadAccounts();
-      setExpandedSlid(null);
-    });
-    if (!res) return;
+  useEffect(() => { load(); }, []);
+
+  async function saveEdit() {
+    if (!editingSlid) return;
+    await updateAccountFn({ data: { ...creds, target_slid: editingSlid, ...editForm } });
+    setEditingSlid(null);
+    load();
   }
 
-  async function deleteAccount(slid: string) {
-    const auth = getAuthPayload();
-    if (!auth) return;
-    if (!window.confirm(`Account ${slid} wirklich löschen? Alle Passkeys und Daten werden entfernt.`)) return;
-    clearError();
-    const res = await run(async () => {
-      await deleteFn({ data: { ...auth, target_slid: slid } });
-      await loadAccounts();
-    });
-    if (!res) return;
+  async function toggleRole(targetSlid: string, role: string, grant: boolean) {
+    await setRoleFn({ data: { ...creds, target_slid: targetSlid, role, grant } });
+    load();
   }
 
-  function toggleRole(slid: string, role: string) {
-    setEditRoles((prev) => {
-      const current = prev[slid] ?? [];
-      const has = current.includes(role);
-      const next = has ? current.filter((r) => r !== role) : [...current, role];
-      return { ...prev, [slid]: next };
-    });
+  async function togglePerm(targetSlid: string, feature: string, allowed: boolean) {
+    await setPermFn({ data: { ...creds, target_slid: targetSlid, feature, allowed } });
+    load();
   }
 
-  const stats = {
-    total: accounts.length,
-    superusers: accounts.filter((a) => a.roles.includes("superuser")).length,
-    admins: accounts.filter((a) => a.roles.includes("admin")).length,
-    mitarbeiter: accounts.filter((a) => a.roles.includes("mitarbeiter")).length,
-    partners: accounts.filter((a) => a.roles.includes("partner")).length,
-    kunden: accounts.filter((a) => a.roles.includes("kunde")).length,
-  };
-
-  if (!loaded) {
-    return (
-      <div className="max-w-5xl mx-auto p-4 sm:p-6">
-        <LoadingOverlay type="sync" label="Lade Accounts…" visible={true} />
-      </div>
-    );
+  async function handleBan() {
+    if (!banForm.slid || !banForm.reason) return;
+    await banFn({ data: { ...creds, target_slid: banForm.slid, reason: banForm.reason, duration_hours: banForm.hours ? parseInt(banForm.hours) : undefined } });
+    setBanForm({ slid: "", reason: "", hours: "" });
+    load();
   }
+
+  async function handleUnban(slid: string) {
+    await unbanFn({ data: { ...creds, target_slid: slid } });
+    load();
+  }
+
+  const filteredAccounts = accounts.filter((a) =>
+    !search || a.name?.toLowerCase().includes(search.toLowerCase()) || a.slid.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const allFeatures = [...MODULE_FEATURES, ...ACTION_FEATURES];
 
   return (
-    <div className="max-w-5xl mx-auto p-4 sm:p-6 space-y-5">
-      {/* Error Banner */}
-      {error && (
-        <div className="flex items-start gap-2 p-3 rounded-2xl bg-destructive/10 border border-destructive/30 animate-in fade-in slide-in-from-top-2 duration-200">
-          <XCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
-          <div className="flex-1">
-            <div className="text-xs font-medium text-destructive">Fehler</div>
-            <div className="text-xs text-destructive/80 mono">{error}</div>
-          </div>
-          <button onClick={clearError} className="syn-btn-ghost p-1 shrink-0"><X className="h-3.5 w-3.5" /></button>
-        </div>
-      )}
-
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-2xl grid place-items-center" style={{ background: "var(--gradient-neural-soft)" }}>
-            <Shield className="h-5 w-5" style={{ color: "var(--neural-magenta)" }} />
-          </div>
+    <div className="p-4 sm:p-6 max-w-6xl mx-auto pb-28 md:pb-8" style={{ minHeight: "100vh" }}>
+      <header className="mb-6">
+        <div className="flex items-center gap-3 mb-4">
+          <ShieldCheck className="h-8 w-8" style={{ color: T.primary }} />
           <div>
-            <h1 className="text-xl font-bold">Account-Verwaltung</h1>
-            <p className="text-xs text-muted-foreground">{stats.total} Accounts · nur Superuser</p>
+            <h1 className="text-xl sm:text-2xl font-bold" style={{ fontFamily: "'Space Grotesk',sans-serif" }}>Admin Dashboard</h1>
+            <p className="text-xs" style={{ color: T.muted }}>Systemverwaltung · Superuser-Only</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => void loadAccounts()} disabled={syncing} className="syn-btn-ghost">
-            <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
-          </button>
-          <button onClick={() => { setShowCreate(true); setCreateStatus("idle"); clearError(); }} className="syn-btn">
-            <Plus className="h-4 w-4" />Neu
-          </button>
+        <TabBar tabs={tabs} defaultActive={0} onChange={setTab} />
+      </header>
+
+      {error && (
+        <div className="p-3 rounded-xl mb-4 text-sm" style={{ background: `${T.error}12`, border: `1px solid ${T.error}30`, color: T.error }}>
+          {error}
         </div>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-        {([
-          { label: "Gesamt", value: stats.total, color: "var(--synapse)" },
-          { label: "Superuser", value: stats.superusers, color: "var(--neural-magenta)" },
-          { label: "Admin", value: stats.admins, color: "var(--synapse)" },
-          { label: "Mitarbeiter", value: stats.mitarbeiter, color: "var(--neural-mint)" },
-          { label: "Partner", value: stats.partners, color: "var(--neural-violet)" },
-          { label: "Kunden", value: stats.kunden, color: "var(--neural-amber)" },
-        ]).map((s) => (
-          <div key={s.label} className="syn-card p-3 text-center">
-            <div className="text-2xl font-bold" style={{ color: s.color }}>{s.value}</div>
-            <div className="text-[10px] text-muted-foreground uppercase tracking-wider">{s.label}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <input className="syn-input pl-9" placeholder="Account-ID, Name, E-Mail, Abteilung, Rolle…" value={search} onChange={(e) => setSearch(e.target.value)} />
-      </div>
-
-      {/* Loading overlay for sync operations */}
-      {syncing && accounts.length === 0 && (
-        <LoadingOverlay type="sync" label="Synchronisiere…" visible={true} />
       )}
 
-      {/* Account List */}
-      <div className="space-y-2">
-        {filtered.length === 0 && (
-          <div className="syn-card p-8 text-center text-sm text-muted-foreground">
-            {accounts.length === 0 ? "Noch keine Accounts vorhanden." : "Keine Accounts gefunden."}
-          </div>
-        )}
-        {filtered.map((a) => (
-          <div key={a.slid} className="syn-card p-4 space-y-3">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shrink-0" style={{ background: "var(--gradient-neural-soft)", color: "var(--synapse)" }}>
-                {a.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-semibold text-sm truncate">{a.name}</span>
-                  <span className="text-[10px] mono text-muted-foreground">{a.slid}</span>
+      {loading && !stats ? (
+        <div className="flex justify-center py-20">
+          <Spin size={32} color={T.primary} />
+        </div>
+      ) : (
+        <AnimatePresence mode="wait">
+          {tab === 0 && stats && (
+            <motion.div key="dash" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <StatCard icon={Users} label="Accounts" value={stats.totalAccounts} color={T.primary} />
+              <StatCard icon={Smartphone} label="Geräte" value={stats.totalDevices} color={T.accent} />
+              <StatCard icon={Ban} label="Aktive Bans" value={stats.activeBans} color={T.error} />
+              <StatCard icon={ShieldCheck} label="Rollen" value={Object.keys(stats.roleBreakdown).length} color={T.success} />
+
+              <div className="col-span-2 lg:col-span-4">
+                <div className="p-4 rounded-2xl" style={{ background: T.bg2, border: `1px solid ${T.border}` }}>
+                  <h3 className="text-sm font-semibold mb-3" style={{ color: T.text }}>Rollen-Verteilung</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(stats.roleBreakdown).map(([role, count]) => (
+                      <span key={role} className="px-3 py-1 rounded-full text-xs" style={{ background: `${T.primary}15`, border: `1px solid ${T.primary}30`, color: T.primary }}>
+                        {role}: {count}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
-                  {a.roles.sort().map((r) => (
-                    <span key={r} className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full font-medium" style={{ background: `${ROLE_COLORS[r]}15`, color: ROLE_COLORS[r], border: `1px solid ${ROLE_COLORS[r]}30` }}>
-                      {ROLE_ICONS[r]} {r}
-                    </span>
+              </div>
+            </motion.div>
+          )}
+
+          {tab === 1 && (
+            <motion.div key="accounts" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+              <div className="flex gap-2">
+                <LiquidInput placeholder="Suchen (SLID oder Name)" value={search} onChange={setSearch} icon={Search} />
+                <LiquidButton onClick={load}><RotateCcw className="h-4 w-4" /></LiquidButton>
+              </div>
+
+              <div className="space-y-2">
+                {filteredAccounts.map((a) => (
+                  <div key={a.slid} className="p-4 rounded-2xl" style={{ background: T.bg2, border: `1px solid ${T.border}` }}>
+                    {editingSlid === a.slid ? (
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-2">
+                          <LiquidInput label="Name" value={editForm.name || ""} onChange={(v) => setEditForm(f => ({ ...f, name: v }))} />
+                          <LiquidInput label="Abteilung" value={editForm.department || ""} onChange={(v) => setEditForm(f => ({ ...f, department: v }))} />
+                        </div>
+                        <div className="flex gap-2">
+                          <LiquidButton onClick={saveEdit}><Save className="h-4 w-4" /> Speichern</LiquidButton>
+                          <LiquidButton variant="ghost" onClick={() => setEditingSlid(null)}><X className="h-4 w-4" /> Abbrechen</LiquidButton>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-medium text-sm" style={{ color: T.text }}>{a.name || "—"} <span className="mono text-xs" style={{ color: T.muted }}>({a.slid})</span></div>
+                          <div className="text-xs" style={{ color: T.muted }}>{a.department || "—"} · {a.position || "—"} · {a.kind || "—"}</div>
+                          <div className="flex gap-1 mt-1">
+                            {a.roles.map((r) => (
+                              <span key={r} className="px-1.5 py-0.5 rounded text-[10px]" style={{ background: `${T.accent}20`, color: T.accent }}>{r}</span>
+                            ))}
+                          </div>
+                        </div>
+                        <LiquidButton size="sm" onClick={() => { setEditingSlid(a.slid); setEditForm(a); }}><Edit3 className="h-4 w-4" /></LiquidButton>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {tab === 2 && (
+            <motion.div key="perms" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold" style={{ color: T.text }}>Accounts</h3>
+                  {accounts.map((a) => (
+                    <button
+                      key={a.slid}
+                      onClick={() => setSelectedPermSlid(a.slid)}
+                      className="w-full text-left p-2 rounded-xl text-sm"
+                      style={{
+                        background: selectedPermSlid === a.slid ? `${T.primary}15` : T.bg2,
+                        border: `1px solid ${selectedPermSlid === a.slid ? `${T.primary}40` : T.border}`,
+                        color: T.text,
+                      }}
+                    >
+                      {a.name || a.slid}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="lg:col-span-2 space-y-2">
+                  <h3 className="text-sm font-semibold" style={{ color: T.text }}>
+                    {selectedPermSlid ? `Berechtigungen für ${accounts.find(a => a.slid === selectedPermSlid)?.name || selectedPermSlid}` : "Account auswählen"}
+                  </h3>
+                  {selectedPermSlid && (
+                    <div className="space-y-1 max-h-[60vh] overflow-y-auto">
+                      {allFeatures.map((f) => {
+                        const hasPerm = allPerms.some((p) => p.slid === selectedPermSlid && p.tab_key === f);
+                        return (
+                          <div key={f} className="flex items-center gap-2 p-2 rounded-lg" style={{ background: T.bg2 }}>
+                            <LiquidCheckbox
+                              checked={hasPerm}
+                              onChange={(checked) => togglePerm(selectedPermSlid, f, checked)}
+                            >
+                              <span className="text-xs">{f}</span>
+                            </LiquidCheckbox>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {tab === 3 && (
+            <motion.div key="security" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+              {/* Bans */}
+              <div className="p-4 rounded-2xl" style={{ background: T.bg2, border: `1px solid ${T.border}` }}>
+                <h3 className="text-sm font-semibold mb-3" style={{ color: T.text }}>Bans</h3>
+                <div className="grid grid-cols-3 gap-2 mb-3">
+                  <LiquidInput placeholder="SLID" value={banForm.slid} onChange={(v) => setBanForm(f => ({ ...f, slid: v }))} />
+                  <LiquidInput placeholder="Grund" value={banForm.reason} onChange={(v) => setBanForm(f => ({ ...f, reason: v }))} />
+                  <LiquidInput placeholder="Stunden (optional)" value={banForm.hours} onChange={(v) => setBanForm(f => ({ ...f, hours: v }))} />
+                </div>
+                <LiquidButton onClick={handleBan}><Ban className="h-4 w-4" /> Bannen</LiquidButton>
+
+                <div className="mt-3 space-y-2">
+                  {bans.map((b) => (
+                    <div key={b.id} className="flex items-center justify-between p-2 rounded-lg" style={{ background: T.surface }}>
+                      <div>
+                        <span className="text-sm" style={{ color: T.text }}>{b.slid}</span>
+                        <span className="text-xs ml-2" style={{ color: T.muted }}>{b.reason}</span>
+                      </div>
+                      <LiquidButton variant="ghost" size="xs" onClick={() => handleUnban(b.slid)}><UserCheck className="h-4 w-4" /></LiquidButton>
+                    </div>
                   ))}
                 </div>
               </div>
-              <div className="flex items-center gap-1 shrink-0">
-                <button onClick={() => setExpandedSlid(expandedSlid === a.slid ? null : a.slid)} className="syn-btn-ghost p-1.5">
-                  {expandedSlid === a.slid ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                </button>
-                <button onClick={() => void deleteAccount(a.slid)} className="syn-btn-ghost p-1.5 text-destructive" title="Account löschen">
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
 
-            {expandedSlid === a.slid && (
-              <div className="pt-2 border-t border-border space-y-3 animate-in fade-in duration-200">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                  {a.email && <div><span className="text-muted-foreground">E-Mail:</span> {a.email}</div>}
-                  {a.department && <div><span className="text-muted-foreground">Abteilung:</span> {a.department}</div>}
-                  {a.position && <div><span className="text-muted-foreground">Position:</span> {a.position}</div>}
-                  <div><span className="text-muted-foreground">HL:</span> {a.hl}</div>
-                  <div><span className="text-muted-foreground">Kind:</span> {a.kind}</div>
-                  <div><span className="text-muted-foreground">Erstellt:</span> {new Date(a.created_at).toLocaleDateString("de-DE")}</div>
-                  <div><span className="text-muted-foreground">Passkey:</span> {a.profile?.passkey_migrated ? "✓" : "—"}</div>
-                </div>
-                <div>
-                  <div className="text-[11px] text-muted-foreground mono uppercase tracking-wider mb-2">Rollen bearbeiten</div>
-                  <div className="flex flex-wrap gap-2">
-                    {ALL_ROLES.map((r) => {
-                      const active = (editRoles[a.slid] ?? a.roles).includes(r);
-                      return (
-                        <button key={r} onClick={() => toggleRole(a.slid, r)}
-                          className={`inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-full transition-all ${active ? "font-medium" : "opacity-50"}`}
-                          style={active ? { background: `${ROLE_COLORS[r]}20`, color: ROLE_COLORS[r], border: `1px solid ${ROLE_COLORS[r]}50` } : { border: "1px solid rgba(255,255,255,0.1)" }}>
-                          {ROLE_ICONS[r]} {r}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <button onClick={() => void saveRoles(a.slid)} disabled={syncing} className="syn-btn mt-3 text-xs flex items-center gap-1">
-                    <Save className="h-3.5 w-3.5" />{syncing ? "Speichere…" : "Rollen speichern"}
-                  </button>
+              {/* Devices */}
+              <div className="p-4 rounded-2xl" style={{ background: T.bg2, border: `1px solid ${T.border}` }}>
+                <h3 className="text-sm font-semibold mb-3" style={{ color: T.text }}>Geräte ({devices.length})</h3>
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {devices.map((d) => (
+                    <div key={d.fingerprint} className="flex items-center justify-between p-2 rounded-lg" style={{ background: T.surface }}>
+                      <div>
+                        <div className="text-sm" style={{ color: T.text }}>{d.device_name || "Unbekannt"}</div>
+                        <div className="text-xs" style={{ color: T.muted }}>{d.device_type} · {d.slid} · {d.last_login ? new Date(d.last_login).toLocaleDateString() : "—"}</div>
+                      </div>
+                      <LiquidButton variant="danger" size="xs" onClick={() => revokeDeviceFn({ data: { ...creds, device_fingerprint: d.fingerprint } }).then(load)}>
+                        <Trash2 className="h-4 w-4" />
+                      </LiquidButton>
+                    </div>
+                  ))}
                 </div>
               </div>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/* Create Account Modal */}
-      {showCreate && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="syn-card syn-gradient-border max-w-md w-full p-5 space-y-4" style={{ borderColor: "var(--synapse)" }}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <UserPlus className="h-5 w-5" style={{ color: "var(--synapse)" }} />
-                <h3 className="font-semibold">Account erstellen</h3>
-              </div>
-              <button onClick={() => setShowCreate(false)} className="syn-btn-ghost p-1.5"><X className="h-4 w-4" /></button>
-            </div>
-            <p className="text-xs text-muted-foreground">Neuer Account mit automatisch generierter Account-ID. Der Nutzer meldet sich per Passkey an.</p>
-
-            <div className="space-y-3">
-              <label className="block space-y-1">
-                <span className="text-[11px] text-muted-foreground mono uppercase tracking-wider">Name *</span>
-                <input className="syn-input" placeholder="Vorname Nachname" value={cName} onChange={(e) => setCName(e.target.value)} />
-              </label>
-              <label className="block space-y-1">
-                <span className="text-[11px] text-muted-foreground mono uppercase tracking-wider">E-Mail</span>
-                <input className="syn-input" type="email" placeholder="email@example.com" value={cEmail} onChange={(e) => setCEmail(e.target.value)} />
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                <label className="block space-y-1">
-                  <span className="text-[11px] text-muted-foreground mono uppercase tracking-wider">Kind</span>
-                  <select className="syn-input" value={cKind} onChange={(e) => setCKind(e.target.value as any)}>
-                    <option value="kunde">Kunde</option>
-                    <option value="partner">Partner</option>
-                    <option value="mitarbeiter">Mitarbeiter</option>
-                  </select>
-                </label>
-                <label className="block space-y-1">
-                  <span className="text-[11px] text-muted-foreground mono uppercase tracking-wider">HL (1-7)</span>
-                  <input className="syn-input" type="number" min={1} max={7} value={cHl} onChange={(e) => setCHl(Number(e.target.value))} />
-                </label>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <label className="block space-y-1">
-                  <span className="text-[11px] text-muted-foreground mono uppercase tracking-wider flex items-center gap-1"><Building2 className="w-3 h-3" />Abteilung</span>
-                  <input className="syn-input" placeholder="z. B. Development" value={cDept} onChange={(e) => setCDept(e.target.value)} />
-                </label>
-                <label className="block space-y-1">
-                  <span className="text-[11px] text-muted-foreground mono uppercase tracking-wider">Position</span>
-                  <input className="syn-input" placeholder="z. B. Developer" value={cPos} onChange={(e) => setCPos(e.target.value)} />
-                </label>
-              </div>
-            </div>
-
-            <button
-              onClick={() => void createAccount()}
-              disabled={syncing || !cName.trim()}
-              className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-medium transition-all ${
-                createStatus === "success"
-                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
-                  : createStatus === "error"
-                  ? "bg-destructive/20 text-destructive border border-destructive/40"
-                  : "syn-btn"
-              }`}
-            >
-              {createStatus === "success" ? <CheckCircle2 className="w-4 h-4" /> : createStatus === "error" ? <XCircle className="w-4 h-4" /> : <UserPlus className="h-4 w-4" />}
-              {createStatus === "success" ? "Erstellt ✓" : createStatus === "error" ? "Fehler — siehe oben" : syncing ? "Erstelle…" : "Account erstellen"}
-            </button>
-          </div>
-        </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       )}
     </div>
+  );
+}
+
+function StatCard({ icon: Icon, label, value, color }: { icon: any; label: string; value: number; color: string }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="p-4 rounded-2xl"
+      style={{ background: T.bg2, border: `1px solid ${T.border}` }}
+    >
+      <div className="flex items-center gap-2 mb-2">
+        <Icon size={18} style={{ color }} />
+        <span className="text-xs" style={{ color: T.muted }}>{label}</span>
+      </div>
+      <div className="text-2xl font-bold" style={{ color, fontFamily: "'Space Grotesk',sans-serif" }}>{value}</div>
+    </motion.div>
   );
 }

@@ -1,40 +1,59 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useServerFn } from "@tanstack/react-start";
-import { KeyRound, ShieldCheck, Smartphone, Trash2, Plus, User, QrCode, Camera, Save, Mail, Building, CalendarDays, IdCard, Briefcase, Fingerprint, Shield, XCircle, CheckCircle2 } from "lucide-react";
+import {
+  KeyRound, ShieldCheck, Smartphone, Trash2, Plus, User,
+  QrCode, Mail, Calendar, Building2, Fingerprint,
+} from "lucide-react";
 import { startRegistration } from "@simplewebauthn/browser";
-import { xaBeginRegistration, xaFinishRegistration, xaListCredentials, xaDeleteCredential, xaUpdateProfile, xaMe, xaBeginPairing } from "@/lib/xsyna-account.functions";
+import {
+  xaBeginRegistration, xaFinishRegistration, xaListCredentials,
+  xaDeleteCredential, xaUpdateProfile, xaMe, xaBeginPairing,
+} from "@/lib/xsyna-account.functions";
 import { getSession } from "@/lib/syn-session";
 import { getXsynaSession, setXsynaSession } from "@/lib/xsyna-session";
 import { useSync } from "@/lib/use-sync";
 import { SyncSpinner } from "@/components/SyncSpinner";
+import { LiquidButton, LiquidInput, TabBar, Spin, T } from "@/components/nl";
 
 export const Route = createFileRoute("/_authenticated/account")({
   ssr: false,
   component: AccountPage,
 });
 
-type Credential = { id: string; device_label: string; transports: string[]; created_at: string; last_used_at: string | null; backup_state: boolean };
-type AccountData = {
-  slid: string;
-  first_name?: string;
-  last_name?: string;
-  email?: string;
-  birthdate?: string;
-  avatar_url?: string;
-  company?: string;
-  contact_json?: Record<string, unknown>;
-  created_at?: string;
-};
-type EmployeeData = {
-  slid: string;
-  name: string;
-  email: string | null;
-  department: string | null;
-  position: string | null;
-  kind: string;
+type Credential = {
+  id: string;
+  device_label: string;
+  transports: string[];
   created_at: string;
+  last_used_at: string | null;
+  backup_state: boolean;
 };
+
+const TAB_LABELS = ["Profil", "Passkeys", "Zweites Gerät"];
+const TAB_KEYS = ["profile", "security", "pair"] as const;
+
+function tabIndex(tab: typeof TAB_KEYS[number]): number { return TAB_KEYS.indexOf(tab); }
+
+/* ───────── page variants ───────── */
+const pageAnim = {
+  initial: { opacity: 0, y: 16, scale: 0.98 },
+  animate: { opacity: 1, y: 0, scale: 1 },
+  exit: { opacity: 0, y: -10, scale: 0.98 },
+  transition: { type: "spring", stiffness: 350, damping: 30 },
+};
+
+function NlCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div
+      className={className}
+      style={{ background: T.bg2, border: `1px solid ${T.border}`, borderRadius: "16px", padding: "16px 20px" }}
+    >
+      {children}
+    </div>
+  );
+}
 
 function AccountPage() {
   const legacy = getSession();
@@ -46,15 +65,14 @@ function AccountPage() {
   const updateProfile = useServerFn(xaUpdateProfile);
   const me = useServerFn(xaMe);
   const beginPair = useServerFn(xaBeginPairing);
-  const { run, syncing, error, clearError } = useSync();
+  const { run, syncing, error } = useSync();
 
   const [creds, setCreds] = useState<Credential[]>([]);
-  const [profile, setProfile] = useState<AccountData>({ slid: "" });
-  const [employee, setEmployee] = useState<EmployeeData | null>(null);
-  const [roles, setRoles] = useState<string[]>([]);
-  const [tab, setTab] = useState<"profile" | "security" | "pair">("profile");
+  const [profile, setProfile] = useState<{
+    first_name?: string; last_name?: string; email?: string; birthdate?: string; company?: string;
+  }>({});
+  const [tab, setTab] = useState<typeof TAB_KEYS[number]>("profile");
   const [pairing, setPairing] = useState<{ code: string; expires_at: string } | null>(null);
-  const [saveStatus, setSaveStatus] = useState<"idle" | "success" | "error">("idle");
 
   useEffect(() => {
     if (!xa) return;
@@ -64,23 +82,21 @@ function AccountPage() {
         me({ data: { token: xa.token } }),
       ]);
       setCreds(c as Credential[]);
-      const result = m as { profile: AccountData | null; employee: EmployeeData | null; roles: string[] };
-      const p = result.profile ?? {};
+      const p = (m as { profile: Record<string, string> | null }).profile ?? {};
       setProfile({
-        slid: (xa?.slid ?? legacy?.slid) as string,
-        first_name: (p.first_name as string) ?? "", last_name: (p.last_name as string) ?? "",
-        email: (p.email as string) ?? "", birthdate: (p.birthdate as string) ?? "",
-        avatar_url: (p.avatar_url as string) ?? "", company: (p.company as string) ?? "",
+        first_name: p.first_name ?? "",
+        last_name: p.last_name ?? "",
+        email: p.email ?? "",
+        birthdate: p.birthdate ?? "",
+        company: p.company ?? "",
       });
-      setEmployee(result.employee ?? null);
-      setRoles(result.roles ?? []);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function addPasskey() {
     if (!legacy && !xa) return;
-    const res = await run(async () => {
+    await run(async () => {
       const options = await beginReg({ data: {
         slid: (xa?.slid ?? legacy?.slid) as string,
         pik: xa ? undefined : legacy?.pik,
@@ -104,35 +120,25 @@ function AccountPage() {
       const c = await listCreds({ data: { token: (session as { token: string }).token } });
       setCreds(c as Credential[]);
     });
-    if (!res) return; // error already shown by useSync
   }
 
   async function removePasskey(id: string) {
     if (!xa) return;
-    const res = await run(async () => {
+    await run(async () => {
       await delCred({ data: { token: xa.token, id } });
       const c = await listCreds({ data: { token: xa.token } });
       setCreds(c as Credential[]);
     });
-    if (!res) return;
   }
 
   async function saveProfile() {
     if (!xa) return;
-    setSaveStatus("idle");
-    clearError();
-    const res = await run(updateProfile({ data: { token: xa.token, ...profile, birthdate: profile.birthdate || null } }));
-    if (res) {
-      setSaveStatus("success");
-      setTimeout(() => setSaveStatus("idle"), 3000);
-    } else {
-      setSaveStatus("error");
-    }
+    await run(updateProfile({ data: { token: xa.token, ...profile, birthdate: profile.birthdate || null } }));
   }
 
   async function startPairing() {
     if (!legacy && !xa) return;
-    const res = await run(async () => {
+    await run(async () => {
       const p = await beginPair({ data: {
         slid: (xa?.slid ?? legacy?.slid) as string,
         pik: xa ? undefined : legacy?.pik,
@@ -140,245 +146,195 @@ function AccountPage() {
       }});
       setPairing(p as { code: string; expires_at: string });
     });
-    if (!res) return;
   }
 
-  // Role label derived from roles array (not just employee.kind)
-  const roleLabel = roles.includes("superuser") ? "Superuser"
-    : roles.includes("admin") ? "Administrator"
-    : roles.includes("mitarbeiter") ? "Mitarbeiter"
-    : roles.includes("partner") ? "Partner"
-    : "Kunde";
-
-  const roleColor = roles.includes("superuser") ? "var(--neural-magenta)"
-    : roles.includes("admin") ? "var(--synapse)"
-    : "var(--neural-mint)";
-
-  const displayName = profile.first_name && profile.last_name
-    ? `${profile.first_name} ${profile.last_name}`
-    : employee?.name ?? profile.slid;
-  const initials = (profile.first_name?.[0] ?? "").toUpperCase() + (profile.last_name?.[0] ?? "").toUpperCase() || profile.slid.slice(0, 2).toUpperCase();
-
   if (!legacy && !xa) {
-    return <div className="p-6 text-center text-sm text-muted-foreground">Nicht angemeldet.</div>;
+    return (
+      <div className="p-6 text-center text-sm" style={{ color: T.muted }}>
+        Nicht angemeldet.
+      </div>
+    );
   }
 
   return (
     <div className="max-w-3xl mx-auto p-4 sm:p-6 space-y-5">
-      {/* Error Banner — sticky at top, dismissible */}
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <div
+          className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl"
+          style={{ background: `linear-gradient(135deg, ${T.primary}18, ${T.accent}12)` }}
+        >
+          <User className="h-6 w-6" style={{ color: T.primary }} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl sm:text-2xl font-bold truncate" style={{ color: T.text }}>xSyna Account</h1>
+          <p className="text-xs" style={{ color: T.muted }}>Profil, Passkeys und Geräte</p>
+        </div>
+        {syncing && <SyncSpinner inline />}
+      </div>
+
+      {/* TabBar */}
+      <TabBar
+        tabs={TAB_LABELS}
+        defaultActive={tabIndex(tab)}
+        onChange={(i) => setTab(TAB_KEYS[i])}
+      />
+
       {error && (
-        <div className="flex items-start gap-2 p-3 rounded-2xl bg-destructive/10 border border-destructive/30 animate-in fade-in slide-in-from-top-2 duration-200">
-          <XCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
-          <div className="flex-1">
-            <div className="text-xs font-medium text-destructive">Fehler</div>
-            <div className="text-xs text-destructive/80 mono">{error}</div>
-          </div>
-          <button onClick={clearError} className="syn-btn-ghost p-1 shrink-0"><XCircle className="h-3.5 w-3.5" /></button>
+        <div className="text-xs mono p-2 rounded-xl" style={{ color: T.error, background: `${T.error}12`, border: `1px solid ${T.error}30` }}>
+          {error}
         </div>
       )}
 
-      {/* Header Card */}
-      <div className="syn-card p-5 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-5" style={{ background: "var(--gradient-neural-soft)" }} />
-        <div className="relative flex items-center gap-4">
-          {/* Avatar */}
-          <div className="relative shrink-0">
-            {profile.avatar_url ? (
-              <img src={profile.avatar_url} alt="Avatar" className="w-20 h-20 rounded-2xl object-cover border-2 border-[rgba(0,229,255,0.25)]" />
-            ) : (
-              <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-2xl font-bold" style={{ background: "var(--gradient-neural-soft)", color: "var(--synapse)" }}>
-                {initials}
-              </div>
-            )}
-            <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center" style={{ background: "var(--synapse)" }}>
-              <Fingerprint className="w-3.5 h-3.5 text-[#020407]" />
-            </div>
-          </div>
-          <div className="min-w-0 flex-1">
-            <h1 className="text-xl sm:text-2xl font-bold truncate">{displayName}</h1>
-            <div className="flex items-center gap-2 flex-wrap mt-1">
-              <span className="text-xs px-2 py-0.5 rounded-full font-medium flex items-center gap-1" style={{ background: `${roleColor}15`, color: roleColor, border: `1px solid ${roleColor}40` }}>
-                {roles.includes("superuser") && <Shield className="w-3 h-3" />}
-                {roleLabel}
-              </span>
-              {employee?.department && (
-                <span className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Briefcase className="w-3 h-3" />{employee.department}
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-2 mt-1 flex-wrap">
-              <p className="text-xs text-muted-foreground mono">Account-ID: {profile.slid}</p>
-              {roles.length > 0 && (
-                <p className="text-[10px] text-muted-foreground mono">Rollen: {roles.join(", ")}</p>
-              )}
-            </div>
-          </div>
-          {syncing && <SyncSpinner inline />}
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <div className="grid grid-cols-3 gap-1.5">
-        {(["profile","security","pair"] as const).map((t) => (
-          <button key={t} onClick={() => { setTab(t); clearError(); }} className={`px-3 py-2 rounded-2xl text-xs ${tab === t ? "syn-tab-active font-semibold" : "syn-btn-ghost"}`}>
-            {t === "profile" ? "Profil" : t === "security" ? "Passkeys" : "Zweites Gerät"}
-          </button>
-        ))}
-      </div>
-
-      {/* Profile Tab */}
-      {tab === "profile" && (
-        <div className="space-y-4">
-          {/* Info Card */}
-          {employee && (
-            <div className="syn-card p-4 space-y-3">
-              <div className="text-[11px] text-muted-foreground mono uppercase tracking-wider">Kontodaten</div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <InfoRow icon={<IdCard className="w-4 h-4" />} label="Account-ID" value={employee.slid} />
-                <InfoRow icon={<User className="w-4 h-4" />} label="Name" value={employee.name} />
-                {employee.email && <InfoRow icon={<Mail className="w-4 h-4" />} label="E-Mail" value={employee.email} />}
-                {employee.position && <InfoRow icon={<Briefcase className="w-4 h-4" />} label="Position" value={employee.position} />}
-                {employee.department && <InfoRow icon={<Building className="w-4 h-4" />} label="Abteilung" value={employee.department} />}
-                <InfoRow icon={<CalendarDays className="w-4 h-4" />} label="Registriert" value={new Date(employee.created_at).toLocaleDateString("de-DE")} />
-              </div>
-            </div>
-          )}
-
-          {/* Edit Form */}
-          <div className="syn-card p-4 sm:p-6 space-y-4">
-            <div className="text-[11px] text-muted-foreground mono uppercase tracking-wider">Profil bearbeiten</div>
-
-            {/* Avatar URL */}
-            <label className="block space-y-1.5">
-              <span className="text-[11px] text-muted-foreground mono uppercase tracking-wider flex items-center gap-1">
-                <Camera className="w-3 h-3" /> Profilbild URL
-              </span>
-              <div className="flex gap-2">
-                <input
-                  className="syn-input flex-1"
-                  type="url"
-                  placeholder="https://..."
-                  value={profile.avatar_url ?? ""}
-                  onChange={(e) => setProfile((p) => ({ ...p, avatar_url: e.target.value }))}
+      {/* Tab content */}
+      <AnimatePresence mode="wait">
+        {tab === "profile" && (
+          <motion.div key="profile" {...pageAnim}>
+            <NlCard className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <LiquidInput
+                  label="Vorname"
+                  value={profile.first_name || ""}
+                  onChange={(v) => setProfile((p) => ({ ...p, first_name: v }))}
+                  icon={User}
+                />
+                <LiquidInput
+                  label="Nachname"
+                  value={profile.last_name || ""}
+                  onChange={(v) => setProfile((p) => ({ ...p, last_name: v }))}
+                  icon={User}
                 />
               </div>
-              {profile.avatar_url && (
-                <div className="flex items-center gap-3 mt-2 p-2 rounded-xl border border-[rgba(255,255,255,0.07)]">
-                  <img src={profile.avatar_url} alt="Preview" className="w-12 h-12 rounded-xl object-cover" />
-                  <span className="text-xs text-muted-foreground">Vorschau</span>
+              <LiquidInput
+                label="E-Mail"
+                type="email"
+                value={profile.email || ""}
+                onChange={(v) => setProfile((p) => ({ ...p, email: v }))}
+                icon={Mail}
+              />
+              <div className="grid grid-cols-2 gap-3">
+                <LiquidInput
+                  label="Geburtsdatum"
+                  type="date"
+                  value={profile.birthdate || ""}
+                  onChange={(v) => setProfile((p) => ({ ...p, birthdate: v }))}
+                  icon={Calendar}
+                />
+                <LiquidInput
+                  label="Firma"
+                  value={profile.company || ""}
+                  onChange={(v) => setProfile((p) => ({ ...p, company: v }))}
+                  icon={Building2}
+                />
+              </div>
+              <LiquidButton fullWidth onClick={() => void saveProfile()} disabled={syncing}>
+                {syncing ? <Spin size={16} color={T.bg} /> : null}
+                Speichern
+              </LiquidButton>
+            </NlCard>
+          </motion.div>
+        )}
+
+        {tab === "security" && (
+          <motion.div key="security" {...pageAnim} className="space-y-3">
+            {/* Add Passkey */}
+            <NlCard>
+              <div className="flex items-center gap-3">
+                <ShieldCheck className="h-5 w-5 shrink-0" style={{ color: T.success }} />
+                <div className="min-w-0 flex-1">
+                  <div className="font-semibold text-sm" style={{ color: T.text }}>Passkey hinzufügen</div>
+                  <div className="text-xs" style={{ color: T.muted }}>FaceID, TouchID, Windows Hello oder Sicherheitsschlüssel.</div>
+                </div>
+                <LiquidButton onClick={() => void addPasskey()} disabled={syncing} size="sm">
+                  <Plus className="h-4 w-4" /> Neuer Passkey
+                </LiquidButton>
+              </div>
+            </NlCard>
+
+            {/* Passkey List */}
+            <NlCard className="space-y-3">
+              <div className="text-xs mono uppercase" style={{ color: T.muted, letterSpacing: "0.08em" }}>
+                Registrierte Passkeys ({creds.length})
+              </div>
+              {creds.length === 0 && (
+                <div className="text-sm" style={{ color: T.muted }}>
+                  Noch keine Passkeys. Ohne Passkey nutzt du weiterhin PIK — bitte lege einen an.
                 </div>
               )}
-            </label>
-
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Vorname" value={profile.first_name || ""} onChange={(v) => setProfile((p) => ({ ...p, first_name: v }))} />
-              <Field label="Nachname" value={profile.last_name || ""} onChange={(v) => setProfile((p) => ({ ...p, last_name: v }))} />
-            </div>
-            <Field label="E-Mail" type="email" value={profile.email || ""} onChange={(v) => setProfile((p) => ({ ...p, email: v }))} />
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Geburtsdatum" type="date" value={profile.birthdate || ""} onChange={(v) => setProfile((p) => ({ ...p, birthdate: v }))} />
-              <Field label="Firma" value={profile.company || ""} onChange={(v) => setProfile((p) => ({ ...p, company: v }))} />
-            </div>
-
-            {/* Save button with clear status */}
-            <button
-              onClick={() => void saveProfile()}
-              disabled={syncing}
-              className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-medium transition-all ${
-                saveStatus === "success"
-                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
-                  : saveStatus === "error"
-                  ? "bg-destructive/20 text-destructive border border-destructive/40"
-                  : "syn-btn"
-              }`}
-            >
-              {saveStatus === "success" ? <CheckCircle2 className="w-4 h-4" /> : saveStatus === "error" ? <XCircle className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-              {saveStatus === "success" ? "Gespeichert ✓" : saveStatus === "error" ? "Fehler — siehe oben" : syncing ? "Speichern…" : "Speichern"}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Security Tab */}
-      {tab === "security" && (
-        <div className="space-y-3">
-          <div className="syn-card p-4 sm:p-6 space-y-3">
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="h-5 w-5" style={{ color: "var(--neural-mint)" }} />
-              <div className="min-w-0 flex-1">
-                <div className="font-semibold">Passkey hinzufügen</div>
-                <div className="text-xs text-muted-foreground">FaceID, TouchID, Windows Hello oder Sicherheitsschlüssel.</div>
+              <div className="space-y-2">
+                <AnimatePresence>
+                  {creds.map((c) => (
+                    <motion.div
+                      key={c.id}
+                      initial={{ opacity: 0, x: -12 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 12 }}
+                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                      className="flex items-center gap-3 p-3 rounded-2xl"
+                      style={{ background: T.surface, border: `1px solid ${T.border}` }}
+                    >
+                      <Smartphone className="h-5 w-5 shrink-0" style={{ color: T.primary }} />
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-medium truncate" style={{ color: T.text }}>{c.device_label}</div>
+                        <div className="text-[11px] mono" style={{ color: T.muted }}>
+                          {new Date(c.created_at).toLocaleDateString()}
+                          {c.last_used_at ? ` · zuletzt ${new Date(c.last_used_at).toLocaleDateString()}` : " · noch nicht benutzt"}
+                          {c.backup_state ? " · Cloud-Sync" : ""}
+                        </div>
+                      </div>
+                      <LiquidButton variant="danger" size="xs" onClick={() => void removePasskey(c.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </LiquidButton>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
               </div>
-              <button onClick={() => void addPasskey()} disabled={syncing} className="syn-btn shrink-0"><Plus className="h-4 w-4" />Neuer Passkey</button>
-            </div>
-          </div>
-          <div className="syn-card p-4 sm:p-6 space-y-3">
-            <div className="text-xs text-muted-foreground mono uppercase tracking-wider">Registrierte Passkeys ({creds.length})</div>
-            {creds.length === 0 && <div className="text-sm text-muted-foreground">Noch keine Passkeys. Ohne Passkey nutzt du weiterhin PIK — bitte lege einen an.</div>}
-            {creds.map((c) => (
-              <div key={c.id} className="flex items-center gap-3 p-3 rounded-2xl border border-border">
-                <Smartphone className="h-5 w-5 shrink-0" style={{ color: "var(--synapse)" }} />
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium truncate">{c.device_label}</div>
-                  <div className="text-[11px] text-muted-foreground mono">
-                    {new Date(c.created_at).toLocaleDateString()}
-                    {c.last_used_at ? ` · zuletzt ${new Date(c.last_used_at).toLocaleDateString()}` : " · noch nicht benutzt"}
-                    {c.backup_state ? " · Cloud-Sync" : ""}
+            </NlCard>
+          </motion.div>
+        )}
+
+        {tab === "pair" && (
+          <motion.div key="pair" {...pageAnim}>
+            <NlCard className="space-y-4">
+              <div className="flex items-center gap-2">
+                <QrCode className="h-5 w-5 shrink-0" style={{ color: T.accent }} />
+                <div>
+                  <div className="font-semibold text-sm" style={{ color: T.text }}>Passkey über zweites Gerät</div>
+                  <div className="text-xs" style={{ color: T.muted }}>
+                    Erhalte einen 8-stelligen Code, den du auf dem anderen Gerät unter <span className="mono">/auth</span> → "Passkey via Code" eingibst.
                   </div>
                 </div>
-                <button onClick={() => void removePasskey(c.id)} className="syn-btn-ghost shrink-0" title="Entfernen"><Trash2 className="h-4 w-4" /></button>
               </div>
-            ))}
-          </div>
-        </div>
-      )}
+              {!pairing ? (
+                <LiquidButton fullWidth onClick={() => void startPairing()} disabled={syncing}>
+                  <KeyRound className="h-4 w-4" /> Code erzeugen
+                </LiquidButton>
+              ) : (
+                <div className="text-center space-y-3">
+                  <motion.div
+                    initial={{ scale: 0.5, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 22 }}
+                    className="text-4xl font-bold mono tracking-widest"
+                    style={{ color: T.primary, textShadow: `0 0 24px ${T.primary}40` }}
+                  >
+                    {pairing.code}
+                  </motion.div>
+                  <div className="text-xs" style={{ color: T.muted }}>
+                    Gültig bis {new Date(pairing.expires_at).toLocaleTimeString()}. Öffne auf dem zweiten Gerät <span className="mono">/auth</span> und wähle "Passkey per Code".
+                  </div>
+                  <LiquidButton variant="ghost" onClick={() => setPairing(null)}>
+                    Neuen Code erzeugen
+                  </LiquidButton>
+                </div>
+              )}
+            </NlCard>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* Pair Tab */}
-      {tab === "pair" && (
-        <div className="syn-card p-4 sm:p-6 space-y-4">
-          <div className="flex items-center gap-2">
-            <QrCode className="h-5 w-5" style={{ color: "var(--neural-violet)" }} />
-            <div>
-              <div className="font-semibold">Passkey über zweites Gerät</div>
-              <div className="text-xs text-muted-foreground">Erhalte einen 8-stelligen Code, den du auf dem anderen Gerät unter <span className="mono">/auth</span> eingibst.</div>
-            </div>
-          </div>
-          {!pairing ? (
-            <button onClick={() => void startPairing()} disabled={syncing} className="syn-btn w-full"><KeyRound className="h-4 w-4" />Code erzeugen</button>
-          ) : (
-            <div className="text-center space-y-2">
-              <div className="text-4xl font-bold mono tracking-widest">{pairing.code}</div>
-              <div className="text-xs text-muted-foreground">Gültig bis {new Date(pairing.expires_at).toLocaleTimeString()}. Öffne auf dem zweiten Gerät <span className="mono">/auth</span> und wähle „Passkey per Code".</div>
-              <button onClick={() => setPairing(null)} className="syn-btn-ghost">Neuen Code erzeugen</button>
-            </div>
-          )}
-        </div>
-      )}
-
-      <div className="text-[11px] text-muted-foreground text-center">
-        Passkeys sind an die Domain <span className="mono">{typeof window !== "undefined" ? window.location.hostname : ""}</span> gebunden.
-      </div>
-    </div>
-  );
-}
-
-function Field({ label, value, onChange, type = "text" }: { label: string; value: string; onChange: (v: string) => void; type?: string }) {
-  return (
-    <label className="block space-y-1">
-      <span className="text-[11px] text-muted-foreground mono uppercase tracking-wider">{label}</span>
-      <input className="syn-input" type={type} value={value} onChange={(e) => onChange(e.target.value)} />
-    </label>
-  );
-}
-
-function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-  return (
-    <div className="flex items-center gap-2 p-2 rounded-xl" style={{ background: "rgba(255,255,255,0.02)" }}>
-      <span style={{ color: "var(--synapse)" }}>{icon}</span>
-      <div className="min-w-0">
-      <div className="text-[10px] text-muted-foreground uppercase tracking-wider">{label}</div>
-        <div className="text-sm truncate">{value}</div>
+      <div className="text-[11px] text-center" style={{ color: T.muted }}>
+        Passkeys sind an die Domain <span className="mono">{typeof window !== "undefined" ? window.location.hostname : ""}</span> gebunden. Beim Umzug auf <span className="mono">pass.xSyna.de</span> müssen neue Passkeys registriert werden.
       </div>
     </div>
   );
