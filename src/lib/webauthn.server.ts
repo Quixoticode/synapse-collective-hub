@@ -1,14 +1,8 @@
 // ============================================================
-// xSyna Passkey System — Complete rewrite (2026-07-14)
+// xSyna Passkey System — Cloudflare Workers compatible
 // Server-only WebAuthn helpers for @simplewebauthn/server v13
 // ============================================================
-//
-n// FIXED ISSUES:
-// - public_key was stored as JSON-serialized Buffer. Now stored as
-//   base64url string (proper format for bytea column via Supabase).
-// - allowCredentials now always includes type:"public-key".
-// - Challenge consumption is clean single-pass (no convoluted retry).
-// - Credential lookup by credential_id uses exact match on base64url.
+// NO Node.js globals (Buffer, process, etc.) — pure Web APIs.
 //
 import {
   generateRegistrationOptions,
@@ -32,7 +26,6 @@ const DEFAULT_SESSION_SECRET = "xsyna-central-session-fallback-2026";
 function getCloudflareEnv(name: string): string | undefined {
   const g = globalThis as any;
   return (
-    process.env?.[name] ??
     g.__env__?.[name] ??
     g.__env?.[name] ??
     g[name] ??
@@ -55,16 +48,24 @@ function sessionSecret(): Uint8Array {
   const s =
     getCloudflareEnv("XSYNA_SESSION_SECRET") ||
     getCloudflareEnv("SESSION_SECRET") ||
-    process.env.XSYNA_SESSION_SECRET ||
-    process.env.SESSION_SECRET ||
     DEFAULT_SESSION_SECRET;
   return new TextEncoder().encode(s);
 }
 
 /* ------------------------------------------------------------------ */
-/*  Binary helpers — public_key is base64url-string in the DB        */
+/*  Pure Web API base64url (NO Buffer — Cloudflare Workers safe)      */
 /* ------------------------------------------------------------------ */
-function bufToB64url(buf: ArrayBuffer | Uint8Array): string {
+function b64urlDecode(input: string): Uint8Array {
+  const b64 = input.replace(/-/g, "+").replace(/_/g, "/");
+  const pad = (4 - (b64.length % 4)) % 4;
+  const padded = b64 + "=".repeat(pad);
+  const bin = atob(padded);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+
+function b64urlEncode(buf: ArrayBuffer | Uint8Array): string {
   const u8 = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
   let bin = "";
   for (let i = 0; i < u8.length; i++) bin += String.fromCharCode(u8[i]);
@@ -72,26 +73,22 @@ function bufToB64url(buf: ArrayBuffer | Uint8Array): string {
 }
 
 function b64urlToBuf(input: unknown): Uint8Array {
-  // 1. Already a Uint8Array / ArrayBuffer
+  // Already a Uint8Array / ArrayBuffer
   if (input instanceof Uint8Array) return input;
   if (input instanceof ArrayBuffer) return new Uint8Array(input);
-
-  // 2. Must be a string from here on
   if (typeof input !== "string") throw new Error("public_key is not a string");
 
-  // 3. Old JSON-serialized Buffer: {"type":"Buffer","data":[165,1,...]}
+  // Old JSON-serialized Buffer: {"type":"Buffer","data":[165,1,...]}
   if (input.startsWith("{")) {
     try {
       const parsed = JSON.parse(input);
       if (parsed.type === "Buffer" && Array.isArray(parsed.data)) {
         return new Uint8Array(parsed.data);
       }
-    } catch {
-      /* fall through */
-    }
+    } catch { /* fall through */ }
   }
 
-  // 4. Hex with \x prefix (PostgreSQL bytea hex format)
+  // Hex with \x prefix (PostgreSQL bytea hex format)
   if (input.startsWith("\\x")) {
     const hex = input.slice(2);
     const bytes = new Uint8Array(hex.length / 2);
@@ -101,14 +98,8 @@ function b64urlToBuf(input: unknown): Uint8Array {
     return bytes;
   }
 
-  // 5. Base64url string (the NEW correct format)
-  const b64 = input.replace(/-/g, "+").replace(/_/g, "/");
-  const pad = (4 - (b64.length % 4)) % 4;
-  const padded = b64 + "=".repeat(pad);
-  const bin = atob(padded);
-  const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  return bytes;
+  // Base64url string (the correct format)
+  return b64urlDecode(input);
 }
 
 /* ------------------------------------------------------------------ */
@@ -246,11 +237,11 @@ export async function finishRegistration(
 ) {
   const { rpID, origin: rpOrigin } = rpFromOrigin(origin);
 
-  // Extract challenge from clientDataJSON and consume it
-  const clientDataStr = new TextDecoder().decode(
-    Buffer.from(response.response.clientDataJSON, "base64url")
-  );
-  const clientData = JSON.parse(clientDataStr) as { challenge: string };
+  // Decode clientDataJSON from base64url (pure Web API — NO Buffer)
+  const clientDataBytes = b64urlDecode(response.response.clientDataJSON);
+  const clientData = JSON.parse(new TextDecoder().decode(clientDataBytes)) as {
+    challenge: string;
+  };
 
   const consumed = await consumeChallenge(
     clientData.challenge,
@@ -276,8 +267,8 @@ export async function finishRegistration(
   // Store credential_id (base64url) and public_key (base64url string)
   await supabaseAdmin.from("webauthn_credentials" as never).insert({
     slid,
-    credential_id: cred.id, // base64url from SimpleWebAuthn
-    public_key: bufToB64url(cred.publicKey), // base64url string — correct format
+    credential_id: cred.id,
+    public_key: b64urlEncode(cred.publicKey),
     counter: cred.counter,
     device_label: deviceLabel || "Unbekanntes Gerät",
     transports: cred.transports ?? [],
@@ -347,11 +338,11 @@ export async function finishAuthentication(
   response: AuthenticationResponseJSON,
   origin: string
 ) {
-  // Extract challenge from clientDataJSON
-  const clientDataStr = new TextDecoder().decode(
-    Buffer.from(response.response.clientDataJSON, "base64url")
-  );
-  const clientData = JSON.parse(clientDataStr) as { challenge: string };
+  // Decode clientDataJSON from base64url (pure Web API — NO Buffer)
+  const clientDataBytes = b64urlDecode(response.response.clientDataJSON);
+  const clientData = JSON.parse(new TextDecoder().decode(clientDataBytes)) as {
+    challenge: string;
+  };
 
   const consumed = await consumeChallenge(
     clientData.challenge,
