@@ -1,107 +1,267 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { createFileRoute } from "@tanstack/react-router";
+import { useState, useEffect } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { ShieldCheck, Search } from "lucide-react";
-import { tabPermsListAll, tabPermSet } from "@/lib/permissions.functions";
-import { TABS } from "@/lib/tabs-registry";
-import { getCredentials } from "@/lib/syn-session";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  ShieldCheck, UserCheck, Users, Search, ChevronDown, ChevronRight,
+  Edit3, Save, X, CheckSquare, Square, Lock, Eye
+} from "lucide-react";
+import {
+  T, LiquidButton, LiquidInput, LiquidCheckbox, TabBar, AccordionItem, Spin
+} from "@/components/nl";
+import { getSession } from "@/lib/syn-session";
+import {
+  permListEmployees, permGetPermissions, permSetTabPermission,
+  permAssignRole, permRevokeRole, permListRoles,
+} from "@/lib/permissions.functions";
 
 export const Route = createFileRoute("/_authenticated/permissions")({
   ssr: false,
-  beforeLoad: async () => {
-    if (typeof window === "undefined") return;
-    const raw = localStorage.getItem("syn.session.v1");
-    if (!raw) throw redirect({ to: "/auth" });
-    let s: { slid?: string; pik?: string; isSuperuser?: boolean };
-    try { s = JSON.parse(raw); } catch { throw redirect({ to: "/auth" }); }
-    if (!s?.slid || !s?.pik) throw redirect({ to: "/auth" });
-    if (s.isSuperuser) return;
-    const { myPermissions } = await import("@/lib/permissions.functions");
-    const r = await myPermissions({ data: { slid: s.slid, pik: s.pik } }).catch(() => null);
-    if (!r || (!r.isSuperuser && !r.features.includes("teams.permissions"))) throw redirect({ to: "/apps" });
-  },
   component: PermissionsPage,
 });
 
-type Emp = { slid: string; name: string; hl: number; kind: string; department: string|null; position: string|null };
-type Perm = { slid: string; tab_key: string; allowed: boolean };
+type Employee = { slid: string; name: string; department: string | null; kind: string | null };
+
+type PermEntry = {
+  slid: string;
+  tab_key: string;
+  allowed: boolean;
+};
+
+const MODULE_TABS = [
+  { key: "home", label: "Start" },
+  { key: "worktime", label: "WorkTime" },
+  { key: "tasks", label: "Tasks" },
+  { key: "calendar", label: "Calendar" },
+  { key: "contacts", label: "Contacts" },
+  { key: "chat", label: "Chat" },
+  { key: "vault", label: "Vault" },
+  { key: "workspace", label: "Workspace" },
+  { key: "basics", label: "Basics" },
+  { key: "news", label: "News" },
+  { key: "docs", label: "Docs" },
+  { key: "apply", label: "Apply" },
+  { key: "teams", label: "Teams" },
+  { key: "security", label: "Security" },
+  { key: "payments", label: "Payments" },
+  { key: "auftrag", label: "Aufträge" },
+  { key: "admin", label: "Admin" },
+  { key: "account", label: "Mein Account" },
+  { key: "settings", label: "Einstellungen" },
+];
+
+const ACTION_TABS = [
+  { key: "worktime.manage", label: "WorkTime verwalten" },
+  { key: "contacts.manage", label: "Contacts verwalten" },
+  { key: "calendar.manage", label: "Calendar verwalten" },
+  { key: "tasks.manage", label: "Tasks verwalten" },
+  { key: "teams.manage", label: "Teams verwalten" },
+  { key: "teams.permissions", label: "Team-Berechtigungen" },
+  { key: "security.all", label: "Security (alle)" },
+  { key: "settings.admin", label: "Admin-Einstellungen" },
+  { key: "vault.shared", label: "Geteilte Vault-Einträge" },
+  { key: "workspace.manage", label: "Workspace verwalten" },
+  { key: "auftrag.manage", label: "Aufträge verwalten" },
+];
 
 function PermissionsPage() {
-  const listFn = useServerFn(tabPermsListAll);
-  const setFn = useServerFn(tabPermSet);
-  const [emps, setEmps] = useState<Emp[]>([]);
-  const [perms, setPerms] = useState<Perm[]>([]);
-  const [q, setQ] = useState("");
-  const [selected, setSelected] = useState<string | null>(null);
+  const session = getSession();
+  const listEmpFn = useServerFn(permListEmployees);
+  const getPermFn = useServerFn(permGetPermissions);
+  const setTabFn = useServerFn(permSetTabPermission);
+  const assignRoleFn = useServerFn(permAssignRole);
+  const revokeRoleFn = useServerFn(permRevokeRole);
+  const listRolesFn = useServerFn(permListRoles);
 
-  async function reload() {
-    const c = getCredentials(); if (!c) return;
-    const r = await listFn({ data: c }) as { employees: Emp[]; permissions: Perm[] };
-    setEmps(r.employees); setPerms(r.permissions);
-    if (!selected && r.employees.length) setSelected(r.employees[0].slid);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [selectedSlid, setSelectedSlid] = useState<string | null>(null);
+  const [perms, setPerms] = useState<PermEntry[]>([]);
+  const [roles, setRoles] = useState<string[]>([]);
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const creds = { slid: session?.slid || "", pik: session?.pik || "" };
+
+  async function load() {
+    if (!creds.slid || !creds.pik) return;
+    setLoading(true);
+    try {
+      const emp = await listEmpFn({ data: creds }) as Employee[];
+      setEmployees(emp);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
   }
-  useEffect(() => { void reload(); /* eslint-disable-next-line */ }, []);
 
-  const filtered = useMemo(() => {
-    const s = q.toLowerCase();
-    return emps.filter((e) => !s || e.name.toLowerCase().includes(s) || e.slid.includes(s));
-  }, [emps, q]);
+  useEffect(() => { load(); }, []);
 
-  function isAllowed(slid: string, key: string) {
-    const p = perms.find((x) => x.slid === slid && x.tab_key === key);
-    return p ? p.allowed : true; // default allow
+  async function selectEmployee(slid: string) {
+    setSelectedSlid(slid);
+    setLoading(true);
+    try {
+      const [p, r] = await Promise.all([
+        getPermFn({ data: { ...creds, target_slid: slid } }).catch(() => []),
+        listRolesFn({ data: { ...creds, target_slid: slid } }).catch(() => []),
+      ]);
+      setPerms(p as PermEntry[]);
+      setRoles((r as any[]).map((x) => x.role));
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
   }
 
-  async function toggle(key: string) {
-    if (!selected) return;
-    const cur = isAllowed(selected, key);
-    const c = getCredentials(); if (!c) return;
-    await setFn({ data: { ...c, target_slid: selected, tab_key: key, allowed: !cur } });
-    await reload();
+  async function toggleTab(tabKey: string, allowed: boolean) {
+    if (!selectedSlid) return;
+    setSaving(true);
+    try {
+      await setTabFn({ data: { ...creds, target_slid: selectedSlid, tab_key: tabKey, allowed } });
+      setPerms((prev) => {
+        const filtered = prev.filter((p) => p.tab_key !== tabKey);
+        if (allowed) filtered.push({ slid: selectedSlid, tab_key: tabKey, allowed: true });
+        return filtered;
+      });
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function toggleRole(role: string, grant: boolean) {
+    if (!selectedSlid) return;
+    setSaving(true);
+    try {
+      if (grant) {
+        await assignRoleFn({ data: { ...creds, target_slid: selectedSlid, role } });
+        setRoles((prev) => [...prev.filter((r) => r !== role), role]);
+      } else {
+        await revokeRoleFn({ data: { ...creds, target_slid: selectedSlid, role } });
+        setRoles((prev) => prev.filter((r) => r !== role));
+      }
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const selectedEmployee = employees.find((e) => e.slid === selectedSlid);
+  const filteredEmployees = employees.filter((e) =>
+    !search || e.name?.toLowerCase().includes(search.toLowerCase()) || e.slid.toLowerCase().includes(search.toLowerCase())
+  );
+
+  function hasPerm(tabKey: string) {
+    return perms.some((p) => p.tab_key === tabKey && p.allowed);
   }
 
   return (
-    <div className="p-4 sm:p-6 max-w-6xl mx-auto pb-28 md:pb-8">
-      <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2 mb-1"><ShieldCheck className="h-5 w-5" /> Berechtigungen</h1>
-      <p className="text-xs text-muted-foreground mb-5">Tabs pro Mitarbeiter freigeben oder sperren.</p>
-
-      <div className="grid md:grid-cols-[280px_1fr] gap-4">
-        <div className="syn-card p-3">
-          <div className="relative mb-2">
-            <Search className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <input className="syn-input pl-8" placeholder="Suche…" value={q} onChange={(e) => setQ(e.target.value)} />
+    <div className="p-4 sm:p-6 max-w-5xl mx-auto pb-28 md:pb-8" style={{ minHeight: "100vh" }}>
+      <header className="mb-6">
+        <div className="flex items-center gap-3 mb-4">
+          <ShieldCheck className="h-8 w-8" style={{ color: T.primary }} />
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold" style={{ fontFamily: "'Space Grotesk',sans-serif" }}>Berechtigungen</h1>
+            <p className="text-xs" style={{ color: T.muted }}>Feature-basierte Zugriffssteuerung pro Mitarbeiter</p>
           </div>
-          <div className="max-h-[60vh] overflow-y-auto space-y-1">
-            {filtered.map((e) => (
-              <button key={e.slid} onClick={() => setSelected(e.slid)}
-                className={`w-full text-left px-3 py-2 rounded-xl ${selected === e.slid ? "syn-tab-active" : "hover:bg-accent"}`}>
-                <div className="text-sm font-medium truncate">{e.name}</div>
-                <div className="text-[10px] mono text-muted-foreground">{e.slid} · HL{e.hl}{e.position && ` · ${e.position}`}</div>
-              </button>
-            ))}
+        </div>
+      </header>
+
+      {error && (
+        <div className="p-3 rounded-xl mb-4 text-sm" style={{ background: `${T.error}12`, border: `1px solid ${T.error}30`, color: T.error }}>{error}</div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Employee list */}
+        <div className="space-y-3">
+          <LiquidInput placeholder="Mitarbeiter suchen…" value={search} onChange={setSearch} icon={Search} />
+          <div className="space-y-1 max-h-[60vh] overflow-y-auto">
+            {loading && !employees.length ? (
+              <div className="flex justify-center py-8"><Spin size={24} color={T.primary} /></div>
+            ) : (
+              filteredEmployees.map((e) => (
+                <button
+                  key={e.slid}
+                  onClick={() => selectEmployee(e.slid)}
+                  className="w-full text-left p-3 rounded-xl transition-all"
+                  style={{
+                    background: selectedSlid === e.slid ? `${T.primary}15` : T.bg2,
+                    border: `1px solid ${selectedSlid === e.slid ? `${T.primary}40` : T.border}`,
+                  }}
+                >
+                  <div className="font-medium text-sm" style={{ color: T.text }}>{e.name || e.slid}</div>
+                  <div className="text-xs" style={{ color: T.muted }}>{e.department || "—"} · {e.kind || "—"}</div>
+                </button>
+              ))
+            )}
           </div>
         </div>
 
-        <div className="syn-card p-4">
-          {!selected ? <div className="text-sm text-muted-foreground">Mitarbeiter wählen.</div> : (
-            <div className="space-y-2">
-              <div className="text-[10px] mono uppercase text-muted-foreground mb-2">Tabs für {selected}</div>
-              {TABS.map((t) => {
-                const allowed = isAllowed(selected, t.key);
-                return (
-                  <label key={t.key} className="flex items-center justify-between gap-3 p-2 rounded-xl border border-border hover:border-cyan-400/30">
-                    <div className="min-w-0 flex items-center gap-2">
-                      <t.icon className="h-4 w-4 shrink-0 text-muted-foreground" />
-                      <div className="min-w-0">
-                        <div className="text-sm font-medium truncate">{t.label}</div>
-                        <div className="text-[10px] mono text-muted-foreground truncate">{t.to}</div>
-                      </div>
+        {/* Permission matrix */}
+        <div className="lg:col-span-2 space-y-4">
+          {!selectedSlid ? (
+            <div className="text-center py-20 text-sm" style={{ color: T.muted }}>Wähle einen Mitarbeiter aus der Liste.</div>
+          ) : (
+            <>
+              <div className="p-4 rounded-2xl" style={{ background: T.bg2, border: `1px solid ${T.border}` }}>
+                <div className="flex items-center gap-2 mb-1">
+                  <UserCheck className="h-5 w-5" style={{ color: T.primary }} />
+                  <span className="font-semibold" style={{ color: T.text }}>{selectedEmployee?.name || selectedSlid}</span>
+                  {saving && <Spin size={14} color={T.primary} />}
+                </div>
+                <div className="text-xs" style={{ color: T.muted }}>{selectedEmployee?.department} · {selectedEmployee?.kind}</div>
+              </div>
+
+              {/* Roles */}
+              <AccordionItem title="Rollen" sub="Rollenzuweisung" color={T.accent}>
+                <div className="grid grid-cols-2 gap-2 p-2">
+                  {["superuser", "admin", "manager", "support", "customer"].map((role) => (
+                    <LiquidCheckbox
+                      key={role}
+                      checked={roles.includes(role)}
+                      onChange={(checked) => toggleRole(role, checked)}
+                    >
+                      <span className="capitalize text-xs">{role}</span>
+                    </LiquidCheckbox>
+                  ))}
+                </div>
+              </AccordionItem>
+
+              {/* Module features */}
+              <AccordionItem title="Module" sub="Tab-Zugriff" color={T.primary}>
+                <div className="space-y-1 p-2">
+                  {MODULE_TABS.map((t) => (
+                    <div key={t.key} className="flex items-center justify-between p-2 rounded-lg" style={{ background: T.surface }}>
+                      <span className="text-xs" style={{ color: T.text }}>{t.label}</span>
+                      <LiquidCheckbox
+                        checked={hasPerm(t.key)}
+                        onChange={(checked) => toggleTab(t.key, checked)}
+                      />
                     </div>
-                    <input type="checkbox" checked={allowed} onChange={() => void toggle(t.key)} className="h-4 w-4 accent-[color:var(--synapse)]" />
-                  </label>
-                );
-              })}
-            </div>
+                  ))}
+                </div>
+              </AccordionItem>
+
+              {/* Action features */}
+              <AccordionItem title="Aktionen" sub="Erweiterte Berechtigungen" color={T.secondary}>
+                <div className="space-y-1 p-2">
+                  {ACTION_TABS.map((t) => (
+                    <div key={t.key} className="flex items-center justify-between p-2 rounded-lg" style={{ background: T.surface }}>
+                      <span className="text-xs" style={{ color: T.text }}>{t.label}</span>
+                      <LiquidCheckbox
+                        checked={hasPerm(t.key)}
+                        onChange={(checked) => toggleTab(t.key, checked)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </AccordionItem>
+            </>
           )}
         </div>
       </div>
