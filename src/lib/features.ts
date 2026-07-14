@@ -27,6 +27,7 @@ export const MODULE_FEATURES = [
   "payments",
   "account",
   "settings",
+  "admin",
 ] as const;
 export type ModuleFeature = (typeof MODULE_FEATURES)[number];
 
