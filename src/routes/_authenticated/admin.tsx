@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Shield, Users, Plus, Trash2, Save, X, ChevronDown, ChevronUp, Search, RefreshCw, UserPlus, AtSign, Building2, Star, Crown, User, Briefcase } from "lucide-react";
+import { Shield, Users, Plus, Trash2, Save, X, ChevronDown, ChevronUp, Search, RefreshCw, UserPlus, AtSign, Building2, Star, Crown, User, Briefcase, XCircle, CheckCircle2 } from "lucide-react";
 import { xaAdminListAccounts, xaAdminCreateAccount, xaAdminUpdateRoles, xaAdminDeleteAccount } from "@/lib/xsyna-account.functions";
 import { getXsynaSession } from "@/lib/xsyna-session";
 import { useSync } from "@/lib/use-sync";
@@ -47,7 +47,7 @@ function AdminPage() {
   const createFn = useServerFn(xaAdminCreateAccount);
   const updateRolesFn = useServerFn(xaAdminUpdateRoles);
   const deleteFn = useServerFn(xaAdminDeleteAccount);
-  const { run, syncing, error } = useSync();
+  const { run, syncing, error, clearError } = useSync();
 
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [filtered, setFiltered] = useState<Account[]>([]);
@@ -55,6 +55,7 @@ function AdminPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [expandedSlid, setExpandedSlid] = useState<string | null>(null);
   const [editRoles, setEditRoles] = useState<Record<string, string[]>>({});
+  const [createStatus, setCreateStatus] = useState<"idle" | "success" | "error">("idle");
 
   // Create form state
   const [cName, setCName] = useState("");
@@ -83,7 +84,7 @@ function AdminPage() {
 
   async function loadAccounts() {
     if (!xa) return;
-    await run(async () => {
+    const res = await run(async () => {
       const rows = await listFn({ data: { token: xa.token } }) as Account[];
       setAccounts(rows);
       setFiltered(rows);
@@ -92,39 +93,51 @@ function AdminPage() {
       rows.forEach((r) => { er[r.slid] = [...r.roles]; });
       setEditRoles(er);
     });
+    if (!res) return;
   }
 
   async function createAccount() {
     if (!xa || !cName.trim()) return;
-    await run(async () => {
+    setCreateStatus("idle");
+    clearError();
+    const res = await run(async () => {
       await createFn({ data: {
         token: xa.token, name: cName.trim(), email: cEmail.trim() || undefined,
         kind: cKind, hl: cHl, department: cDept.trim() || undefined, position: cPos.trim() || undefined,
       }});
+    });
+    if (res) {
+      setCreateStatus("success");
       setShowCreate(false);
       setCName(""); setCEmail(""); setCKind("kunde"); setCHl(1); setCDept(""); setCPos("");
       await loadAccounts();
-    });
+    } else {
+      setCreateStatus("error");
+    }
   }
 
   async function saveRoles(slid: string) {
     if (!xa) return;
     const roles = editRoles[slid] ?? [];
     if (roles.length === 0) return;
-    await run(async () => {
+    clearError();
+    const res = await run(async () => {
       await updateRolesFn({ data: { token: xa.token, target_slid: slid, roles: roles as any } });
       await loadAccounts();
       setExpandedSlid(null);
     });
+    if (!res) return;
   }
 
   async function deleteAccount(slid: string) {
     if (!xa) return;
     if (!window.confirm(`Account ${slid} wirklich löschen? Alle Passkeys und Daten werden entfernt.`)) return;
-    await run(async () => {
+    clearError();
+    const res = await run(async () => {
       await deleteFn({ data: { token: xa.token, target_slid: slid } });
       await loadAccounts();
     });
+    if (!res) return;
   }
 
   function toggleRole(slid: string, role: string) {
@@ -147,6 +160,18 @@ function AdminPage() {
 
   return (
     <div className="max-w-5xl mx-auto p-4 sm:p-6 space-y-5">
+      {/* Error Banner — sticky at top, dismissible */}
+      {error && (
+        <div className="flex items-start gap-2 p-3 rounded-2xl bg-destructive/10 border border-destructive/30 animate-in fade-in slide-in-from-top-2 duration-200">
+          <XCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <div className="text-xs font-medium text-destructive">Fehler</div>
+            <div className="text-xs text-destructive/80 mono">{error}</div>
+          </div>
+          <button onClick={clearError} className="syn-btn-ghost p-1 shrink-0"><XCircle className="h-3.5 w-3.5" /></button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -160,11 +185,9 @@ function AdminPage() {
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => void loadAccounts()} disabled={syncing} className="syn-btn-ghost"><RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} /></button>
-          <button onClick={() => setShowCreate(true)} className="syn-btn"><Plus className="h-4 w-4" />Neu</button>
+          <button onClick={() => { setShowCreate(true); setCreateStatus("idle"); clearError(); }} className="syn-btn"><Plus className="h-4 w-4" />Neu</button>
         </div>
       </div>
-
-      {error && <div className="text-xs text-destructive mono p-2 rounded-lg bg-destructive/10 border border-destructive/30">{error}</div>}
 
       {/* Stats */}
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
@@ -186,7 +209,7 @@ function AdminPage() {
       {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <input className="syn-input pl-9" placeholder="SLID, Name, E-Mail, Abteilung, Rolle…" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <input className="syn-input pl-9" placeholder="Account-ID, Name, E-Mail, Abteilung, Rolle…" value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
 
       {/* Account List */}
@@ -253,7 +276,7 @@ function AdminPage() {
                     })}
                   </div>
                   <button onClick={() => void saveRoles(a.slid)} disabled={syncing} className="syn-btn mt-3 text-xs flex items-center gap-1">
-                    <Save className="h-3.5 w-3.5" />Rollen speichern
+                    <Save className="h-3.5 w-3.5" />{syncing ? "Speichere…" : "Rollen speichern"}
                   </button>
                 </div>
               </div>
@@ -273,7 +296,7 @@ function AdminPage() {
               </div>
               <button onClick={() => setShowCreate(false)} className="syn-btn-ghost p-1.5"><X className="h-4 w-4" /></button>
             </div>
-            <p className="text-xs text-muted-foreground">Neuer Account mit automatisch generierter SLID und zufälligem PIK. Der Nutzer meldet sich per Passkey an.</p>
+            <p className="text-xs text-muted-foreground">Neuer Account mit automatisch generierter Account-ID und zufälligem PIK. Der Nutzer meldet sich per Passkey an.</p>
 
             <div className="space-y-3">
               <label className="block space-y-1">
@@ -310,8 +333,20 @@ function AdminPage() {
               </div>
             </div>
 
-            <button onClick={() => void createAccount()} disabled={syncing || !cName.trim()} className="syn-btn w-full">
-              <UserPlus className="h-4 w-4" />{syncing ? "Erstelle…" : "Account erstellen"}
+            {/* Create button with status */}
+            <button
+              onClick={() => void createAccount()}
+              disabled={syncing || !cName.trim()}
+              className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-medium transition-all ${
+                createStatus === "success"
+                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
+                  : createStatus === "error"
+                  ? "bg-destructive/20 text-destructive border border-destructive/40"
+                  : "syn-btn"
+              }`}
+            >
+              {createStatus === "success" ? <CheckCircle2 className="w-4 h-4" /> : createStatus === "error" ? <XCircle className="w-4 h-4" /> : <UserPlus className="h-4 w-4" />}
+              {createStatus === "success" ? "Erstellt ✓" : createStatus === "error" ? "Fehler — siehe oben" : syncing ? "Erstelle…" : "Account erstellen"}
             </button>
           </div>
         </div>
