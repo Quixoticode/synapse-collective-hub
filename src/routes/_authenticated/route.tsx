@@ -109,6 +109,7 @@ function AuthedLayout() {
     { label: "Arbeiten", items: tabs.filter((t) => t.category === "core") },
     { label: "Verwaltung", items: tabs.filter((t) => t.category === "admin") },
     { label: "Persönlich", items: tabs.filter((t) => t.category === "personal") },
+    { label: "System", items: tabs.filter((t) => t.category === "debug") },
   ].filter((g) => g.items.length > 0);
 
   return (
