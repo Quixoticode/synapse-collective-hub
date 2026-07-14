@@ -11,6 +11,12 @@ export default defineConfig({
       lazy: true,
       esmImport: true,
     },
+    externals: {
+      external: ["ws"],
+    },
+    alias: {
+      ws: "unenv/runtime/mock/proxy",
+    },
   },
   vite: {
     server: { host: "0.0.0.0", allowedHosts: true },
